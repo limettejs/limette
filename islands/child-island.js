@@ -29,18 +29,12 @@ export class ChildIsland extends LitElement {
   constructor() {
     super();
     this.count = 0;
-    console.log("constructor greeter");
+    console.log("constructor child");
   }
 
   connectedCallback() {
-    this.removeAttribute("defer-hydration");
     super.connectedCallback();
-    // super.connectedCallback();
-    console.log("connectedCallback greeter");
-  }
-
-  firstUpdated() {
-    console.log("firstUpdated");
+    console.log("connectedCallback child");
   }
 
   render() {
@@ -53,7 +47,7 @@ export class ChildIsland extends LitElement {
           <button @click=${() => this.count++}>+</button>
         </section>
         <button @click=${() => this.dispatchEvent(new Event("change-name"))}>
-          +
+          change
         </button>
       </div>
     `;

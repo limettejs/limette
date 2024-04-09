@@ -15,7 +15,19 @@ export class Island extends LitElement {
     // make sure this element is never affected by defer-hydration
     this.removeAttribute("defer-hydration");
     super.connectedCallback();
+    this.#setContext();
     this.#removeDefer();
+  }
+
+  #setContext() {
+    const slotEl = this.shadowRoot.querySelector("slot");
+    const els = slotEl.assignedElements({ flatten: true });
+    console.log(els);
+    for (const el of els) {
+      if (el.tagName.toLowerCase()?.includes("-")) {
+        el.ctx = { foo: "bar" };
+      }
+    }
   }
 
   // removes defer on all children that are not inside another <is-land>
