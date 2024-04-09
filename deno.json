@@ -1,0 +1,15 @@
+{
+  "tasks": {
+    "dev": "deno run -A --watch main.ts"
+  },
+  "imports": {
+    "@lit-labs/ssr": "npm:@lit-labs/ssr@^3.2.2",
+    "@lit-labs/ssr/": "npm:/@lit-labs/ssr/",
+    "@open-wc/scoped-elements": "https://esm.sh/@open-wc/scoped-elements@3.0.5/html-element.js",
+    "@open-wc/scoped-elements/": "https://esm.sh/@open-wc/scoped-elements@3.0.5/",
+    "lit": "npm:lit@^3.1.2"
+  },
+  "fmt": {
+    "singleQuote": true
+  }
+}
