@@ -19,11 +19,16 @@ export function bootstrapContent() {
         {
           "imports": {
             "lit": "https://esm.sh/lit@3.1.2",
-            "@lit-labs/ssr": "https://esm.sh/@lit-labs/ssr@3.2.2"
+            "@lit-labs/ssr__s": "https://esm.sh/@lit-labs/ssr@3.2.2"
           }
         }
       </script>
-      <script type="module" src="./bundle.js"></script>
+      <!-- <script
+        type="module"
+        src="https://esm.sh/@lit-labs/ssr-client@1.1.7/lit-element-hydrate-support.js"
+      ></script> -->
+      <script type="module" src="./dist/bundle.js"></script>
+      <!-- <script type="module" src="./bundle.js"></script> -->
     </body>
   </html>`;
 }

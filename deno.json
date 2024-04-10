@@ -12,5 +12,6 @@
   },
   "fmt": {
     "singleQuote": true
-  }
+  },
+  "lock": false
 }

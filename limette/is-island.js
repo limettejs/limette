@@ -15,8 +15,12 @@ export class Island extends LitElement {
     // make sure this element is never affected by defer-hydration
     this.removeAttribute("defer-hydration");
     super.connectedCallback();
+  }
+
+  update(changed) {
     this.#setContext();
     this.#removeDefer();
+    super.update(changed);
   }
 
   #setContext() {

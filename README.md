@@ -2,9 +2,10 @@
 
 The JavaScript framework for Web Components and Deno.
 
-## Initial set of features:
+## ROADMAP:
 
 - SSR
 - islands
 - file based routing
+- bundling FE
 - static files

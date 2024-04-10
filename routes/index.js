@@ -1,5 +1,5 @@
-import "../islands/greeter.js";
 import { LitElement, html } from "lit";
+import "../islands/greeter.js";
 
 export default class Home extends LitElement {
   render() {
