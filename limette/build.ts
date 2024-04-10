@@ -7,8 +7,6 @@ import { denoPlugins } from "jsr:@luca/esbuild-deno-loader@^0.10.3";
 import parseImports from "npm:parse-imports";
 import { ensureDir } from "jsr:@std/fs/ensure-dir";
 
-// getImports("./routes/index.js");
-
 await build();
 
 async function getImports(file: string) {
@@ -26,14 +24,14 @@ async function getImports(file: string) {
 }
 
 async function build() {
-  const imports = await getImports("./routes/test/index.js");
+  const imports = await getImports("./routes/index.js");
 
   // Without islands imported, we don't create any bundle for this route
   if (!imports.length) return;
 
   const entryPoint = [
     `import "https://esm.sh/@lit-labs/ssr-client@1.1.7/lit-element-hydrate-support.js";`,
-    `import "${Deno.cwd()}/limette/is-island.js";`,
+    `import "${Deno.cwd()}/limette/is-land.js";`,
     ...imports,
   ].join("\n");
 

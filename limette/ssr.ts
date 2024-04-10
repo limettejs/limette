@@ -1,7 +1,7 @@
 // import { html } from "@lit-labs/ssr";
 import { html } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
-import "./is-island.js";
+import "./is-land.js";
 
 import Home from "../routes/index.js";
 
