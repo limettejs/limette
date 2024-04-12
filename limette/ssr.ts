@@ -1,11 +1,24 @@
-// import { html } from "@lit-labs/ssr";
+import { RouterContext } from "jsr:@oak/oak/router";
+
 import { html } from "lit";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import "./is-land.ts";
 
-export async function bootstrapContent(route) {
+const ComponentCtxMixin = (base, ctx) =>
+  class extends base {
+    constructor() {
+      super();
+      this.ctx = ctx;
+    }
+  };
+
+export async function bootstrapContent(route, ctx: RouterContext) {
+  console.log("router context", ctx.params);
   const compoentModule = await import(route.filePath);
-  const component = registerComponent(compoentModule.default, route.path);
+  const componentClass = ComponentCtxMixin(compoentModule.default, {
+    params: ctx.params,
+  });
+  const component = registerComponent(componentClass, route.tagName);
 
   return html` <html>
     <head>
@@ -20,16 +33,12 @@ export async function bootstrapContent(route) {
   </html>`;
 }
 
-function registerComponent(module, path) {
-  // TODO: Needs a better approach
-  let name = path.substring(1);
-  name = name === "" ? "index" : name.replaceAll("/", "-")?.toLowerCase();
-
-  if (!customElements.get(`lmt-${name}`)) {
-    customElements.define(`lmt-${name}`, module);
+function registerComponent(module, tagName) {
+  if (!customElements.get(`lmt-${tagName}`)) {
+    customElements.define(`lmt-${tagName}`, module);
   } else {
     // check if it is the same class
   }
 
-  return `<lmt-${name}></lmt-${name}>`;
+  return `<lmt-${tagName}></lmt-${tagName}>`;
 }

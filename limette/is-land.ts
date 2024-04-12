@@ -11,6 +11,10 @@ export class Island extends LitElement {
     }
   `;
 
+  static properties = {
+    ctx: {},
+  };
+
   connectedCallback() {
     // make sure this element is never affected by defer-hydration
     this.removeAttribute("defer-hydration");

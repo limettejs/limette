@@ -38,7 +38,7 @@ export class ChildIsland extends LitElement {
   }
 
   render() {
-    console.log("child island");
+    console.log("child island", this.ctx);
     return html`
       <div>
         <section style="display: flex;">

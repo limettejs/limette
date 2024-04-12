@@ -79,6 +79,7 @@ export async function getRoutes() {
     let path = parsed.dir.replace("routes", "") + "/" + parsed.name;
     path = path.endsWith("/index") ? path.slice(0, -6) : path;
     path = path === "" ? "/" : path;
+    path = convertFilenameToPattern(path);
 
     // Check if route exists
     const exists = routes.find((r) => r.path === path);
@@ -89,6 +90,7 @@ export async function getRoutes() {
 
     const filePath = Deno.cwd() + "/" + entry.path;
     const id = hash({ path });
+    const tagName = convertToWebComponentTagName(path);
 
     const bundle = await build(filePath);
     const bundlePath = bundle
@@ -99,7 +101,8 @@ export async function getRoutes() {
       id,
       path,
       filePath,
-      // bundle,
+      tagName,
+      bundle,
       bundlePath,
     };
     routes.push(route);
@@ -109,17 +112,26 @@ export async function getRoutes() {
 }
 
 function convertFilenameToPattern(filename) {
-  // Replace all dynamic parts (e.g., "[slug]", "[id]", "[something]") with their corresponding placeholders
-  const outputString = filename.replace(
-    /\[([^\]]+)\]/g,
+  // Replace all dynamic parts (e.g., "[[version]]") with their corresponding placeholders
+  let outputString = filename.replace(
+    /\[([^\]]+\])\]/g,
+    (_match, dynamicPart) => {
+      console.log(dynamicPart);
+      if (dynamicPart.startsWith("[") && dynamicPart.endsWith("]")) {
+        // Handle "[[version]]" format
+        return `{/:${dynamicPart.slice(1, -1)}}?`;
+      }
+    }
+  );
+
+  // Replace all dynamic parts (e.g., "[slug]", "[...params]") with their corresponding placeholders
+  outputString = outputString.replace(
+    /\[([^\[\]]+)\]/g,
     (_match, dynamicPart) => {
       console.log(dynamicPart);
       if (dynamicPart.startsWith("...")) {
         // Handle "[...params]" format
         return `:${dynamicPart.slice(3)}*`;
-      } else if (dynamicPart.startsWith("[") && dynamicPart.endsWith("]")) {
-        // Handle "[[version]]" format
-        return `{/:${dynamicPart}}?`;
       } else {
         // Handle regular dynamic parts
         return `:${dynamicPart}`;
@@ -127,6 +139,24 @@ function convertFilenameToPattern(filename) {
     }
   );
 
+  outputString = outputString.replaceAll("/{/", "{/");
+
   // Add a leading slash if not already present
   return outputString.startsWith("/") ? outputString : `/${outputString}`;
+}
+
+function convertToWebComponentTagName(str: string) {
+  const stringWithId =
+    (str === "/" ? "index" : str) +
+    "-" +
+    globalThis.crypto.randomUUID().substring(0, 5);
+
+  // Replace non-alphanumeric characters with hyphens
+  const cleanedString = stringWithId.replace(/[^a-zA-Z0-9]+/g, "-");
+
+  // Remove consecutive hyphens
+  const tagName = cleanedString.replace(/-+/g, "-");
+
+  // Remove hyphens from the start and end
+  return tagName.replace(/^-+|-+$/g, "").toLowerCase();
 }
