@@ -12,3 +12,5 @@ export default class Home extends LitElement {
     `;
   }
 }
+
+console.log("parent check", LitElement.isPrototypeOf(Home));

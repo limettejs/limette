@@ -11,6 +11,7 @@ import { parse } from "jsr:@std/path";
 import hash from "https://deno.land/x/object_hash@2.0.3.1/mod.ts";
 
 // await build();
+const TEST_FILE_PATTERN = /[._]test\.(?:[tj]sx?|[mc][tj]s)$/;
 
 async function getImports(file: string) {
   const imports = [];
@@ -64,17 +65,28 @@ async function build(path: string) {
   return result.outputFiles?.[0];
 }
 
-// console.log(await getRoutes());
+console.log(await getRoutes());
 export async function getRoutes() {
+  const ignoreFilePattern = TEST_FILE_PATTERN;
   const routes = [];
   for await (const entry of walk("./routes", {
     includeDirs: false,
     includeSymlinks: false,
+    exts: ["ts", "js"],
+    skip: [ignoreFilePattern],
   })) {
     const parsed = parse(entry.path);
     let path = parsed.dir.replace("routes", "") + "/" + parsed.name;
-    path = path.endsWith("/index") ? path.substring(0, -6) : path;
+    path = path.endsWith("/index") ? path.slice(0, -6) : path;
     path = path === "" ? "/" : path;
+
+    // Check if route exists
+    const exists = routes.find((r) => r.path === path);
+    if (exists) {
+      const error = `Route conflict for "${path}" (${entry.path}"). Another file is resolved to the same route: "${exists.path}" (${exists.filePath}).`;
+      throw new Error(error);
+    }
+
     const filePath = Deno.cwd() + "/" + entry.path;
     const id = hash({ path });
 
@@ -87,11 +99,34 @@ export async function getRoutes() {
       id,
       path,
       filePath,
-      bundle,
+      // bundle,
       bundlePath,
     };
     routes.push(route);
   }
 
   return routes;
+}
+
+function convertFilenameToPattern(filename) {
+  // Replace all dynamic parts (e.g., "[slug]", "[id]", "[something]") with their corresponding placeholders
+  const outputString = filename.replace(
+    /\[([^\]]+)\]/g,
+    (_match, dynamicPart) => {
+      console.log(dynamicPart);
+      if (dynamicPart.startsWith("...")) {
+        // Handle "[...params]" format
+        return `:${dynamicPart.slice(3)}*`;
+      } else if (dynamicPart.startsWith("[") && dynamicPart.endsWith("]")) {
+        // Handle "[[version]]" format
+        return `{/:${dynamicPart}}?`;
+      } else {
+        // Handle regular dynamic parts
+        return `:${dynamicPart}`;
+      }
+    }
+  );
+
+  // Add a leading slash if not already present
+  return outputString.startsWith("/") ? outputString : `/${outputString}`;
 }
