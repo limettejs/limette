@@ -1,4 +1,5 @@
-import { LitElement, html } from "lit";
+import { LitElement } from "lit";
+import { html } from "@lit-labs/ssr";
 import "../islands/child-island.js";
 
 export default class Params extends LitElement {
@@ -6,8 +7,8 @@ export default class Params extends LitElement {
     console.log("ctx in render", this.ctx);
     return html`
       <h1>Params</h1>
-      <p>SSR content with params: ${JSON.stringify(this.ctx.params)}</p>
-      <is-land ctx=${this.ctx.params}><child-island></child-island></is-land>
+      <p>SSR content with params: ${JSON.stringify(this.ctx)}</p>
+      <is-land><child-island></child-island></is-land>
       <a href="/">To home</a>
     `;
   }

@@ -65,7 +65,7 @@ async function build(path: string) {
   return result.outputFiles?.[0];
 }
 
-console.log(await getRoutes());
+// console.log(await getRoutes());
 export async function getRoutes() {
   const ignoreFilePattern = TEST_FILE_PATTERN;
   const routes = [];
@@ -94,7 +94,7 @@ export async function getRoutes() {
 
     const bundle = await build(filePath);
     const bundlePath = bundle
-      ? `/_lmt/js/${id}/chunk-${bundle?.hash}.js`
+      ? `/_lmt/js/${id}/chunk-${id.substring(0, 6)}.js`
       : undefined;
 
     const route = {

@@ -23,12 +23,15 @@ export class ChildIsland extends LitElement {
 
   static properties = {
     name: {},
+    ctx: { type: Object },
     count: { type: Number },
   };
 
   constructor() {
     super();
+    this.ctx = {};
     this.count = 0;
+    // this.ctx = { id: "111" };
     console.log("constructor child");
   }
 
@@ -38,9 +41,13 @@ export class ChildIsland extends LitElement {
   }
 
   render() {
-    console.log("child island", this.ctx);
+    console.log("render child island", this.ctx);
+    const { id } = this.ctx ?? { id: "x" };
+    // const { id } = { id: "x" };
+    console.log("", id);
     return html`
       <div>
+        <p>Params: ${id}</p>
         <section style="display: flex;">
           <button @click=${() => this.count--}>-</button>
           <p>Count: ${this.count}</p>

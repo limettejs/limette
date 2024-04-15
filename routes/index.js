@@ -7,7 +7,7 @@ export default class Home extends LitElement {
       <h1>Home</h1>
       <p>SSR content</p>
       <is-land><simple-greeter name="Iris"></simple-greeter></is-land>
-      <a href="/foo/bar">To foo/bar</a>
+      <a href="/foo/bar">To foo/bar</a> | <a href="/foo-123">To params</a> |
       <a href="/no-js">To no js</a>
     `;
   }
