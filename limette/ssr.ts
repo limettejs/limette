@@ -2,7 +2,7 @@ import { RouterContext } from "jsr:@oak/oak/router";
 
 import { html } from "@lit-labs/ssr";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
-import "./patch-custom-elements.ts";
+// import "./patch-custom-elements.ts";
 import "./is-land.ts";
 
 const ComponentCtxMixin = (base, ctx) =>
@@ -12,9 +12,9 @@ const ComponentCtxMixin = (base, ctx) =>
       this._ctx = JSON.stringify(ctx);
     }
 
-    get ctx() {
-      return JSON.parse(this._ctx);
-    }
+    // get ctx() {
+    //   return JSON.parse(this._ctx);
+    // }
   };
 
 export async function bootstrapContent(route, ctx: RouterContext) {
@@ -26,9 +26,9 @@ export async function bootstrapContent(route, ctx: RouterContext) {
   });
   const component = registerComponent(componentClass, route.tagName);
 
-  const ctxStr = `<script type="text/json" id="_lmt_ctx">${JSON.stringify(
-    ctx.params
-  )}</script>`;
+  const ctxStr = `<script type="text/json" id="_lmt_ctx">${JSON.stringify({
+    params: ctx.params,
+  })}</script>`;
 
   return html` <html>
     <head>
