@@ -18,7 +18,7 @@ export class Island extends LitElement {
   }
 
   async update(changed) {
-    await this.#setContext();
+    // await this.#setContext();
     this.#removeDefer();
     super.update(changed);
   }

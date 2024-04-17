@@ -19,7 +19,7 @@ export default class Params extends LitElement {
       <h1>Params</h1>
       <p>SSR content with params: ${JSON.stringify(this.ctx)}</p>
       <is-land
-        ><child-island .cctx=${this.ctx} .foo=${this.foo}></child-island
+        ><child-island .ctx=${this.ctx} .foo=${this.foo}></child-island
       ></is-land>
       <a href="/">To home</a>
     `;

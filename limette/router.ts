@@ -4,7 +4,7 @@ import { render } from "@lit-labs/ssr";
 import { collectResult } from "@lit-labs/ssr/lib/render-result.js";
 import { bootstrapContent } from "./ssr.ts";
 import { getRoutes } from "./build.ts";
-import { LimetteElementRendererMixin } from "./limette-element-renderer.ts";
+import { LimetteElementRenderer } from "./limette-element-renderer.ts";
 
 export const router = new Router();
 
@@ -22,7 +22,7 @@ routes.map((route) => {
     const componentContext = { params: ctx.params };
 
     const result = render(await bootstrapContent(route, componentContext), {
-      elementRenderers: [LimetteElementRendererMixin(componentContext)],
+      elementRenderers: [LimetteElementRenderer],
     });
     const contents = await collectResult(result);
     ctx.response.type = "text/html";

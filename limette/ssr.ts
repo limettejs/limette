@@ -9,12 +9,26 @@ const ComponentCtxMixin = (base, ctx) =>
   class extends base {
     constructor() {
       super();
-      this._ctx = JSON.stringify(ctx);
+      let ctxSerialized;
+      try {
+        ctxSerialized = JSON.stringify(ctx);
+      } catch {
+        // do nothing
+      }
+      this._ctx = ctxSerialized;
     }
 
-    // get ctx() {
-    //   return JSON.parse(this._ctx);
-    // }
+    get ctx() {
+      let ctxDeserialized;
+      try {
+        ctxDeserialized = JSON.parse(this._ctx);
+      } catch {
+        // do nothing
+      }
+      console.log("get ctx", this._ctx);
+      // return JSON.parse(this._ctx);
+      return ctxDeserialized;
+    }
   };
 
 export async function bootstrapContent(route, ctx: RouterContext) {
