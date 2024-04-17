@@ -34,7 +34,7 @@ export class Island extends LitElement {
     for (const el of els) {
       console.log(el.tagName, customElements.get(el.tagName));
       if (el?.requestUpdate) {
-        console.log("an web comp found", el);
+        // console.log("an web comp found", el);
         el.ctx = ctx;
       }
     }

@@ -19,8 +19,10 @@ router.get("/_lmt/js/:id/chunk-:hash.js", (ctx) => {
 
 routes.map((route) => {
   router.get(route.path, async (ctx) => {
-    const result = render(await bootstrapContent(route, ctx), {
-      elementRenderers: [LimetteElementRendererMixin(ctx)],
+    const componentContext = { params: ctx.params };
+
+    const result = render(await bootstrapContent(route, componentContext), {
+      elementRenderers: [LimetteElementRendererMixin(componentContext)],
     });
     const contents = await collectResult(result);
     ctx.response.type = "text/html";

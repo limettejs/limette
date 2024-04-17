@@ -23,28 +23,43 @@ export class ChildIsland extends LitElement {
 
   static properties = {
     name: {},
+    cctx: { type: Object, reflect: true },
+    foo: { type: Object, reflect: true },
+    id: { type: Number },
     count: { type: Number },
   };
 
   constructor() {
     super();
     this.count = 0;
-    // this.ctx = { id: "111" };
-    console.log("constructor child");
+    // this.ctx = {};
+    console.log("island[constructor][ctx]", this.ctx);
+    console.log("island[constructor][cctx]", this.cctx);
+    console.log("island[constructor][foo]", this.foo);
+    this.id = this.ctx?.params;
   }
 
   connectedCallback() {
     super.connectedCallback();
-    console.log("connectedCallback child");
+    console.log("connectedCallback island", this.ctx, this.cctx);
+  }
+  willUpdate(changed) {
+    console.log("island[willUpdate][ctx]", this.ctx, this.cctx);
   }
 
   render() {
-    console.log("render child island", this.tagName, this.ctx);
+    console.log(
+      "island[render][ctx]",
+      this.tagName,
+      this.ctx,
+      this.cctx,
+      this.foo
+    );
     const { id } = this?.ctx?.params ?? {};
     // const { id } = { id: "x" };
     return html`
       <div>
-        <p>Params: ${id}</p>
+        <p>Params: ${this.foo.a}</p>
         <section style="display: flex;">
           <button @click=${() => this.count--}>-</button>
           <p>Count: ${this.count}</p>
