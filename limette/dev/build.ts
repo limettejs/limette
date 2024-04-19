@@ -1,13 +1,13 @@
-import * as esbuild from "npm:esbuild@0.20.2";
+import * as esbuild from "esbuild";
 // Import the WASM build on platforms where running subprocesses is not
 // permitted, such as Deno Deploy, or when running without `--allow-run`.
 // import * as esbuild from "https://deno.land/x/esbuild@0.20.2/wasm.js";
 
-import { denoPlugins } from "jsr:@luca/esbuild-deno-loader@^0.10.3";
-import parseImports from "npm:parse-imports";
-import { ensureDir } from "jsr:@std/fs/ensure-dir";
-import { walk } from "jsr:@std/fs/walk";
-import { parse } from "jsr:@std/path";
+import { denoPlugins } from "@luca/esbuild-deno-loader";
+import parseImports from "parse-imports";
+import { ensureDir } from "@std/fs/ensure-dir";
+import { walk } from "@std/fs/walk";
+import { parse } from "@std/path";
 import hash from "https://deno.land/x/object_hash@2.0.3.1/mod.ts";
 
 // await build();
@@ -35,7 +35,7 @@ async function build(path: string) {
 
   const entryPoint = [
     `import "https://esm.sh/@lit-labs/ssr-client@1.1.7/lit-element-hydrate-support.js";`,
-    `import "${Deno.cwd()}/limette/is-land.ts";`,
+    `import "$limette/runtime/is-land.ts";`,
     ...imports,
   ].join("\n");
 

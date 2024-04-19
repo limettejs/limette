@@ -1,4 +1,4 @@
-import { send } from "jsr:@oak/oak";
+import { send } from "@oak/oak";
 
 export async function fileExists(path: string) {
   try {

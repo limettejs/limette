@@ -1,9 +1,9 @@
-import { RouterContext } from "jsr:@oak/oak/router";
+import { RouterContext } from "@oak/oak/router";
 
 import { html } from "@lit-labs/ssr";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 // import "./patch-custom-elements.ts";
-import "./is-land.ts";
+import "$limette/runtime/is-land.ts";
 
 const ComponentCtxMixin = (base, ctx) =>
   class extends base {

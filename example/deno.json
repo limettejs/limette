@@ -5,7 +5,7 @@
     "dev": "deno run -A --watch main.ts"
   },
   "imports": {
-    "$limette/": "./limette/",
+    "$limette/": "../limette/",
     "/lit": "npm:/lit@^3.1.2/",
     "@lit-labs/ssr": "npm:@lit-labs/ssr@^3.2.2",
     "@lit-labs/ssr/": "npm:/@lit-labs/ssr/",
