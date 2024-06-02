@@ -7,17 +7,7 @@
   "imports": {
     "$limette/": "../limette/",
     "/lit": "npm:/lit@^3.1.2/",
-    "@lit-labs/ssr": "npm:@lit-labs/ssr@^3.2.2",
-    "@lit-labs/ssr/": "npm:/@lit-labs/ssr/",
-    "@luca/esbuild-deno-loader": "jsr:@luca/esbuild-deno-loader@^0.10.3",
-    "@oak/oak": "jsr:@oak/oak@^15.0.0",
-    "@open-wc/scoped-elements": "https://esm.sh/@open-wc/scoped-elements@3.0.5/html-element.js",
-    "@open-wc/scoped-elements/": "https://esm.sh/@open-wc/scoped-elements@3.0.5/",
-    "@std/fs": "jsr:@std/fs@^0.223.0",
-    "@std/path": "jsr:@std/path@^0.223.0",
-    "esbuild": "npm:esbuild@^0.20.2",
-    "lit": "npm:lit@^3.1.2",
-    "parse-imports": "npm:parse-imports@^1.1.2"
+    "lit": "npm:lit@^3.1.2"
   },
   "fmt": {
     "singleQuote": true

@@ -1,9 +1,7 @@
-import { RouterContext } from "@oak/oak/router";
+import { html, unsafeHTML } from "../../deps.ts";
+import type { RouterContext } from "../../deps.ts";
 
-import { html } from "@lit-labs/ssr";
-import { unsafeHTML } from "lit/directives/unsafe-html.js";
-// import "./patch-custom-elements.ts";
-import "$limette/runtime/is-land.ts";
+import "../runtime/is-land.ts"; // should use $limette?
 
 const ComponentCtxMixin = (base, ctx) =>
   class extends base {
@@ -35,6 +33,7 @@ export async function bootstrapContent(route, ctx: RouterContext) {
   console.log("router context", ctx.params);
 
   const compoentModule = await import(route.filePath);
+
   const componentClass = ComponentCtxMixin(compoentModule.default, {
     params: ctx.params,
   });
@@ -47,9 +46,14 @@ export async function bootstrapContent(route, ctx: RouterContext) {
   return html` <html>
     <head>
       <title>Limette</title>
+      ${route.cssPath
+        ? html`<link rel="stylesheet" href="${route.cssPath}" />`
+        : ``}
     </head>
     <body>
-      ${unsafeHTML(component)} ${route.bundlePath ? unsafeHTML(ctxStr) : ``}
+      ${unsafeHTML(component)}
+      <!-- -->
+      ${route.bundlePath ? unsafeHTML(ctxStr) : ``}
       ${route.bundlePath
         ? html`<script type="module" src="${route.bundlePath}"></script>`
         : ``}

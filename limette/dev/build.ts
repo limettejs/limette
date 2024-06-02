@@ -1,14 +1,15 @@
-import * as esbuild from "esbuild";
 // Import the WASM build on platforms where running subprocesses is not
 // permitted, such as Deno Deploy, or when running without `--allow-run`.
 // import * as esbuild from "https://deno.land/x/esbuild@0.20.2/wasm.js";
 
-import { denoPlugins } from "@luca/esbuild-deno-loader";
-import parseImports from "parse-imports";
-import { ensureDir } from "@std/fs/ensure-dir";
-import { walk } from "@std/fs/walk";
-import { parse } from "@std/path";
-import hash from "https://deno.land/x/object_hash@2.0.3.1/mod.ts";
+import {
+  esbuild,
+  denoPlugins,
+  walk,
+  parse,
+  hash,
+  parseImports,
+} from "../../deps.ts";
 
 // await build();
 const TEST_FILE_PATTERN = /[._]test\.(?:[tj]sx?|[mc][tj]s)$/;
@@ -39,8 +40,9 @@ async function build(path: string) {
     ...imports,
   ].join("\n");
 
-  await ensureDir("./temp");
-  await Deno.writeTextFile(Deno.cwd() + "/temp/entrypoint.js", entryPoint, {});
+  const tempDirPath = await Deno.makeTempDir();
+  const entrypointPath = `${tempDirPath}/entrypoint.js`;
+  await Deno.writeTextFile(entrypointPath, entryPoint, {});
 
   const result = await esbuild.build({
     plugins: [
@@ -49,7 +51,7 @@ async function build(path: string) {
         configPath: Deno.cwd() + "/deno.json",
       }),
     ],
-    entryPoints: ["./temp/entrypoint.js"],
+    entryPoints: [entrypointPath],
     // outfile: "./dist/bundle.js",
     // outdir: "dist",
     sourcemap: false,
@@ -60,7 +62,7 @@ async function build(path: string) {
 
   esbuild.stop();
 
-  await Deno.remove("./temp", { recursive: true });
+  await Deno.remove(tempDirPath, { recursive: true });
 
   return result.outputFiles?.[0];
 }
@@ -97,6 +99,13 @@ export async function getRoutes() {
       ? `/_lmt/js/${id}/chunk-${id.substring(0, 6)}.js`
       : undefined;
 
+    const css = await buildCSS(filePath, bundle);
+    const cssPath = css
+      ? `/_lmt/css/${id}/tailwind-${id.substring(0, 6)}.css`
+      : undefined;
+
+    // console.log("css", css);
+
     const route = {
       id,
       path,
@@ -104,6 +113,8 @@ export async function getRoutes() {
       tagName,
       bundle,
       bundlePath,
+      css,
+      cssPath,
     };
     routes.push(route);
   }
@@ -159,4 +170,37 @@ function convertToWebComponentTagName(str: string) {
 
   // Remove hyphens from the start and end
   return tagName.replace(/^-+|-+$/g, "").toLowerCase();
+}
+
+async function buildCSS(filePath, bundle) {
+  let tempDirPath = "";
+  let contentFlag = filePath;
+
+  if (bundle?.text) {
+    tempDirPath = await Deno.makeTempDir();
+    const bundlePathTemp = `${tempDirPath}/bundle.js`;
+    await Deno.writeTextFile(bundlePathTemp, bundle.text, {});
+
+    contentFlag = `${contentFlag},${bundlePathTemp}`;
+  }
+
+  const command = new Deno.Command(`${import.meta.dirname}/lib/tailwindcss`, {
+    args: [
+      `--input=${import.meta.dirname}/lib/input.css`,
+      `--content=${contentFlag}`,
+    ],
+    stdout: "piped",
+    cwd: Deno.cwd(),
+  });
+  const process = command.spawn();
+  const { stdout } = await process.output();
+  const css = new TextDecoder().decode(stdout);
+
+  process.unref();
+
+  if (bundle?.text) {
+    await Deno.remove(tempDirPath, { recursive: true });
+  }
+
+  return css;
 }
