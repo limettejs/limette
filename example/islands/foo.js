@@ -30,22 +30,9 @@ export class IslandFoo extends LitElement {
     super();
     this.name = "Somebody";
     this.count = 0;
-    console.log("constructor greeter");
-  }
-
-  connectedCallback() {
-    // this.removeAttribute("defer-hydration");
-    super.connectedCallback();
-    // super.connectedCallback();
-    console.log("connectedCallback greeter");
-  }
-
-  firstUpdated() {
-    console.log("firstUpdated");
   }
 
   render() {
-    console.log("island");
     return html`
       <div class="border-solid border-2 border-indigo-600 rounded-md">
         <h1 class="bg-lime-600">Hello, <span>${this.name}</span>!</h1>

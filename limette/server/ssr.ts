@@ -23,15 +23,13 @@ const ComponentCtxMixin = (base, ctx) =>
       } catch {
         // do nothing
       }
-      console.log("get ctx", this._ctx);
+
       // return JSON.parse(this._ctx);
       return ctxDeserialized;
     }
   };
 
 export async function bootstrapContent(route, ctx: RouterContext) {
-  console.log("router context", ctx.params);
-
   const compoentModule = await import(route.filePath);
 
   const componentClass = ComponentCtxMixin(compoentModule.default, {
@@ -61,7 +59,7 @@ export async function bootstrapContent(route, ctx: RouterContext) {
   </html>`;
 }
 
-function registerComponent(module, tagName) {
+function registerComponent(module: CustomElementConstructor, tagName: string) {
   if (!customElements.get(`lmt-route-${tagName}`)) {
     customElements.define(`lmt-route-${tagName}`, module);
   } else {

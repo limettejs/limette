@@ -23,7 +23,6 @@ router.get("/_lmt/css/:id/tailwind-:hash.css", (ctx) => {
 });
 
 routes.map((route) => {
-  // console.log(route.path);
   router.get(route.path, async (ctx) => {
     const componentContext = { params: ctx.params };
 

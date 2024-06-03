@@ -67,7 +67,6 @@ async function build(path: string) {
   return result.outputFiles?.[0];
 }
 
-// console.log(await getRoutes());
 export async function getRoutes() {
   const ignoreFilePattern = TEST_FILE_PATTERN;
   const routes = [];
@@ -104,8 +103,6 @@ export async function getRoutes() {
       ? `/_lmt/css/${id}/tailwind-${id.substring(0, 6)}.css`
       : undefined;
 
-    // console.log("css", css);
-
     const route = {
       id,
       path,
@@ -122,12 +119,11 @@ export async function getRoutes() {
   return routes;
 }
 
-function convertFilenameToPattern(filename) {
+function convertFilenameToPattern(filename: string) {
   // Replace all dynamic parts (e.g., "[[version]]") with their corresponding placeholders
   let outputString = filename.replace(
     /\[([^\]]+\])\]/g,
-    (_match, dynamicPart) => {
-      console.log(dynamicPart);
+    (_match, dynamicPart: string) => {
       if (dynamicPart.startsWith("[") && dynamicPart.endsWith("]")) {
         // Handle "[[version]]" format
         return `{/:${dynamicPart.slice(1, -1)}}?`;
@@ -138,8 +134,7 @@ function convertFilenameToPattern(filename) {
   // Replace all dynamic parts (e.g., "[slug]", "[...params]") with their corresponding placeholders
   outputString = outputString.replace(
     /\[([^\[\]]+)\]/g,
-    (_match, dynamicPart) => {
-      console.log(dynamicPart);
+    (_match, dynamicPart: string) => {
       if (dynamicPart.startsWith("...")) {
         // Handle "[...params]" format
         return `:${dynamicPart.slice(3)}*`;
@@ -172,7 +167,7 @@ function convertToWebComponentTagName(str: string) {
   return tagName.replace(/^-+|-+$/g, "").toLowerCase();
 }
 
-async function buildCSS(filePath, bundle) {
+async function buildCSS(filePath: string, bundle) {
   let tempDirPath = "";
   let contentFlag = filePath;
 

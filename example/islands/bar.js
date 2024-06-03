@@ -31,22 +31,13 @@ export class IslandBar extends LitElement {
   constructor() {
     super();
     this.count = 0;
-    // this.ctx = {};
-    console.log("island[constructor][ctx]", this.ctx);
-    console.log("island[constructor][foo]", this.foo);
   }
 
-  connectedCallback() {
-    super.connectedCallback();
-    console.log("connectedCallback island", this.ctx);
-  }
   willUpdate() {
     this.conect = "foo";
-    console.log("island[willUpdate][ctx]", this.ctx);
   }
 
   render() {
-    console.log("island[render][ctx]", this.tagName, this.ctx, this.foo);
     return html`
       <div class="border-solid border-2 border-teal-500 rounded-md">
         <p>Params: ${this.foo?.a}</p>

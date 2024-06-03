@@ -24,17 +24,17 @@ export class Island extends LitElement {
   }
 
   async #setContext() {
-    const ctx = JSON.parse(document.querySelector("#_lmt_ctx")?.textContent);
-    console.log("set context", ctx);
+    const ctx = JSON.parse(
+      document.querySelector("#_lmt_ctx")?.textContent ?? "{}"
+    );
 
-    const slotEl = this.shadowRoot.querySelector("slot");
+    const slotEl = this.shadowRoot?.querySelector?.("slot");
     if (!slotEl) return;
     const els = slotEl.assignedElements({ flatten: true });
-    // console.log(els);
+
     for (const el of els) {
       console.log(el.tagName, customElements.get(el.tagName));
       if (el?.requestUpdate) {
-        // console.log("an web comp found", el);
         el.ctx = ctx;
       }
     }
