@@ -2,7 +2,8 @@
   "name": "@limettejs/limette",
   "version": "0.0.1",
   "tasks": {
-    "dev": "deno run -A --watch main.ts"
+    "start": "deno run -A --watch=static/,routes/ dev.ts",
+    "preview": "deno run -A --watch main.ts"
   },
   "imports": {
     "$limette/": "../limette/",

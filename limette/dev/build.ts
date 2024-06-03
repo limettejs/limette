@@ -37,6 +37,7 @@ async function build(path: string) {
   const entryPoint = [
     `import "https://esm.sh/@lit-labs/ssr-client@1.1.7/lit-element-hydrate-support.js";`,
     `import "$limette/runtime/is-land.ts";`,
+    `import "$limette/runtime/refresh.ts";`,
     ...imports,
   ].join("\n");
 

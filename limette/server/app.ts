@@ -1,5 +1,6 @@
 import { Application } from "../../deps.ts";
 import { staticMiddleware } from "./utils.ts";
+import { refreshMiddleware } from "../dev/refresh-middleware.ts";
 import { router } from "./router.ts";
 
 export class LimetteApp {
@@ -9,6 +10,7 @@ export class LimetteApp {
     this.#app = new Application();
 
     this.#app.use(staticMiddleware);
+    this.#app.use(refreshMiddleware);
 
     this.#app.use(router.routes());
     this.#app.use(router.allowedMethods());
