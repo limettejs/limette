@@ -9,9 +9,10 @@ import {
   parse,
   hash,
   parseImports,
+  emptyDir,
+  ensureFile,
 } from "../../deps.ts";
 
-// await build();
 const TEST_FILE_PATTERN = /[._]test\.(?:[tj]sx?|[mc][tj]s)$/;
 
 async function getImports(file: string) {
@@ -28,7 +29,7 @@ async function getImports(file: string) {
   return imports;
 }
 
-async function build(path: string) {
+async function buildJS(path: string) {
   const imports = await getImports(path);
 
   // Without islands imported, we don't create any bundle for this route
@@ -66,58 +67,6 @@ async function build(path: string) {
   await Deno.remove(tempDirPath, { recursive: true });
 
   return result.outputFiles?.[0];
-}
-
-export async function getRoutes() {
-  const ignoreFilePattern = TEST_FILE_PATTERN;
-  const routes = [];
-  for await (const entry of walk("./routes", {
-    includeDirs: false,
-    includeSymlinks: false,
-    exts: ["ts", "js"],
-    skip: [ignoreFilePattern],
-  })) {
-    const parsed = parse(entry.path);
-    let path = parsed.dir.replace("routes", "") + "/" + parsed.name;
-    path = path.endsWith("/index") ? path.slice(0, -6) : path;
-    path = path === "" ? "/" : path;
-    path = convertFilenameToPattern(path);
-
-    // Check if route exists
-    const exists = routes.find((r) => r.path === path);
-    if (exists) {
-      const error = `Route conflict for "${path}" (${entry.path}"). Another file is resolved to the same route: "${exists.path}" (${exists.filePath}).`;
-      throw new Error(error);
-    }
-
-    const filePath = Deno.cwd() + "/" + entry.path;
-    const id = hash({ path });
-    const tagName = convertToWebComponentTagName(path);
-
-    const bundle = await build(filePath);
-    const bundlePath = bundle
-      ? `/_lmt/js/${id}/chunk-${id.substring(0, 6)}.js`
-      : undefined;
-
-    const css = await buildCSS(filePath, bundle);
-    const cssPath = css
-      ? `/_lmt/css/${id}/tailwind-${id.substring(0, 6)}.css`
-      : undefined;
-
-    const route = {
-      id,
-      path,
-      filePath,
-      tagName,
-      bundle,
-      bundlePath,
-      css,
-      cssPath,
-    };
-    routes.push(route);
-  }
-
-  return routes;
 }
 
 function convertFilenameToPattern(filename: string) {
@@ -199,4 +148,73 @@ async function buildCSS(filePath: string, bundle) {
   }
 
   return css;
+}
+
+export async function getRoutes() {
+  const ignoreFilePattern = TEST_FILE_PATTERN;
+  const routes = [];
+  for await (const entry of walk("./routes", {
+    includeDirs: false,
+    includeSymlinks: false,
+    exts: ["ts", "js"],
+    skip: [ignoreFilePattern],
+  })) {
+    const parsed = parse(entry.path);
+    let path = parsed.dir.replace("routes", "") + "/" + parsed.name;
+    path = path.endsWith("/index") ? path.slice(0, -6) : path;
+    path = path === "" ? "/" : path;
+    path = convertFilenameToPattern(path);
+
+    // Check if route exists
+    const exists = routes.find((r) => r.path === path);
+    if (exists) {
+      const error = `Route conflict for "${path}" (${entry.path}"). Another file is resolved to the same route: "${exists.path}" (${exists.filePath}).`;
+      throw new Error(error);
+    }
+
+    const filePath = Deno.cwd() + "/" + entry.path;
+    const id = hash({ path }).substring(0, 6);
+    const tagName = convertToWebComponentTagName(path);
+
+    const bundle = await buildJS(filePath);
+    const bundlePath = bundle ? `/_lmt/js/chunk-${id}.js` : undefined;
+
+    const css = await buildCSS(filePath, bundle);
+    const cssPath = css ? `/_lmt/css/tailwind-${id}.css` : undefined;
+
+    const route = {
+      id,
+      path,
+      filePath,
+      tagName,
+      bundle,
+      bundlePath,
+      css,
+      cssPath,
+    };
+    routes.push(route);
+  }
+
+  return routes;
+}
+
+export async function build() {
+  const routes = await getRoutes();
+
+  await emptyDir("./_lmt");
+  // console.log(import.meta.dirname);
+
+  console.log(routes);
+
+  for (const route of routes) {
+    if (route.bundle?.contents) {
+      await ensureFile("." + route.bundlePath);
+      await Deno.writeFile("." + route.bundlePath, route.bundle.contents);
+    }
+
+    if (route.css) {
+      await ensureFile("." + route.cssPath);
+      await Deno.writeTextFile("." + route.cssPath, route.css);
+    }
+  }
 }

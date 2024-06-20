@@ -1,6 +1,3 @@
-import { LimetteApp } from "$limette/server/app.ts";
+import dev from "$limette/dev/dev.ts";
 
-const app = new LimetteApp();
-
-app.listen({ port: 1995 });
-console.log("Server started on: http://localhost:1995");
+await dev();

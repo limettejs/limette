@@ -8,14 +8,14 @@ export const router = new Router();
 
 const routes = await getRoutes();
 
-router.get("/_lmt/js/:id/chunk-:hash.js", (ctx) => {
+router.get("/_lmt/js/chunk-:id.js", (ctx) => {
   const { id } = ctx.params;
   const route = routes.find((r) => r.id === id);
   ctx.response.type = "application/javascript; charset=UTF-8";
   ctx.response.body = route?.bundle?.contents;
 });
 
-router.get("/_lmt/css/:id/tailwind-:hash.css", (ctx) => {
+router.get("/_lmt/css/tailwind-:id.css", (ctx) => {
   const { id } = ctx.params;
   const route = routes.find((r) => r.id === id);
   ctx.response.type = "text/css; charset=UTF-8";
