@@ -1,6 +1,6 @@
 import { unsafeCSS, LitElement } from "lit";
-import { LitElementRenderer } from "../../../deps.ts";
-import type { RenderInfo, RenderResult } from "../../../deps.ts";
+import { LitElementRenderer } from "../../deps.ts";
+import type { RenderInfo, RenderResult } from "../../deps.ts";
 
 export const LimetteElementRenderer = (route) =>
   class LimetteElementRenderer extends LitElementRenderer {

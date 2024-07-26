@@ -1,4 +1,4 @@
-import { LimetteApp } from "$limette/server/app.ts";
+import { LimetteApp } from "../src/server/app.ts";
 
 const app = new LimetteApp();
 

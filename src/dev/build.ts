@@ -11,7 +11,7 @@ import {
   parseImports,
   emptyDir,
   ensureFile,
-} from "../../deps.ts";
+} from "../deps.ts";
 
 const TEST_FILE_PATTERN = /[._]test\.(?:[tj]sx?|[mc][tj]s)$/;
 

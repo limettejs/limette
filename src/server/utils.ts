@@ -1,4 +1,4 @@
-import { send } from "../../deps.ts";
+import { send } from "../deps.ts";
 
 export async function fileExists(path: string) {
   try {

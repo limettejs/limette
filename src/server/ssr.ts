@@ -1,5 +1,5 @@
-import { html, unsafeHTML } from "../../deps.ts";
-import type { RouterContext } from "../../deps.ts";
+import { html, unsafeHTML } from "../deps.ts";
+import type { RouterContext } from "../deps.ts";
 
 import "../runtime/is-land.ts"; // should use $limette?
 

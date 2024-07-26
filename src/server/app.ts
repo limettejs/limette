@@ -1,4 +1,4 @@
-import { Application } from "../../deps.ts";
+import { Application } from "../deps.ts";
 import { staticMiddleware } from "./utils.ts";
 import { refreshMiddleware } from "../dev/refresh-middleware.ts";
 import { router } from "./router.ts";

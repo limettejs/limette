@@ -1,12 +1,12 @@
 {
-  "name": "@limette/core",
+  "name": "@limette/init",
   "version": "0.0.1",
   "exports": {
     ".": "./src/mod.ts"
   },
   "tasks": {},
   "publish": {
-    "include": ["src/**", "deno.json", "README.md", "LICENSE"]
+    "include": ["src/**/*.ts", "deno.json", "README.md"]
   },
   "imports": {
     "$limette/": "./limette/",

@@ -1,4 +1,4 @@
-import type { Context } from "../../deps.ts";
+import type { Context } from "../deps.ts";
 
 /**
  * In-memory store of open WebSockets for

@@ -1,4 +1,4 @@
-import { Router, render, collectResult } from "../../deps.ts";
+import { Router, render, collectResult } from "../deps.ts";
 
 import { bootstrapContent } from "./ssr.ts";
 import { getRoutes } from "../dev/build.ts";
