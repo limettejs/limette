@@ -1,4 +1,5 @@
 import { send } from "../deps.ts";
+import type { Context } from "../deps.ts";
 
 export async function fileExists(path: string) {
   try {
@@ -13,7 +14,10 @@ export async function fileExists(path: string) {
   }
 }
 
-export const staticMiddleware = async (ctx, next) => {
+export const staticMiddleware = async (
+  ctx: Context,
+  next: () => Promise<unknown>
+) => {
   const path = `${Deno.cwd()}${ctx.request.url.pathname}`;
   if (await fileExists(path)) {
     await send(ctx, ctx.request.url.pathname, {

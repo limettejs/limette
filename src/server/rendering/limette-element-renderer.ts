@@ -1,8 +1,9 @@
 import { unsafeCSS, LitElement } from "lit";
 import { LitElementRenderer } from "../../deps.ts";
 import type { RenderInfo, RenderResult } from "../../deps.ts";
+import type { BuildRoute } from "../../dev/build.ts";
 
-export const LimetteElementRenderer = (route) =>
+export const LimetteElementRenderer = (route: BuildRoute) =>
   class LimetteElementRenderer extends LitElementRenderer {
     /**
      * Render the element's shadow root children.
@@ -10,9 +11,9 @@ export const LimetteElementRenderer = (route) =>
      * If `renderShadow()` returns undefined, no declarative shadow root is
      * emitted.
      */
-    renderShadow(_renderInfo: RenderInfo): RenderResult | undefined {
+    renderShadow(_renderInfo: RenderInfo): RenderResult {
       if (this.element.hasAttribute("no-ssr")) {
-        return undefined;
+        return "";
       }
 
       const ctor = this.element.constructor as typeof LitElement;

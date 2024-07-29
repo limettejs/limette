@@ -1,15 +1,33 @@
 import { html, unsafeHTML } from "../deps.ts";
-import type { RouterContext } from "../deps.ts";
+import type { LitElement } from "lit";
+import type { BuildRoute } from "../dev/build.ts";
 
 import "../runtime/is-land.ts"; // should use $limette?
 
-const ComponentCtxMixin = (base, ctx) =>
-  class extends base {
+type Params = {
+  [key: string]: string;
+};
+
+type Constructor<T = {}> = new (...args: any[]) => T;
+
+// Define the interface for the mixin
+export declare class ComponentCtxMixinInterface {
+  _ctx: string;
+  get ctx(): string;
+}
+
+const ComponentCtxMixin = <T extends Constructor<LitElement>>(
+  base: T,
+  ctxArg: {
+    params: Params;
+  }
+) => {
+  class ComponentCtxClass extends base {
     constructor() {
       super();
       let ctxSerialized;
       try {
-        ctxSerialized = JSON.stringify(ctx);
+        ctxSerialized = JSON.stringify(ctxArg);
       } catch {
         // do nothing
       }
@@ -27,12 +45,19 @@ const ComponentCtxMixin = (base, ctx) =>
       // return JSON.parse(this._ctx);
       return ctxDeserialized;
     }
-  };
+  }
+  return ComponentCtxClass as Constructor<ComponentCtxMixinInterface> & T;
+};
 
-export async function bootstrapContent(route, ctx: RouterContext) {
-  const compoentModule = await import(route.filePath);
+export async function bootstrapContent(
+  route: BuildRoute,
+  ctx: {
+    params: Params;
+  }
+) {
+  const componentModule = await import(route.filePath);
 
-  const componentClass = ComponentCtxMixin(compoentModule.default, {
+  const componentClass = ComponentCtxMixin(componentModule.default, {
     params: ctx.params,
   });
   const component = registerComponent(componentClass, route.tagName);

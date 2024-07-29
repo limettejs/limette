@@ -13,11 +13,11 @@ export class Island extends LitElement {
 
   connectedCallback() {
     // make sure this element is never affected by defer-hydration
-    this.removeAttribute("defer-hydration");
+    (this as unknown as HTMLElement).removeAttribute("defer-hydration");
     super.connectedCallback();
   }
 
-  async update(changed) {
+  async update(changed: Map<string, unknown>) {
     // await this.#setContext();
     this.#removeDefer();
     super.update(changed);
@@ -28,13 +28,15 @@ export class Island extends LitElement {
       document.querySelector("#_lmt_ctx")?.textContent ?? "{}"
     );
 
-    const slotEl = this.shadowRoot?.querySelector?.("slot");
+    const slotEl = (this as unknown as HTMLElement).shadowRoot?.querySelector?.(
+      "slot"
+    );
     if (!slotEl) return;
     const els = slotEl.assignedElements({ flatten: true });
 
     for (const el of els) {
       console.log(el.tagName, customElements.get(el.tagName));
-      if (el?.requestUpdate) {
+      if ((el as LitElement)?.requestUpdate) {
         el.ctx = ctx;
       }
     }
@@ -42,7 +44,9 @@ export class Island extends LitElement {
 
   // removes defer on all children that are not inside another <is-land>
   #removeDefer() {
-    const slotEl = this.shadowRoot.querySelector("slot");
+    const slotEl = (this as unknown as HTMLElement).shadowRoot.querySelector(
+      "slot"
+    );
     if (!slotEl) return;
     const els = slotEl.assignedElements({ flatten: true });
 
@@ -80,4 +84,4 @@ export class Island extends LitElement {
   }
 }
 
-customElements.define("is-land", Island);
+customElements.define("is-land", Island as unknown as CustomElementConstructor);

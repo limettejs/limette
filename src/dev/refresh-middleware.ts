@@ -10,7 +10,10 @@ export const socketsArr: Array<WebSocket> = [];
 /**
  * Upgrade a request connection to a WebSocket if the url ends with "/ws-refresh"
  */
-export const refreshMiddleware = async (ctx: Context, next: Function) => {
+export const refreshMiddleware = async (
+  ctx: Context,
+  next: () => Promise<unknown>
+) => {
   if (!ctx.request.url.pathname.endsWith("/ws-refresh")) {
     await next();
     return;

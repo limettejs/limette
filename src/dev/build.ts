@@ -15,6 +15,17 @@ import {
 
 const TEST_FILE_PATTERN = /[._]test\.(?:[tj]sx?|[mc][tj]s)$/;
 
+export type BuildRoute = {
+  id: string;
+  path: string;
+  filePath: string;
+  tagName: string;
+  bundle: esbuild.OutputFile | undefined;
+  bundlePath: string | undefined;
+  css: string;
+  cssPath: string | undefined;
+};
+
 async function getImports(file: string) {
   const imports = [];
 
@@ -78,6 +89,8 @@ function convertFilenameToPattern(filename: string) {
         // Handle "[[version]]" format
         return `{/:${dynamicPart.slice(1, -1)}}?`;
       }
+
+      return _match;
     }
   );
 
@@ -117,7 +130,10 @@ function convertToWebComponentTagName(str: string) {
   return tagName.replace(/^-+|-+$/g, "").toLowerCase();
 }
 
-async function buildCSS(filePath: string, bundle) {
+async function buildCSS(
+  filePath: string,
+  bundle: esbuild.OutputFile | undefined
+) {
   let tempDirPath = "";
   let contentFlag = filePath;
 
@@ -152,7 +168,7 @@ async function buildCSS(filePath: string, bundle) {
 
 export async function getRoutes() {
   const ignoreFilePattern = TEST_FILE_PATTERN;
-  const routes = [];
+  const routes: BuildRoute[] = [];
   for await (const entry of walk("./routes", {
     includeDirs: false,
     includeSymlinks: false,
@@ -182,7 +198,7 @@ export async function getRoutes() {
     const css = await buildCSS(filePath, bundle);
     const cssPath = css ? `/_lmt/css/tailwind-${id}.css` : undefined;
 
-    const route = {
+    const route: BuildRoute = {
       id,
       path,
       filePath,
