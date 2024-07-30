@@ -13,8 +13,7 @@ export { parse } from "jsr:@std/path@0.225.1";
 export { emptyDir } from "jsr:@std/fs@0.224.0/empty-dir";
 export { ensureDir } from "jsr:@std/fs@0.224.0/ensure-dir";
 export { ensureFile } from "jsr:@std/fs@0.224.0/ensure-file";
-
-export { default as hash } from "https://deno.land/x/object_hash@2.0.3.1/mod.ts";
+export { encodeHex } from "jsr:@std/encoding@1.0.1/hex";
 
 export { unsafeHTML } from "npm:lit@3.1.3/directives/unsafe-html.js";
 export { html, render } from "npm:@lit-labs/ssr@3.2.2";

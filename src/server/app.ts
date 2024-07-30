@@ -3,6 +3,11 @@ import { staticMiddleware } from "./utils.ts";
 import { refreshMiddleware } from "../dev/refresh-middleware.ts";
 import { router } from "./router.ts";
 
+type AppUseArgs = Parameters<Application["use"]>;
+type AppListenArgs = Parameters<Application["listen"]>;
+type AppUseReturn = ReturnType<Application["use"]>;
+type AppListenReturn = ReturnType<Application["listen"]>;
+
 export class LimetteApp {
   #app;
 
@@ -16,12 +21,12 @@ export class LimetteApp {
     this.#app.use(router.allowedMethods());
   }
 
-  use(...args) {
+  use(...args: AppUseArgs): AppUseReturn {
     this.#app.use(...args);
-    return this;
+    return this as unknown as AppUseReturn;
   }
 
-  listen(...args) {
+  listen(...args: AppListenArgs): AppListenReturn {
     return this.#app.listen(...args);
   }
 }

@@ -7,7 +7,7 @@ import {
   denoPlugins,
   walk,
   parse,
-  hash,
+  encodeHex,
   parseImports,
   emptyDir,
   ensureFile,
@@ -25,6 +25,8 @@ export type BuildRoute = {
   css: string;
   cssPath: string | undefined;
 };
+
+const encoder = new TextEncoder();
 
 async function getImports(file: string) {
   const imports = [];
@@ -189,7 +191,9 @@ export async function getRoutes() {
     }
 
     const filePath = Deno.cwd() + "/" + entry.path;
-    const id = hash({ path }).substring(0, 6);
+    const id = encodeHex(
+      await window.crypto.subtle.digest("SHA-1", encoder.encode(path))
+    ).substring(0, 6);
     const tagName = convertToWebComponentTagName(path);
 
     const bundle = await buildJS(filePath);

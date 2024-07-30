@@ -2,7 +2,12 @@
 // upon those listeners being triggered. e.g.
 // <is-land on="pointerenter,click,idle" import="./my-component.js"><my-component></my-component></is-land>
 
+// @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import { LitElement, html, css } from "lit";
+
+function hasCtx(el: Element): el is Element & { ctx: unknown } {
+  return "ctx" in el;
+}
 
 export class Island extends LitElement {
   static styles = css`
@@ -36,7 +41,7 @@ export class Island extends LitElement {
 
     for (const el of els) {
       console.log(el.tagName, customElements.get(el.tagName));
-      if ((el as LitElement)?.requestUpdate) {
+      if ((el as LitElement)?.requestUpdate && hasCtx(el)) {
         el.ctx = ctx;
       }
     }
@@ -44,9 +49,10 @@ export class Island extends LitElement {
 
   // removes defer on all children that are not inside another <is-land>
   #removeDefer() {
-    const slotEl = (this as unknown as HTMLElement).shadowRoot.querySelector(
-      "slot"
-    );
+    const shadowRoot = (this as unknown as HTMLElement).shadowRoot;
+    if (!shadowRoot) return;
+
+    const slotEl = shadowRoot.querySelector("slot");
     if (!slotEl) return;
     const els = slotEl.assignedElements({ flatten: true });
 
@@ -63,13 +69,15 @@ export class Island extends LitElement {
 
       // get all children of the slotted itms that are deferred
       // e.g. <is-land><div><my-component defer-hydration></my-component></div></is-land>
-      const deferredChildren = el.querySelectorAll("[defer-hydration]");
+      const deferredChildren = Array.from(
+        el.querySelectorAll("[defer-hydration]")
+      );
 
       // remove defer hydration from all children of slotted items
       for (const child of deferredChildren) {
         // ignore any that are in islands e.g.
         // <is-land><div><is-land><my-component defer-hydration></my-component></is-land></div></is-land>
-        if (child.closest("is-land") !== this) {
+        if (child.closest("is-land") !== (this as unknown as HTMLElement)) {
           continue;
         }
 
