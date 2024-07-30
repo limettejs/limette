@@ -15,6 +15,7 @@ export { ensureDir } from "jsr:@std/fs@0.224.0/ensure-dir";
 export { ensureFile } from "jsr:@std/fs@0.224.0/ensure-file";
 export { encodeHex } from "jsr:@std/encoding@1.0.1/hex";
 
+// @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 export { unsafeHTML } from "npm:lit@3.1.3/directives/unsafe-html.js";
 export { html, render } from "npm:@lit-labs/ssr@3.2.2";
 export { collectResult } from "npm:@lit-labs/ssr@3.2.2/lib/render-result.js";
