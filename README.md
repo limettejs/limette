@@ -2,20 +2,26 @@
 
 The JavaScript framework for Web Components and Deno.
 
-## ROADMAP:
+> This is WIP.
 
-- SSR
-- islands
-- file based routing
-- bundling FE
-- static files
+## Features
 
-- To pass ctx to browser. maybe we can injecting it to the chunk or in the HTML
-- hash from esbuild can contain /, so we should cleanup
+- Deno on server
+- Web Components (with Lit) on browser
+- Island-based architecture
+- File system routing
+- Tailwind support
 
-## NEXT
+## Create a new Limette project
 
-- deno task build (build local files)
-- deno task preview
+Run this command:
 
-- deno run jsr:@limette/init (create new project)
+```
+deno run -Ar jsr:@limette/init
+```
+
+## Start a project
+
+```
+deno task start
+```
