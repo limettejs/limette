@@ -7,7 +7,7 @@
     "preview": "deno run -A --watch main.ts"
   },
   "imports": {
-    "$limette/": "../limette/",
+    "limette/": "../src/",
     "/lit": "npm:/lit@^3.1.2/",
     "lit": "npm:lit@^3.1.2"
   },

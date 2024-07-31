@@ -1,8 +1,8 @@
-import { ensureDir } from "../../src/deps.ts";
+import { ensureDir } from "@std/fs/ensure-dir";
+
+const LIMETTE_VERSION = "0.0.1";
 
 const projectName = prompt("Your project name?");
-
-console.log(projectName);
 
 const projectPath = `${Deno.cwd()}/${projectName}`;
 const islandsPath = `${projectPath}/islands`;
@@ -26,7 +26,8 @@ const denoJson = `
     "preview": "deno run -A --watch main.ts"
   },
   "imports": {
-    "$limette/": "../../limette/src/",
+    "limette": "jsr:@limette/core@${LIMETTE_VERSION}",
+    "limette/": "../../limette/src/",
     "/lit": "npm:/lit@^3.1.2/",
     "lit": "npm:lit@^3.1.2"
   },
@@ -38,7 +39,7 @@ const denoJson = `
 `;
 
 const devTs = `
-import dev from "$limette/dev/dev.ts";
+import dev from "limette/dev/dev.ts";
 
 await dev();
 `;
@@ -50,7 +51,7 @@ const mainTs = `
 /// <reference lib="dom.asynciterable" />
 /// <reference lib="deno.ns" />
 
-import { LimetteApp } from "$limette/mod.ts";
+import { LimetteApp } from "limette/mod.ts";
 
 const app = new LimetteApp();
 

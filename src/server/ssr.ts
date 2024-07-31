@@ -3,7 +3,7 @@ import { html, unsafeHTML } from "../deps.ts";
 import type { LitElement } from "lit";
 import type { BuildRoute } from "../dev/build.ts";
 
-import "../runtime/is-land.ts"; // should use $limette?
+import "../runtime/is-land.ts"; // should use limette?
 
 type Params = {
   [key: string]: string;
