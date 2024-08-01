@@ -15,7 +15,7 @@
   /**
    * Info message logger.
    */
-  function log(message) {
+  function log(message: string) {
     console.info("[refresh] ", message);
   }
 
@@ -30,7 +30,7 @@
    * Create WebSocket, connect to the server and
    * listen for refresh events.
    */
-  function connect(callback?: Function) {
+  function connect(callback?: EventListenerOrEventListenerObject) {
     // Close any existing sockets.
     if (socket) {
       socket.close();
@@ -40,7 +40,9 @@
     socket = new WebSocket(requestUrl);
 
     // When the connection opens, execute the callback.
-    socket.addEventListener("open", callback);
+    if (callback) {
+      socket.addEventListener("open", callback);
+    }
 
     // Add a listener for messages from the server.
     socket.addEventListener("message", (event) => {

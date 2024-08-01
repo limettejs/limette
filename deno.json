@@ -3,7 +3,8 @@
   "version": "0.0.1",
   "exports": {
     ".": "./src/mod.ts",
-    "./runtime/": "./src/runtime/"
+    "./runtime/is-land.ts": "./src/runtime/is-land.ts",
+    "./runtime/refresh.ts": "./src/runtime/refresh.ts"
   },
   "tasks": {},
   "publish": {

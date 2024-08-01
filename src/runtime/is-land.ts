@@ -4,13 +4,15 @@
 
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import { LitElement, html, css } from "lit";
+// @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
+import type { TemplateResult, CSSResultOrNative } from "lit";
 
 function hasCtx(el: Element): el is Element & { ctx: unknown } {
   return "ctx" in el;
 }
 
 export class Island extends LitElement {
-  static styles = css`
+  static styles: CSSResultOrNative = css`
     :host {
       display: contents;
     }
@@ -86,7 +88,7 @@ export class Island extends LitElement {
     }
   }
 
-  render() {
+  render(): TemplateResult {
     // ssr
     return html`<slot></slot>`;
   }
