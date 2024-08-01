@@ -150,8 +150,15 @@ export default class Home extends LitElement {
 }
 `;
 
+const tailwindStyleCSS = `
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+`;
+
 Deno.writeTextFileSync(projectPath + "/deno.json", denoJson);
 Deno.writeTextFileSync(projectPath + "/dev.ts", devTs);
 Deno.writeTextFileSync(projectPath + "/main.ts", mainTs);
 Deno.writeTextFileSync(projectPath + "/islands/counter.ts", counterIslandTs);
 Deno.writeTextFileSync(projectPath + "/routes/index.ts", indexRouteTs);
+Deno.writeTextFileSync(projectPath + "/static/tailwind.css", tailwindStyleCSS);

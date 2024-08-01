@@ -152,7 +152,7 @@ async function buildCSS(
       `run`,
       `--allow-all`,
       `npm:tailwindcss@^3.4.7`,
-      `--input=${import.meta.dirname}/lib/input.css`,
+      `--input=${Deno.cwd()}/static/tailwind.css`,
       `--content=${contentFlag}`,
     ],
     stdout: "piped",
