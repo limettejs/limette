@@ -27,9 +27,9 @@ const denoJson = `
   },
   "imports": {
     "limette": "jsr:@limette/core@${LIMETTE_VERSION}",
-    "limette/": "../../limette/src/",
     "/lit": "npm:/lit@^3.1.2/",
-    "lit": "npm:lit@^3.1.2"
+    "lit": "npm:lit@^3.1.2",
+    "tailwindcss": "npm:tailwindcss@^3.4.7"
   },
   "fmt": {
     "singleQuote": true
@@ -39,7 +39,7 @@ const denoJson = `
 `;
 
 const devTs = `
-import dev from "limette/dev/dev.ts";
+import { dev } from "limette";
 
 await dev();
 `;
@@ -51,7 +51,7 @@ const mainTs = `
 /// <reference lib="dom.asynciterable" />
 /// <reference lib="deno.ns" />
 
-import { LimetteApp } from "limette/mod.ts";
+import { LimetteApp } from "limette";
 
 const app = new LimetteApp();
 

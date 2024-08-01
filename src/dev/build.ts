@@ -147,8 +147,11 @@ async function buildCSS(
     contentFlag = `${contentFlag},${bundlePathTemp}`;
   }
 
-  const command = new Deno.Command(`${import.meta.dirname}/lib/tailwindcss`, {
+  const command = new Deno.Command(`${Deno.execPath()}`, {
     args: [
+      `run`,
+      `--allow-all`,
+      `npm:tailwindcss@^3.4.7`,
       `--input=${import.meta.dirname}/lib/input.css`,
       `--content=${contentFlag}`,
     ],
