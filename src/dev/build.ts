@@ -50,8 +50,8 @@ async function buildJS(path: string) {
 
   const entryPoint = [
     `import "https://esm.sh/@lit-labs/ssr-client@1.1.7/lit-element-hydrate-support.js";`,
-    `import "limette/runtime/is-land.ts";`,
-    `import "limette/runtime/refresh.ts";`,
+    `import "@limette/core/runtime/is-land.ts";`,
+    `import "@limette/core/runtime/refresh.ts";`,
     ...imports,
   ].join("\n");
 
@@ -226,9 +226,6 @@ export async function build() {
   const routes = await getRoutes();
 
   await emptyDir("./_lmt");
-  // console.log(import.meta.dirname);
-
-  console.log(routes);
 
   for (const route of routes) {
     if (route.bundle?.contents) {

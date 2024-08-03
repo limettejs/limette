@@ -26,7 +26,7 @@ const denoJson = `
     "preview": "deno run -A --watch main.ts"
   },
   "imports": {
-    "limette": "jsr:@limette/core@${LIMETTE_VERSION}",
+    "@limette/core": "jsr:@limette/core@${LIMETTE_VERSION}",
     "/lit": "npm:/lit@^3.1.2/",
     "lit": "npm:lit@^3.1.2",
     "tailwindcss": "npm:tailwindcss@^3.4.7"
@@ -39,24 +39,18 @@ const denoJson = `
 `;
 
 const devTs = `
-import { dev } from "limette";
+import { dev } from "@limette/core";
 
 await dev();
 `;
 
 const mainTs = `
-/// <reference no-default-lib="true" />
-/// <reference lib="dom" />
-/// <reference lib="dom.iterable" />
-/// <reference lib="dom.asynciterable" />
-/// <reference lib="deno.ns" />
-
-import { LimetteApp } from "limette";
+import { LimetteApp } from "@limette/core";
 
 const app = new LimetteApp();
 
 app.listen({ port: 1995 });
-console.log("Server started on: http://localhost:1995");
+console.log("Limette app started on: http://localhost:1995");
 `;
 
 const counterIslandTs = `
@@ -64,21 +58,8 @@ import { LitElement, html, css } from "lit";
 
 export class Counter extends LitElement {
   static styles = css\`
-    div {
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    span {
-      color: rebeccapurple;
-    }
-
-    p {
-      font-family: sans-serif;
-      margin: 0;
-      padding: 0 10px;
+    :host {
+      display: block;
     }
   \`;
 
@@ -95,9 +76,12 @@ export class Counter extends LitElement {
 
   render() {
     return html\`
-      <div class="border-solid border-2 border-indigo-600 rounded-md">
-        <h1 class="bg-lime-600">Hello, <span>\${this.name}</span>!</h1>
-        <section class="flex items-center">
+      <div class="p-4 border-solid border-2 border-lime-600 rounded-md">
+        <h2 class="pb-4">
+          Hello,
+          <span class="bg-lime-400 px-2 py-1 rounded-md">\${this.name}</span>
+        </h2>
+        <section class="flex justify-center items-center">
           <button
             type="button"
             class="rounded-full bg-indigo-600 p-1.5 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
@@ -105,7 +89,7 @@ export class Counter extends LitElement {
           >
             -
           </button>
-          <p class="text-blue-600/100">Count: \${this.count}</p>
+          <p class="px-2">Count: \${this.count}</p>
 
           <button
             type="button"
@@ -115,11 +99,6 @@ export class Counter extends LitElement {
             +
           </button>
         </section>
-
-        <island-bar
-          class="mt-5"
-          @change-name=\${() => (this.name = "Ingrid")}
-        ></island-bar>
       </div>
     \`;
   }
@@ -135,15 +114,36 @@ import "../islands/counter.ts";
 export default class Home extends LitElement {
   render() {
     return html\`
-      <section class="p-6">
-        <h1>Home</h1>
-        <p class="text-2xl font-bold text-blue-600/100">SSR content</p>
-        <is-land><island-counter name="Iris"></island-counter></is-land>
+      <section class="flex items-center flex-col text-center pt-8">
+        <h1 class="text-3xl font-bold text-lime-600 pb-4">Limette</h1>
+        <div class="max-w-screen-sm">
+          <p class="pb-6">This is SSR content.</p>
+          <is-land><island-counter name="Iris"></island-counter></is-land>
 
-        <section>
-          <a href="/foo/bar">To foo/bar</a> | <a href="/foo-123">To params</a> |
-          <a href="/no-js">To no js</a>
-        </section>
+          <section class="pt-5">
+            <a href="/foo" class="text-indigo-600 underline">To foo</a>
+          </section>
+        </div>
+      </section>
+    \`;
+  }
+}
+`;
+
+const fooRouteTs = `
+import { LitElement, html } from "lit";
+
+export default class Foo extends LitElement {
+  render() {
+    return html\`
+      <section class="flex items-center flex-col text-center pt-8">
+        <h1 class="text-3xl font-bold text-lime-600 pb-4">Limette</h1>
+        <div class="max-w-screen-sm">
+          <p class="pb-6">Foo page.</p>
+          <section>
+            <a href="/" class="text-indigo-600 underline">To home</a>
+          </section>
+        </div>
       </section>
     \`;
   }
@@ -161,4 +161,5 @@ Deno.writeTextFileSync(projectPath + "/dev.ts", devTs);
 Deno.writeTextFileSync(projectPath + "/main.ts", mainTs);
 Deno.writeTextFileSync(projectPath + "/islands/counter.ts", counterIslandTs);
 Deno.writeTextFileSync(projectPath + "/routes/index.ts", indexRouteTs);
+Deno.writeTextFileSync(projectPath + "/routes/foo.ts", fooRouteTs);
 Deno.writeTextFileSync(projectPath + "/static/tailwind.css", tailwindStyleCSS);

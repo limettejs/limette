@@ -42,7 +42,6 @@ export class Island extends LitElement {
     const els = slotEl.assignedElements({ flatten: true });
 
     for (const el of els) {
-      console.log(el.tagName, customElements.get(el.tagName));
       if ((el as LitElement)?.requestUpdate && hasCtx(el)) {
         el.ctx = ctx;
       }

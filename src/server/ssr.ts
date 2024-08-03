@@ -60,7 +60,6 @@ export async function bootstrapContent(
     params: Params;
   }
 ) {
-  console.log("import():", route.filePath);
   const componentModule = await import(toFileUrl(route.filePath).href);
 
   const componentClass = ComponentCtxMixin(componentModule.default, {
