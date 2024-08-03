@@ -12,7 +12,6 @@ import {
   emptyDir,
   ensureFile,
 } from "../deps.ts";
-import * as stdPath from "jsr:@std/path@0.225.1";
 
 const TEST_FILE_PATTERN = /[._]test\.(?:[tj]sx?|[mc][tj]s)$/;
 
@@ -194,9 +193,7 @@ export async function getRoutes() {
       throw new Error(error);
     }
 
-    const filePath = import.meta.dirname + "/" + entry.path;
-    console.log(filePath, Deno.cwd(), import.meta.dirname);
-    console.log("entry path:", stdPath.relative(Deno.cwd(), entry.path));
+    const filePath = Deno.cwd() + "/" + entry.path;
 
     const id = encodeHex(
       await window.crypto.subtle.digest("SHA-1", encoder.encode(path))

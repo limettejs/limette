@@ -2,6 +2,7 @@ import { html, unsafeHTML } from "../deps.ts";
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { LitElement } from "lit";
 import type { BuildRoute } from "../dev/build.ts";
+import { toFileUrl } from "@std/path/to-file-url";
 
 import "../runtime/is-land.ts"; // should use limette?
 
@@ -60,7 +61,7 @@ export async function bootstrapContent(
   }
 ) {
   console.log("import():", route.filePath);
-  const componentModule = await import(route.filePath);
+  const componentModule = await import(toFileUrl(route.filePath).href);
 
   const componentClass = ComponentCtxMixin(componentModule.default, {
     params: ctx.params,
