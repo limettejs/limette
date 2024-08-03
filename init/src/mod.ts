@@ -1,6 +1,6 @@
 import { ensureDir } from "@std/fs/ensure-dir";
 
-const LIMETTE_VERSION = "0.0.5";
+const LIMETTE_VERSION = "0.0.6";
 
 const projectName = prompt("Your project name?");
 
