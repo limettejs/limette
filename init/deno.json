@@ -1,0 +1,18 @@
+{
+  "name": "@limette/init",
+  "version": "0.0.6",
+  "exports": {
+    ".": "./src/mod.ts"
+  },
+  "tasks": {},
+  "publish": {
+    "include": ["src/**/*.ts", "deno.json", "README.md"]
+  },
+  "imports": {
+    "@std/fs": "jsr:@std/fs@^1.0.0"
+  },
+  "fmt": {
+    "singleQuote": true
+  },
+  "lock": false
+}

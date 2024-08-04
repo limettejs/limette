@@ -1,0 +1,18 @@
+{
+  "name": "@limettejs/limette",
+  "version": "0.0.1",
+  "tasks": {
+    "start": "deno run -A --watch=static/,routes/ start.ts",
+    "build": "deno run -A dev.ts build",
+    "preview": "deno run -A --watch main.ts"
+  },
+  "imports": {
+    "@limette/core": "../src/",
+    "/lit": "npm:/lit@^3.1.2/",
+    "lit": "npm:lit@^3.1.2"
+  },
+  "fmt": {
+    "singleQuote": true
+  },
+  "lock": false
+}
