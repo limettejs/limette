@@ -1,0 +1,32 @@
+{
+  "links": [
+    {
+      "title": "Getting started",
+      "url": "/docs/getting-started/",
+      "items": [
+        {
+          "title": "Create a project",
+          "url": "/docs/getting-started/create-a-project/"
+        },
+        {
+          "title": "Create a route",
+          "url": "/docs/getting-started/create-a-route/"
+        }
+      ]
+    },
+    {
+      "title": "Concepts",
+      "url": "/docs/concepts/",
+      "items": [
+        {
+          "title": "Architecture",
+          "url": "/docs/concepts/architecture/"
+        },
+        {
+          "title": "Routing",
+          "url": "/docs/concepts/routing/"
+        }
+      ]
+    }
+  ]
+}

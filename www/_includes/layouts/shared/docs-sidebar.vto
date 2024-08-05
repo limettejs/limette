@@ -1,0 +1,40 @@
+<div class="hidden lg:relative lg:block lg:flex-none">
+  <div
+    class="absolute inset-y-0 right-0 w-[50vw] bg-slate-50 dark:hidden"
+  ></div>
+  <div
+    class="absolute bottom-0 right-0 top-16 hidden h-12 w-px bg-gradient-to-t from-slate-800 dark:block"
+  ></div>
+  <div
+    class="absolute bottom-0 right-0 top-28 hidden w-px bg-slate-800 dark:block"
+  ></div>
+  <div
+    class="sticky top-[4.75rem] -ml-0.5 h-[calc(100vh-4.75rem)] w-64 overflow-y-auto overflow-x-hidden py-16 pl-0.5 pr-8 xl:w-72 xl:pr-16"
+  >
+    <nav class="text-base lg:text-sm">
+      <ul role="list" class="space-y-9">
+        {{ for category of sidebar.links }}
+        <li>
+          <h2 class="font-display font-medium text-slate-900 dark:text-white">
+            {{ category.title }}
+          </h2>
+          <ul
+            role="list"
+            class="mt-2 space-y-2 border-l-2 border-slate-100 lg:mt-4 lg:space-y-4 lg:border-slate-200 dark:border-slate-800"
+          >
+            {{ for item of category.items }}
+            <li class="relative">
+              <a
+                class="block w-full pl-3.5 before:pointer-events-none before:absolute before:-left-1 before:top-1/2 before:h-1.5 before:w-1.5 before:-translate-y-1/2 before:rounded-full text-slate-500 before:hidden before:bg-slate-300 hover:text-slate-600 hover:before:block dark:text-slate-400 dark:before:bg-slate-700 dark:hover:text-slate-300"
+                href="{{ item.url }}"
+                >{{ item.title }}</a
+              >
+            </li>
+            {{ /for }}
+          </ul>
+        </li>
+        {{ /for }}
+      </ul>
+    </nav>
+  </div>
+</div>

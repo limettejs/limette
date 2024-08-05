@@ -1,0 +1,147 @@
+<html lang="en" class="h-full antialiased">
+  <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="preload"
+      href="/assets/fonts/lexend.woff2"
+      as="font"
+      crossorigin=""
+      type="font/woff2"
+    />
+    <link rel="stylesheet" href="/assets/styles/prism.css" />
+    <link rel="stylesheet" href="/assets/styles/styles.css" />
+  </head>
+
+  <body class="flex min-h-full bg-white dark:bg-slate-900">
+    <script>
+      !(function () {
+        try {
+          var d = document.documentElement,
+            c = d.classList;
+          c.remove("light", "dark");
+          var e = localStorage.getItem("theme");
+          if ("system" === e || (!e && true)) {
+            var t = "(prefers-color-scheme: dark)",
+              m = window.matchMedia(t);
+            if (m.media !== t || m.matches) {
+              d.style.colorScheme = "dark";
+              c.add("dark");
+            } else {
+              d.style.colorScheme = "light";
+              c.add("light");
+            }
+          } else if (e) {
+            c.add(e || "");
+          }
+          if (e === "light" || e === "dark") d.style.colorScheme = e;
+        } catch (e) {}
+      })();
+    </script>
+    <div class="flex w-full flex-col">
+      {{ include "./shared/header.vto" }}
+
+      <div
+        class="relative mx-auto flex w-full max-w-8xl flex-auto justify-center sm:px-2 lg:px-8 xl:px-12"
+      >
+        {{ include "./shared/docs-sidebar.vto" }}
+        <div
+          class="min-w-0 max-w-2xl flex-auto px-4 py-16 lg:max-w-none lg:pl-8 lg:pr-0 xl:px-16"
+        >
+          <article>
+            <header class="mb-9 space-y-1">
+              <p class="font-display text-sm font-medium text-sky-500">
+                {{ category }}
+              </p>
+              <h1
+                class="font-display text-3xl tracking-tight text-slate-900 dark:text-white"
+              >
+                {{ title }}
+              </h1>
+            </header>
+            <div
+              class="prose prose-slate max-w-none dark:prose-invert dark:text-slate-400 prose-headings:scroll-mt-28 prose-headings:font-display prose-headings:font-normal lg:prose-headings:scroll-mt-[8.5rem] prose-lead:text-slate-500 dark:prose-lead:text-slate-400 prose-a:font-semibold dark:prose-a:text-sky-400 prose-a:no-underline prose-a:shadow-[inset_0_-2px_0_0_var(--tw-prose-background,#fff),inset_0_calc(-1*(var(--tw-prose-underline-size,4px)+2px))_0_0_var(--tw-prose-underline,theme(colors.sky.300))] hover:prose-a:[--tw-prose-underline-size:6px] dark:[--tw-prose-background:theme(colors.slate.900)] dark:prose-a:shadow-[inset_0_calc(-1*var(--tw-prose-underline-size,2px))_0_0_var(--tw-prose-underline,theme(colors.sky.800))] dark:hover:prose-a:[--tw-prose-underline-size:6px] prose-pre:rounded-xl prose-pre:bg-slate-900 prose-pre:shadow-lg dark:prose-pre:bg-slate-800/60 dark:prose-pre:shadow-none dark:prose-pre:ring-1 dark:prose-pre:ring-slate-300/10 dark:prose-hr:border-slate-800"
+            >
+              {{ content }}
+            </div>
+          </article>
+          <dl
+            class="mt-12 flex border-t border-slate-200 pt-6 dark:border-slate-800"
+          >
+            {{> 
+            const links = sidebar.links.map(category => category.items).flat();
+            const nextItem = links[links.findIndex(item => item.url === url) + 1]
+            }}
+            {{ if nextItem?.url }}
+            <div class="ml-auto text-right">
+              <dt
+                class="font-display text-sm font-medium text-slate-900 dark:text-white"
+              >
+                Next
+              </dt>
+              <dd class="mt-1">
+                <a
+                  class="flex items-center gap-x-1 text-base font-semibold text-slate-500 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-300"
+                  href="{{ nextItem.url }}"
+                  >{{ nextItem.title
+                  }}<svg
+                    viewBox="0 0 16 16"
+                    aria-hidden="true"
+                    class="h-4 w-4 flex-none fill-current"
+                  >
+                    <path
+                      d="m9.182 13.423-1.17-1.16 3.505-3.505H3V7.065h8.517l-3.506-3.5L9.181 2.4l5.512 5.511-5.511 5.512Z"
+                    ></path></svg
+                ></a>
+              </dd>
+            </div>
+            {{ /if }}
+          </dl>
+        </div>
+        <div
+          class="hidden xl:sticky xl:top-[4.75rem] xl:-mr-6 xl:block xl:h-[calc(100vh-4.75rem)] xl:flex-none xl:overflow-y-auto xl:py-16 xl:pr-6"
+        >
+          <nav aria-labelledby="on-this-page-title" class="w-56">
+            {{ if page.__contentStructure.length }}
+            <h2
+              id="on-this-page-title"
+              class="font-display text-sm font-medium text-slate-900 dark:text-white"
+            >
+              On this page
+            </h2>
+            <ol role="list" class="mt-4 space-y-3 text-sm">
+              {{ for h2 of page.__contentStructure }}
+              <li>
+                <h3>
+                  <a class="text-sky-500" href="{{ h2.url }}">{{ h2.title }}</a>
+                </h3>
+                {{ if h2.items.length }}
+                <ol
+                  role="list"
+                  class="mt-2 space-y-3 pl-5 text-slate-500 dark:text-slate-400"
+                >
+                  {{ for h3 of h2.items }}
+                  <li>
+                    <a
+                      class="hover:text-slate-600 dark:hover:text-slate-300"
+                      href="{{ h3.url }}"
+                      >{{ h3.title }}</a
+                    >
+                  </li>
+                  {{ /for }}
+                </ol>
+                {{ /if }}
+              </li>
+              {{ /for }}
+            </ol>
+            {{ /if }}
+          </nav>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

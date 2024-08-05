@@ -1,0 +1,369 @@
+<html lang="en" class="h-full antialiased">
+  <head>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="preload"
+      href="/assets/fonts/lexend.woff2"
+      as="font"
+      crossorigin=""
+      type="font/woff2"
+    />
+    <link rel="stylesheet" href="/assets/styles/prism.css" />
+    <link rel="stylesheet" href="/assets/styles/styles.css" />
+  </head>
+
+  <body class="flex min-h-full bg-white dark:bg-slate-900">
+    <script>
+      !(function () {
+        try {
+          var d = document.documentElement,
+            c = d.classList;
+          c.remove("light", "dark");
+          var e = localStorage.getItem("theme");
+          if ("system" === e || (!e && true)) {
+            var t = "(prefers-color-scheme: dark)",
+              m = window.matchMedia(t);
+            if (m.media !== t || m.matches) {
+              d.style.colorScheme = "dark";
+              c.add("dark");
+            } else {
+              d.style.colorScheme = "light";
+              c.add("light");
+            }
+          } else if (e) {
+            c.add(e || "");
+          }
+          if (e === "light" || e === "dark") d.style.colorScheme = e;
+        } catch (e) {}
+      })();
+    </script>
+    <div class="flex w-full flex-col">
+      {{ include "./shared/header.vto" }}
+
+      <div class="bg-white">
+        <div
+          class="relative isolate overflow-hidden bg-gradient-to-b from-indigo-100/20"
+        >
+          <div
+            class="mx-auto max-w-7xl pb-24 pt-10 sm:pb-32 lg:grid lg:grid-cols-2 lg:gap-x-8 lg:px-8 lg:py-40"
+          >
+            <div class="px-6 lg:px-0 lg:pt-4">
+              <div class="mx-auto max-w-2xl">
+                <div class="max-w-lg">
+                  <div>
+                    <a
+                      href="https://jsr.io/@limette/core"
+                      class="inline-flex space-x-6"
+                    >
+                      <span
+                        class="rounded-full bg-indigo-600/10 px-3 py-1 text-sm font-semibold leading-6 text-indigo-600 ring-1 ring-inset ring-indigo-600/10"
+                        >ALPHA</span
+                      >
+                      <span
+                        class="inline-flex items-center space-x-2 text-sm font-medium leading-6 text-gray-600"
+                      >
+                        <span>Just shipped v0.0.6</span>
+                        <svg
+                          class="h-5 w-5 text-gray-400"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          aria-hidden="true"
+                        >
+                          <path
+                            fill-rule="evenodd"
+                            d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
+                            clip-rule="evenodd"
+                          />
+                        </svg>
+                      </span>
+                    </a>
+                  </div>
+                  <h1
+                    class="mt-10 text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl"
+                  >
+                    The framework for Deno and Web Components
+                  </h1>
+                  <p class="mt-6 text-lg leading-8 text-gray-600">
+                    Limette is a full-stack framwork for Deno and Web
+                    Components. It has support for Tailwind.
+                  </p>
+                  <div class="mt-10 flex items-center gap-x-6">
+                    <a
+                      href="/docs/"
+                      class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                      >Documentation</a
+                    >
+                    <a
+                      href="https://github.com/limettejs/limette"
+                      class="text-sm font-semibold leading-6 text-gray-900"
+                      >View on GitHub <span aria-hidden="true">→</span></a
+                    >
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div
+              class="mt-20 sm:mt-24 md:mx-auto md:max-w-2xl lg:mx-0 lg:mt-0 lg:w-screen"
+            >
+              <div
+                class="absolute inset-y-0 right-1/2 -z-10 -mr-10 w-[200%] skew-x-[-30deg] bg-white shadow-xl shadow-indigo-600/10 ring-1 ring-indigo-50 md:-mr-20 lg:-mr-36"
+                aria-hidden="true"
+              ></div>
+              <div class="shadow-lg md:rounded-3xl">
+                <div
+                  class="bg-indigo-500 [clip-path:inset(0)] md:[clip-path:inset(0_round_theme(borderRadius.3xl))]"
+                >
+                  <div
+                    class="absolute -inset-y-px left-1/2 -z-10 ml-10 w-[200%] skew-x-[-30deg] bg-indigo-100 opacity-20 ring-1 ring-inset ring-white md:ml-20 lg:ml-36"
+                    aria-hidden="true"
+                  ></div>
+                  <div class="relative px-6 pt-8 sm:pt-16 md:pl-16 md:pr-0">
+                    <div class="mx-auto max-w-2xl md:mx-0 md:max-w-none">
+                      <div
+                        class="w-screen overflow-hidden rounded-tl-xl bg-gray-900"
+                      >
+                        <div class="flex bg-gray-800/40 ring-1 ring-white/5">
+                          <div
+                            class="-mb-px flex text-sm font-medium leading-6 text-gray-400"
+                          >
+                            <div
+                              class="border-b border-r border-b-white/20 border-r-white/10 bg-white/5 px-4 py-2 text-white"
+                            >
+                              NotificationSetting.jsx
+                            </div>
+                            <div class="border-r border-gray-600/10 px-4 py-2">
+                              App.jsx
+                            </div>
+                          </div>
+                        </div>
+                        <div class="px-6 pb-14 pt-6">
+                          <!-- Your code example -->
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      class="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/10 md:rounded-3xl"
+                      aria-hidden="true"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div
+            class="absolute inset-x-0 bottom-0 -z-10 h-24 bg-gradient-to-t from-white sm:h-32"
+          ></div>
+        </div>
+      </div>
+
+      <div
+        class="relative mx-auto flex w-full max-w-8xl flex-auto justify-center sm:px-2 lg:px-8 xl:px-12"
+      >
+        <div class="bg-white py-24 sm:py-32">
+          <div class="mx-auto max-w-7xl px-6 lg:px-8">
+            <div
+              class="mx-auto grid max-w-2xl grid-cols-1 gap-x-8 gap-y-16 sm:gap-y-20 lg:mx-0 lg:max-w-none lg:grid-cols-3"
+            >
+              <div>
+                <h2 class="text-base font-semibold leading-7 text-indigo-600">
+                  Batteries included
+                </h2>
+                <p
+                  class="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl"
+                >
+                  Features
+                </p>
+                <p class="mt-6 text-base leading-7 text-gray-600">
+                  Limette is a modern framework based on green technologies like
+                  Deno and Web Components.
+                </p>
+              </div>
+              <dl
+                class="col-span-2 grid grid-cols-1 gap-x-8 gap-y-10 text-base leading-7 text-gray-600 sm:grid-cols-2 lg:gap-y-16"
+              >
+                <div class="relative pl-9">
+                  <dt class="font-semibold text-gray-900">
+                    <svg
+                      class="absolute left-0 top-1 h-5 w-5 text-indigo-500"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                        clip-rule="evenodd"
+                      />
+                    </svg>
+                    Deno
+                  </dt>
+                  <dd class="mt-2">
+                    Deno on server, meaning TypeScript support, security and Web
+                    APIs. The same experience you are used to it.
+                  </dd>
+                </div>
+                <div class="relative pl-9">
+                  <dt class="font-semibold text-gray-900">
+                    <svg
+                      class="absolute left-0 top-1 h-5 w-5 text-indigo-500"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                        clip-rule="evenodd"
+                      />
+                    </svg>
+                    Lit
+                  </dt>
+                  <dd class="mt-2">Web Components with Lit on browser.</dd>
+                </div>
+                <div class="relative pl-9">
+                  <dt class="font-semibold text-gray-900">
+                    <svg
+                      class="absolute left-0 top-1 h-5 w-5 text-indigo-500"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                        clip-rule="evenodd"
+                      />
+                    </svg>
+                    Island-based architecture
+                  </dt>
+                  <dd class="mt-2">
+                    Send JavaScript to the browser only for interactive parts.
+                  </dd>
+                </div>
+                <div class="relative pl-9">
+                  <dt class="font-semibold text-gray-900">
+                    <svg
+                      class="absolute left-0 top-1 h-5 w-5 text-indigo-500"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                        clip-rule="evenodd"
+                      />
+                    </svg>
+                    File system routing
+                  </dt>
+                  <dd class="mt-2">Create routes right from your files.</dd>
+                </div>
+                <div class="relative pl-9">
+                  <dt class="font-semibold text-gray-900">
+                    <svg
+                      class="absolute left-0 top-1 h-5 w-5 text-indigo-500"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                        clip-rule="evenodd"
+                      />
+                    </svg>
+                    Tailwind support
+                  </dt>
+                  <dd class="mt-2">
+                    Use Tailwind and only the CSS code used will be delivered to
+                    the browser.
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="bg-white">
+        <div
+          class="mx-auto max-w-7xl overflow-hidden px-6 py-20 sm:py-24 lg:px-8"
+        >
+          <nav
+            class="-mb-6 columns-2 sm:flex sm:justify-center sm:space-x-12"
+            aria-label="Footer"
+          >
+            <div class="pb-6">
+              <a
+                href="/docs/"
+                class="text-sm leading-6 text-gray-600 hover:text-gray-900"
+                >Docs</a
+              >
+            </div>
+          </nav>
+          <div class="mt-10 flex justify-center space-x-10">
+            <a
+              href="https://x.com/limettejs"
+              class="text-gray-400 hover:text-gray-500"
+            >
+              <span class="sr-only">X</span>
+              <svg
+                class="h-6 w-6"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  d="M13.6823 10.6218L20.2391 3H18.6854L12.9921 9.61788L8.44486 3H3.2002L10.0765 13.0074L3.2002 21H4.75404L10.7663 14.0113L15.5685 21H20.8131L13.6819 10.6218H13.6823ZM11.5541 13.0956L10.8574 12.0991L5.31391 4.16971H7.70053L12.1742 10.5689L12.8709 11.5655L18.6861 19.8835H16.2995L11.5541 13.096V13.0956Z"
+                />
+              </svg>
+            </a>
+            <a
+              href="https://github.com/limettejs/limette"
+              class="text-gray-400 hover:text-gray-500"
+            >
+              <span class="sr-only">GitHub</span>
+              <svg
+                class="h-6 w-6"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </a>
+            {{#
+            <a href="#" class="text-gray-400 hover:text-gray-500">
+              <span class="sr-only">YouTube</span>
+              <svg
+                class="h-6 w-6"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M19.812 5.418c.861.23 1.538.907 1.768 1.768C21.998 8.746 22 12 22 12s0 3.255-.418 4.814a2.504 2.504 0 0 1-1.768 1.768c-1.56.419-7.814.419-7.814.419s-6.255 0-7.814-.419a2.505 2.505 0 0 1-1.768-1.768C2 15.255 2 12 2 12s0-3.255.417-4.814a2.507 2.507 0 0 1 1.768-1.768C5.744 5 11.998 5 11.998 5s6.255 0 7.814.418ZM15.194 12 10 15V9l5.194 3Z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </a>
+            }}
+          </div>
+          <p class="mt-10 text-center text-xs leading-5 text-gray-500">
+            &copy; 2020 Your Company, Inc. All rights reserved.
+          </p>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
