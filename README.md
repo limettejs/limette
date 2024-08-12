@@ -1,6 +1,8 @@
 # Limette
 
-The JavaScript framework for Web Components and Deno.
+<img align="right" src="https://limette.dev/assets/images/logo.svg" width="200px" alt="The Limette logo: a green limette with two leaves">
+
+The JavaScript framework for Deno and Web Components.
 
 > This is WIP.
 
