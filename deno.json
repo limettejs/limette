@@ -6,7 +6,9 @@
     "./runtime/is-land.ts": "./src/runtime/is-land.ts",
     "./runtime/refresh.ts": "./src/runtime/refresh.ts"
   },
-  "tasks": {},
+  "tasks": {
+    "release": "deno run -A ./tools/release.ts"
+  },
   "publish": {
     "include": ["src/**", "deno.json", "README.md", "LICENSE"]
   },

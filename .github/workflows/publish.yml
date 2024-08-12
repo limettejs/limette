@@ -23,9 +23,6 @@ jobs:
       - name: Publish @limette/core
         run: deno publish
 
-      - name: Update limette version
-        run: deno run --allow-read --allow-write ./tools/release.ts
-
       - name: Publish @limette/init
         working-directory: ./init
         run: deno publish
