@@ -19,7 +19,19 @@ The JavaScript framework for Deno and Web Components.
 Run this command:
 
 ```
-deno run -Ar jsr:@limette/init
+deno run -A -r jsr:@limette/init
+```
+
+## Start a project (dev mode)
+
+```
+deno task dev
+```
+
+## Build a project
+
+```
+deno task build
 ```
 
 ## Start a project
