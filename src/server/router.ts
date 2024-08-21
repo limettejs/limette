@@ -4,34 +4,38 @@ import { bootstrapContent } from "./ssr.ts";
 import { getRoutes } from "../dev/build.ts";
 import { LimetteElementRenderer } from "./rendering/limette-element-renderer.ts";
 
-export const router = new Router();
+export async function getRouter(options: { buildAssets: boolean }) {
+  const router = new Router();
 
-const routes = await getRoutes();
+  const routes = await getRoutes(options);
 
-router.get("/_lmt/js/chunk-:id.js", (ctx) => {
-  const { id } = ctx.params;
-  const route = routes.find((r) => r.id === id);
-  ctx.response.type = "application/javascript; charset=UTF-8";
-  ctx.response.body = route?.bundle?.contents;
-});
-
-router.get("/_lmt/css/tailwind-:id.css", (ctx) => {
-  const { id } = ctx.params;
-  const route = routes.find((r) => r.id === id);
-  ctx.response.type = "text/css; charset=UTF-8";
-  ctx.response.body = route?.css;
-});
-
-routes.map((route) => {
-  router.get(route.path, async (ctx) => {
-    const componentContext = { params: ctx.params };
-
-    const result = render(await bootstrapContent(route, componentContext), {
-      elementRenderers: [LimetteElementRenderer(route)],
-    });
-    const contents = await collectResult(result);
-
-    ctx.response.type = "text/html";
-    ctx.response.body = contents;
+  router.get("/_limette/js/chunk-:id.js", (ctx) => {
+    const { id } = ctx.params;
+    const route = routes.find((r) => r.id === id);
+    ctx.response.type = "application/javascript; charset=UTF-8";
+    ctx.response.body = route?.jsAssetContent?.contents;
   });
-});
+
+  router.get("/_limette/css/tailwind-:id.css", (ctx) => {
+    const { id } = ctx.params;
+    const route = routes.find((r) => r.id === id);
+    ctx.response.type = "text/css; charset=UTF-8";
+    ctx.response.body = route?.cssAssetContent;
+  });
+
+  routes.map((route) => {
+    router.get(route.path, async (ctx) => {
+      const componentContext = { params: ctx.params };
+
+      const result = render(await bootstrapContent(route, componentContext), {
+        elementRenderers: [LimetteElementRenderer(route)],
+      });
+      const contents = await collectResult(result);
+
+      ctx.response.type = "text/html";
+      ctx.response.body = contents;
+    });
+  });
+
+  return router;
+}

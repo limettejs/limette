@@ -1,7 +1,7 @@
 import { ensureDir } from "@std/fs/ensure-dir";
 
 // This value is changed in the release pipeline
-const LIMETTE_VERSION = "0.0.7";
+const LIMETTE_VERSION = "0.0.8";
 
 const projectName = prompt("Your project name?");
 
@@ -19,12 +19,20 @@ await ensureDir(routesPath);
 // static folder
 await ensureDir(staticPath);
 
+const gitignore = `
+# dotenv environment variable files
+.env
+
+# Limette build directory
+_limette/
+`;
+
 const denoJson = `
 {
   "tasks": {
-    "start": "deno run -A --watch=static/,routes/ main.ts",
+    "dev": "deno run -A --watch=static/,routes/ dev.ts",
     "build": "deno run -A dev.ts build",
-    "preview": "deno run -A --watch main.ts"
+    "start": "deno run -A --watch main.ts"
   },
   "imports": {
     "@limette/core": "jsr:@limette/core@${LIMETTE_VERSION}",
@@ -41,17 +49,19 @@ const denoJson = `
 
 const devTs = `
 import { dev } from "@limette/core";
+import { app } from "./main.ts";
 
-await dev();
+await dev(app);
 `;
 
 const mainTs = `
 import { LimetteApp } from "@limette/core";
 
-const app = new LimetteApp();
+export const app = new LimetteApp();
 
-app.listen({ port: 1995 });
-console.log("Limette app started on: http://localhost:1995");
+if (import.meta.main) {
+  app.listen({ port: 8000 });
+}
 `;
 
 const counterIslandTs = `
@@ -157,6 +167,7 @@ const tailwindStyleCSS = `
 @tailwind utilities;
 `;
 
+Deno.writeTextFileSync(projectPath + "/.gitignore", gitignore);
 Deno.writeTextFileSync(projectPath + "/deno.json", denoJson);
 Deno.writeTextFileSync(projectPath + "/dev.ts", devTs);
 Deno.writeTextFileSync(projectPath + "/main.ts", mainTs);

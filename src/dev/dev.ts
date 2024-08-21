@@ -1,9 +1,11 @@
 import { build } from "./build.ts";
+import type { LimetteApp } from "../server/app.ts";
 
-export async function dev() {
+export async function dev(app: LimetteApp) {
   if (Deno.args.includes("build")) {
-    //build app
-    // Similar with getRoutes(), but localli
     await build();
+  } else {
+    app.setDevMode(true);
+    app.listen();
   }
 }

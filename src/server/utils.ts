@@ -1,4 +1,4 @@
-import { send } from "../deps.ts";
+import { send, join } from "../deps.ts";
 import type { Context } from "../deps.ts";
 
 export async function fileExists(path: string) {
@@ -18,10 +18,19 @@ export const staticMiddleware = async (
   ctx: Context,
   next: () => Promise<unknown>
 ) => {
-  const path = `${Deno.cwd()}${ctx.request.url.pathname}`;
-  if (await fileExists(path)) {
+  const staticPath = join(Deno.cwd(), "static", ctx.request.url.pathname);
+  const lmtPath = join(Deno.cwd(), ctx.request.url.pathname);
+
+  if (await fileExists(staticPath)) {
     await send(ctx, ctx.request.url.pathname, {
-      root: `${Deno.cwd()}`,
+      root: join(Deno.cwd(), "static"),
+    });
+  } else if (
+    ctx.request.url.pathname.startsWith("/_limette/") &&
+    (await fileExists(lmtPath))
+  ) {
+    await send(ctx, ctx.request.url.pathname, {
+      root: Deno.cwd(),
     });
   } else {
     await next();

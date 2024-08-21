@@ -28,11 +28,11 @@ export const LimetteElementRenderer = (route: BuildRoute) =>
         this.tagName !== "is-land" &&
         !this.element.hasAttribute("no-tailwind") &&
         ctor.__tailwind !== true &&
-        route.cssPath
+        route.cssAssetPath
       ) {
         // Inject Tailwind CSS import
         ctor.elementStyles?.unshift?.(
-          unsafeCSS(`@import url("${route.cssPath}");`)
+          unsafeCSS(`@import url("${route.cssAssetPath}");`)
         );
 
         // Mark component that was already injected
