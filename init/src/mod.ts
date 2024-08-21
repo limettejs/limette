@@ -1,7 +1,7 @@
 import { ensureDir } from "@std/fs/ensure-dir";
 
 // This value is changed in the release pipeline
-const LIMETTE_VERSION = "0.0.7";
+const LIMETTE_VERSION = "0.0.8";
 
 const projectName = prompt("Your project name?");
 
@@ -18,6 +18,14 @@ await ensureDir(islandsPath);
 await ensureDir(routesPath);
 // static folder
 await ensureDir(staticPath);
+
+const gitignore = `
+# dotenv environment variable files
+.env
+
+# Limette build directory
+_limette/
+`;
 
 const denoJson = `
 {
@@ -159,6 +167,7 @@ const tailwindStyleCSS = `
 @tailwind utilities;
 `;
 
+Deno.writeTextFileSync(projectPath + "/.gitignore", gitignore);
 Deno.writeTextFileSync(projectPath + "/deno.json", denoJson);
 Deno.writeTextFileSync(projectPath + "/dev.ts", devTs);
 Deno.writeTextFileSync(projectPath + "/main.ts", mainTs);
