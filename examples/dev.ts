@@ -1,3 +1,4 @@
-import dev from "../src/dev/dev.ts";
+import { dev } from "@limette/core";
+import { app } from "./main.ts";
 
-await dev();
+await dev(app);

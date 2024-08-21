@@ -9,7 +9,7 @@ export { denoPlugins } from "jsr:@luca/esbuild-deno-loader@0.10.3";
 export { default as parseImports } from "npm:parse-imports@1.2.0";
 
 export { walk } from "jsr:@std/fs@0.229.1/walk";
-export { parse } from "jsr:@std/path@0.225.1";
+export { parse, join } from "jsr:@std/path@0.225.1";
 export { emptyDir } from "jsr:@std/fs@0.224.0/empty-dir";
 export { ensureFile } from "jsr:@std/fs@0.224.0/ensure-file";
 export { encodeHex } from "jsr:@std/encoding@1.0.1/hex";

@@ -13,6 +13,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+## [0.0.8] - 2024-08-21
+
+### Added
+
+### Changed
+
+- Use static assets for deno task start
+
+### Fixed
+
+## [0.0.7] - 2024-08-13
+
+### Added
+
+### Changed
+
+### Fixed
+
+- Updated pipeline
+
 ## [0.0.6] - 2024-08-03
 
 ### Added

@@ -22,9 +22,9 @@ await ensureDir(staticPath);
 const denoJson = `
 {
   "tasks": {
-    "start": "deno run -A --watch=static/,routes/ main.ts",
+    "dev": "deno run -A --watch=static/,routes/ dev.ts",
     "build": "deno run -A dev.ts build",
-    "preview": "deno run -A --watch main.ts"
+    "start": "deno run -A --watch main.ts"
   },
   "imports": {
     "@limette/core": "jsr:@limette/core@${LIMETTE_VERSION}",
@@ -41,17 +41,19 @@ const denoJson = `
 
 const devTs = `
 import { dev } from "@limette/core";
+import { app } from "./main.ts";
 
-await dev();
+await dev(app);
 `;
 
 const mainTs = `
 import { LimetteApp } from "@limette/core";
 
-const app = new LimetteApp();
+export const app = new LimetteApp();
 
-app.listen({ port: 1995 });
-console.log("Limette app started on: http://localhost:1995");
+if (import.meta.main) {
+  app.listen({ port: 8000 });
+}
 `;
 
 const counterIslandTs = `

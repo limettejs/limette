@@ -1,6 +1,7 @@
-import { LimetteApp } from "../src/server/app.ts";
+import { LimetteApp } from "@limette/core";
 
-const app = new LimetteApp();
+export const app = new LimetteApp();
 
-app.listen({ port: 1995 });
-console.log("Limette app started on: http://localhost:1995");
+if (import.meta.main) {
+  app.listen({ port: 8000 });
+}

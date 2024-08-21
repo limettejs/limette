@@ -77,16 +77,16 @@ export async function bootstrapContent(
   return html` <html>
     <head>
       <title>Limette</title>
-      ${route.cssPath
-        ? html`<link rel="stylesheet" href="${route.cssPath}" />`
+      ${route.cssAssetPath
+        ? html`<link rel="stylesheet" href="${route.cssAssetPath}" />`
         : ``}
     </head>
     <body>
       ${unsafeHTML(component)}
       <!-- -->
-      ${route.bundlePath ? unsafeHTML(ctxStr) : ``}
-      ${route.bundlePath
-        ? html`<script type="module" src="${route.bundlePath}"></script>`
+      ${route.jsAssetPath ? unsafeHTML(ctxStr) : ``}
+      ${route.jsAssetPath
+        ? html`<script type="module" src="${route.jsAssetPath}"></script>`
         : ``}
     </body>
   </html>`;

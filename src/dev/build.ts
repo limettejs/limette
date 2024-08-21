@@ -20,10 +20,10 @@ export type BuildRoute = {
   path: string;
   filePath: string;
   tagName: string;
-  bundle: esbuild.OutputFile | undefined;
-  bundlePath: string | undefined;
-  css: string;
-  cssPath: string | undefined;
+  jsAssetContent: esbuild.OutputFile | undefined;
+  jsAssetPath: string | undefined;
+  cssAssetContent: string | undefined;
+  cssAssetPath: string | undefined;
 };
 
 const encoder = new TextEncoder();
@@ -171,7 +171,7 @@ async function buildCSS(
   return css;
 }
 
-export async function getRoutes() {
+export async function getRoutes({ buildAssets } = { buildAssets: false }) {
   const ignoreFilePattern = TEST_FILE_PATTERN;
   const routes: BuildRoute[] = [];
   for await (const entry of walk("./routes", {
@@ -200,21 +200,29 @@ export async function getRoutes() {
     ).substring(0, 6);
     const tagName = convertToWebComponentTagName(path);
 
-    const bundle = await buildJS(filePath);
-    const bundlePath = bundle ? `/_lmt/js/chunk-${id}.js` : undefined;
+    const jsAssetContent = buildAssets ? await buildJS(filePath) : undefined;
+    const jsAssetPath =
+      jsAssetContent || buildAssets === false
+        ? `/_limette/js/chunk-${id}.js`
+        : undefined;
 
-    const css = await buildCSS(filePath, bundle);
-    const cssPath = css ? `/_lmt/css/tailwind-${id}.css` : undefined;
+    const cssAssetContent = buildAssets
+      ? await buildCSS(filePath, jsAssetContent)
+      : undefined;
+    const cssAssetPath =
+      cssAssetContent || buildAssets === false
+        ? `/_limette/css/tailwind-${id}.css`
+        : undefined;
 
     const route: BuildRoute = {
       id,
       path,
       filePath,
       tagName,
-      bundle,
-      bundlePath,
-      css,
-      cssPath,
+      jsAssetContent,
+      jsAssetPath,
+      cssAssetContent,
+      cssAssetPath,
     };
     routes.push(route);
   }
@@ -223,19 +231,22 @@ export async function getRoutes() {
 }
 
 export async function build() {
-  const routes = await getRoutes();
+  const routes = await getRoutes({ buildAssets: true });
 
-  await emptyDir("./_lmt");
+  await emptyDir("./_limette");
 
   for (const route of routes) {
-    if (route.bundle?.contents) {
-      await ensureFile("." + route.bundlePath);
-      await Deno.writeFile("." + route.bundlePath, route.bundle.contents);
+    if (route.jsAssetContent?.contents) {
+      await ensureFile("." + route.jsAssetPath);
+      await Deno.writeFile(
+        "." + route.jsAssetPath,
+        route.jsAssetContent.contents
+      );
     }
 
-    if (route.css) {
-      await ensureFile("." + route.cssPath);
-      await Deno.writeTextFile("." + route.cssPath, route.css);
+    if (route.cssAssetContent) {
+      await ensureFile("." + route.cssAssetPath);
+      await Deno.writeTextFile("." + route.cssAssetPath, route.cssAssetContent);
     }
   }
 }
