@@ -19,13 +19,23 @@ export const staticMiddleware = async (
   next: () => Promise<unknown>
 ) => {
   const staticPath = join(Deno.cwd(), "static", ctx.request.url.pathname);
-  const lmtPath = join(Deno.cwd(), ctx.request.url.pathname);
 
   if (await fileExists(staticPath)) {
     await send(ctx, ctx.request.url.pathname, {
       root: join(Deno.cwd(), "static"),
     });
-  } else if (
+  } else {
+    await next();
+  }
+};
+
+export const staticBuildMiddleware = async (
+  ctx: Context,
+  next: () => Promise<unknown>
+) => {
+  const lmtPath = join(Deno.cwd(), ctx.request.url.pathname);
+
+  if (
     ctx.request.url.pathname.startsWith("/_limette/") &&
     (await fileExists(lmtPath))
   ) {

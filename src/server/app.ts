@@ -1,5 +1,5 @@
 import { Application } from "../deps.ts";
-import { staticMiddleware } from "./utils.ts";
+import { staticMiddleware, staticBuildMiddleware } from "./utils.ts";
 import { refreshMiddleware } from "../dev/refresh-middleware.ts";
 import { getRouter } from "./router.ts";
 
@@ -16,7 +16,6 @@ export class LimetteApp {
     this.#app = new Application();
 
     this.#app.use(staticMiddleware);
-    this.#app.use(refreshMiddleware);
   }
 
   use(...args: AppUseArgs): AppUseReturn {
@@ -28,11 +27,23 @@ export class LimetteApp {
     const port = args?.[0]?.port || 8000;
     if (!args?.[0]) args[0] = { port };
 
-    const router = await getRouter({ buildAssets: this.#devMode });
+    // For dev mode, use the refresh middleware
+    if (this.#devMode) {
+      this.#app.use(refreshMiddleware);
+    }
+
+    // For production mode, use the static build middleware
+    if (!this.#devMode) {
+      this.#app.use(staticBuildMiddleware);
+    }
+
+    const router = await getRouter({
+      buildAssets: this.#devMode,
+      devMode: this.#devMode,
+    });
+
     this.#app.use(router.routes());
     this.#app.use(router.allowedMethods());
-
-    // console.log(router.routes());
 
     const result = this.#app.listen(...args);
     console.log(`Limette app started on: http://localhost:${port}`);

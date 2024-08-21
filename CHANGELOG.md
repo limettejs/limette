@@ -13,6 +13,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+## [0.0.9] - 2024-08-21
+
+### Added
+
+- Minify JS and CSS files for production mode
+- Enable sourcemaps for dev mode
+
+### Changed
+
+### Fixed
+
+- Don't include the refresh mechanism for production mode
+
 ## [0.0.8] - 2024-08-21
 
 ### Added

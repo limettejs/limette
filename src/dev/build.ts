@@ -42,7 +42,7 @@ async function getImports(file: string) {
   return imports;
 }
 
-async function buildJS(path: string) {
+async function buildJS(path: string, { devMode }: { devMode?: boolean }) {
   const imports = await getImports(path);
 
   // Without islands imported, we don't create any bundle for this route
@@ -51,7 +51,7 @@ async function buildJS(path: string) {
   const entryPoint = [
     `import "https://esm.sh/@lit-labs/ssr-client@1.1.7/lit-element-hydrate-support.js";`,
     `import "@limette/core/runtime/is-land.ts";`,
-    `import "@limette/core/runtime/refresh.ts";`,
+    devMode ? `import "@limette/core/runtime/refresh.ts";` : ``,
     ...imports,
   ].join("\n");
 
@@ -67,9 +67,8 @@ async function buildJS(path: string) {
       }),
     ],
     entryPoints: [entrypointPath],
-    // outfile: "./dist/bundle.js",
-    // outdir: "dist",
-    sourcemap: false,
+    sourcemap: devMode,
+    minify: !devMode,
     bundle: true,
     format: "esm",
     write: false,
@@ -134,15 +133,16 @@ function convertToWebComponentTagName(str: string) {
 
 async function buildCSS(
   filePath: string,
-  bundle: esbuild.OutputFile | undefined
+  jsAssetContent: esbuild.OutputFile | undefined,
+  { devMode }: { devMode?: boolean }
 ) {
   let tempDirPath = "";
   let contentFlag = filePath;
 
-  if (bundle?.text) {
+  if (jsAssetContent?.text) {
     tempDirPath = await Deno.makeTempDir();
     const bundlePathTemp = `${tempDirPath}/bundle.js`;
-    await Deno.writeTextFile(bundlePathTemp, bundle.text, {});
+    await Deno.writeTextFile(bundlePathTemp, jsAssetContent.text, {});
 
     contentFlag = `${contentFlag},${bundlePathTemp}`;
   }
@@ -154,6 +154,7 @@ async function buildCSS(
       `npm:tailwindcss@^3.4.7`,
       `--input=${Deno.cwd()}/static/tailwind.css`,
       `--content=${contentFlag}`,
+      !devMode ? `--minify` : ``,
     ],
     stdout: "piped",
     cwd: Deno.cwd(),
@@ -164,14 +165,20 @@ async function buildCSS(
 
   process.unref();
 
-  if (bundle?.text) {
+  if (jsAssetContent?.text) {
     await Deno.remove(tempDirPath, { recursive: true });
   }
 
   return css;
 }
 
-export async function getRoutes({ buildAssets } = { buildAssets: false }) {
+export async function getRoutes({
+  buildAssets,
+  devMode,
+}: {
+  buildAssets?: boolean;
+  devMode?: boolean;
+}) {
   const ignoreFilePattern = TEST_FILE_PATTERN;
   const routes: BuildRoute[] = [];
   for await (const entry of walk("./routes", {
@@ -200,14 +207,16 @@ export async function getRoutes({ buildAssets } = { buildAssets: false }) {
     ).substring(0, 6);
     const tagName = convertToWebComponentTagName(path);
 
-    const jsAssetContent = buildAssets ? await buildJS(filePath) : undefined;
+    const jsAssetContent = buildAssets
+      ? await buildJS(filePath, { devMode })
+      : undefined;
     const jsAssetPath =
       jsAssetContent || buildAssets === false
         ? `/_limette/js/chunk-${id}.js`
         : undefined;
 
     const cssAssetContent = buildAssets
-      ? await buildCSS(filePath, jsAssetContent)
+      ? await buildCSS(filePath, jsAssetContent, { devMode })
       : undefined;
     const cssAssetPath =
       cssAssetContent || buildAssets === false
