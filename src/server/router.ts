@@ -4,7 +4,10 @@ import { bootstrapContent } from "./ssr.ts";
 import { getRoutes } from "../dev/build.ts";
 import { LimetteElementRenderer } from "./rendering/limette-element-renderer.ts";
 
-export async function getRouter(options: { buildAssets: boolean }) {
+export async function getRouter(options: {
+  buildAssets?: boolean;
+  devMode?: boolean;
+}) {
   const router = new Router();
 
   const routes = await getRoutes(options);
