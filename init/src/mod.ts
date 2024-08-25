@@ -32,7 +32,7 @@ const denoJson = `
   "tasks": {
     "dev": "deno run -A --watch=static/,routes/ dev.ts",
     "build": "deno run -A dev.ts build",
-    "start": "deno run -A --watch main.ts"
+    "start": "deno run -A main.ts"
   },
   "imports": {
     "@limette/core": "jsr:@limette/core@${LIMETTE_VERSION}",
@@ -58,6 +58,8 @@ const mainTs = `
 import { LimetteApp } from "@limette/core";
 
 export const app = new LimetteApp();
+
+app.setLoadFs((path: string) => import(\`./\${path}\`));
 
 if (import.meta.main) {
   app.listen({ port: 8000 });
