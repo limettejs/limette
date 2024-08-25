@@ -11,6 +11,7 @@ type AppListenReturn = ReturnType<Application["listen"]>;
 export class LimetteApp {
   #app;
   #devMode = false;
+  #loadFs?: (path: string) => Promise<unknown>;
 
   constructor() {
     this.#app = new Application();
@@ -23,7 +24,7 @@ export class LimetteApp {
     return this as unknown as AppUseReturn;
   }
 
-  async listen(...args: AppListenArgs): AppListenReturn {
+  async listen(...args: AppListenArgs): Promise<AppListenReturn> {
     const port = args?.[0]?.port || 8000;
     if (!args?.[0]) args[0] = { port };
 
@@ -40,6 +41,7 @@ export class LimetteApp {
     const router = await getRouter({
       buildAssets: this.#devMode,
       devMode: this.#devMode,
+      loadFs: this.#loadFs,
     });
 
     this.#app.use(router.routes());
@@ -52,5 +54,9 @@ export class LimetteApp {
 
   setDevMode(mode: boolean) {
     this.#devMode = mode;
+  }
+
+  setLoadFs(fn: (path: string) => Promise<unknown>) {
+    this.#loadFs = fn;
   }
 }

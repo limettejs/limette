@@ -54,15 +54,16 @@ const ComponentCtxMixin = (
   return ComponentCtxClass;
 };
 
-export async function bootstrapContent(
+export function bootstrapContent(
   route: BuildRoute,
   ctx: {
     params: Params;
   }
 ) {
-  const componentModule = await import(toFileUrl(route.filePath).href);
+  // const componentModule = await import(toFileUrl(route.absoluteFilePath).href);
+  const componentModule = route.routeModule;
 
-  const componentClass = ComponentCtxMixin(componentModule.default, {
+  const componentClass = ComponentCtxMixin(componentModule?.default, {
     params: ctx.params,
   });
   const component = registerComponent(

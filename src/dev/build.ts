@@ -11,14 +11,18 @@ import {
   parseImports,
   emptyDir,
   ensureFile,
+  join,
 } from "../deps.ts";
+import type { GetRouterOptions } from "../server/router.ts";
 
 const TEST_FILE_PATTERN = /[._]test\.(?:[tj]sx?|[mc][tj]s)$/;
 
 export type BuildRoute = {
   id: string;
   path: string;
-  filePath: string;
+  relativeFilePath: string;
+  absoluteFilePath: string;
+  routeModule?: { default: unknown };
   tagName: string;
   jsAssetContent: esbuild.OutputFile | undefined;
   jsAssetPath: string | undefined;
@@ -132,12 +136,12 @@ function convertToWebComponentTagName(str: string) {
 }
 
 async function buildCSS(
-  filePath: string,
+  absoluteFilePath: string,
   jsAssetContent: esbuild.OutputFile | undefined,
   { devMode }: { devMode?: boolean }
 ) {
   let tempDirPath = "";
-  let contentFlag = filePath;
+  let contentFlag = absoluteFilePath;
 
   if (jsAssetContent?.text) {
     tempDirPath = await Deno.makeTempDir();
@@ -175,12 +179,11 @@ async function buildCSS(
 export async function getRoutes({
   buildAssets,
   devMode,
-}: {
-  buildAssets?: boolean;
-  devMode?: boolean;
-}) {
+  loadFs,
+}: GetRouterOptions) {
   const ignoreFilePattern = TEST_FILE_PATTERN;
   const routes: BuildRoute[] = [];
+
   for await (const entry of walk("./routes", {
     includeDirs: false,
     includeSymlinks: false,
@@ -196,27 +199,30 @@ export async function getRoutes({
     // Check if route exists
     const exists = routes.find((r) => r.path === path);
     if (exists) {
-      const error = `Route conflict for "${path}" (${entry.path}"). Another file is resolved to the same route: "${exists.path}" (${exists.filePath}).`;
+      const error = `Route conflict for "${path}" (${entry.path}"). Another file is resolved to the same route: "${exists.path}" (${exists.absoluteFilePath}).`;
       throw new Error(error);
     }
 
-    const filePath = Deno.cwd() + "/" + entry.path;
+    const absoluteFilePath = join(Deno.cwd(), entry.path);
 
+    // Generate tag name
     const id = encodeHex(
       await window.crypto.subtle.digest("SHA-1", encoder.encode(path))
     ).substring(0, 6);
     const tagName = convertToWebComponentTagName(path);
 
+    // Generate JS assets
     const jsAssetContent = buildAssets
-      ? await buildJS(filePath, { devMode })
+      ? await buildJS(absoluteFilePath, { devMode })
       : undefined;
     const jsAssetPath =
       jsAssetContent || buildAssets === false
         ? `/_limette/js/chunk-${id}.js`
         : undefined;
 
+    // Generate CSS assets
     const cssAssetContent = buildAssets
-      ? await buildCSS(filePath, jsAssetContent, { devMode })
+      ? await buildCSS(absoluteFilePath, jsAssetContent, { devMode })
       : undefined;
     const cssAssetPath =
       cssAssetContent || buildAssets === false
@@ -226,7 +232,9 @@ export async function getRoutes({
     const route: BuildRoute = {
       id,
       path,
-      filePath,
+      relativeFilePath: `./${entry.path}`,
+      absoluteFilePath,
+      routeModule: (await loadFs?.(entry.path)) as { default: unknown },
       tagName,
       jsAssetContent,
       jsAssetPath,
@@ -244,6 +252,10 @@ export async function build() {
 
   await emptyDir("./_limette");
 
+  let routeIndex = 0;
+  let routesImportsString = ``;
+  let routesArrayString = ``;
+
   for (const route of routes) {
     if (route.jsAssetContent?.contents) {
       await ensureFile("." + route.jsAssetPath);
@@ -257,5 +269,31 @@ export async function build() {
       await ensureFile("." + route.cssAssetPath);
       await Deno.writeTextFile("." + route.cssAssetPath, route.cssAssetContent);
     }
+
+    // Generate static routes file
+    routesImportsString += `import * as route${routeIndex} from ".${route.relativeFilePath}";
+`;
+
+    routesArrayString += `{
+    id: "${route.id}", 
+    path: "${route.path}",
+    relativeFilePath: "${route.relativeFilePath}",
+    absoluteFilePath: undefined,
+    routeModule: route${routeIndex},
+    tagName: "${route.tagName}",
+    jsAssetPath: ${route.jsAssetPath ? `"${route.jsAssetPath}"` : `undefined`},
+    cssAssetPath: ${
+      route.cssAssetPath ? `"${route.cssAssetPath}"` : `undefined`
+    }
+  },
+    `;
+    routeIndex++;
   }
+
+  routesArrayString = `export const routes = [${routesArrayString}];`;
+
+  await Deno.writeTextFile(
+    "./_limette/routes.js",
+    routesImportsString + routesArrayString
+  );
 }
