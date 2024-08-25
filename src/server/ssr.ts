@@ -63,9 +63,12 @@ export function bootstrapContent(
   // const componentModule = await import(toFileUrl(route.absoluteFilePath).href);
   const componentModule = route.routeModule;
 
-  const componentClass = ComponentCtxMixin(componentModule?.default, {
-    params: ctx.params,
-  });
+  const componentClass = ComponentCtxMixin(
+    componentModule?.default as typeof LitElement,
+    {
+      params: ctx.params,
+    }
+  );
   const component = registerComponent(
     componentClass as unknown as CustomElementConstructor,
     route.tagName
