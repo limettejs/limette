@@ -7,7 +7,7 @@
     "./runtime/refresh.ts": "./src/runtime/refresh.ts"
   },
   "tasks": {
-    "release": "deno run -A ./tools/release.ts"
+    "release": "deno run -A ./tools/release.ts && deno publish --dry-run"
   },
   "publish": {
     "include": ["src/**", "deno.json", "README.md", "LICENSE"]
