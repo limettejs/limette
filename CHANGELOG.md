@@ -13,6 +13,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+## [0.0.10] - 2024-08-26
+
+### Added
+
+- Build static routes
+
+### Changed
+
+### Fixed
+
 ## [0.0.9] - 2024-08-21
 
 ### Added
