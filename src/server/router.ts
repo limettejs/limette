@@ -1,9 +1,9 @@
 import { Router, render, collectResult } from "../deps.ts";
 
 import { bootstrapContent } from "./ssr.ts";
-import { getRoutes } from "../dev/build.ts";
+import { getRoutes, getAppTemplate } from "../dev/build.ts";
 import { LimetteElementRenderer } from "./rendering/limette-element-renderer.ts";
-import type { BuildRoute } from "../dev/build.ts";
+import type { AppTemplateInterface } from "./ssr.ts";
 
 export type GetRouterOptions = {
   buildAssets?: boolean;
@@ -15,13 +15,10 @@ export type GetRouterOptions = {
 export async function getRouter(options: GetRouterOptions) {
   const router = new Router();
 
-  const routes = options?.devMode
-    ? await getRoutes(options)
-    : (
-        (await options?.loadFs?.("_limette/routes.js")) as {
-          routes: BuildRoute[];
-        }
-      ).routes;
+  const [routes, AppTemplate] = await Promise.all([
+    getRoutes(options),
+    getAppTemplate(options),
+  ]);
 
   // Serve static files from memory on dev mode
   if (options?.devMode) {
@@ -44,9 +41,16 @@ export async function getRouter(options: GetRouterOptions) {
     router.get(route.path, async (ctx) => {
       const componentContext = { params: ctx.params };
 
-      const result = render(await bootstrapContent(route, componentContext), {
-        elementRenderers: [LimetteElementRenderer(route)],
-      });
+      const result = render(
+        await bootstrapContent(
+          AppTemplate as AppTemplateInterface,
+          route,
+          componentContext
+        ),
+        {
+          elementRenderers: [LimetteElementRenderer(route)],
+        }
+      );
       const contents = await collectResult(result);
 
       ctx.response.type = "text/html";

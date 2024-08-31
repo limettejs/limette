@@ -1,7 +1,7 @@
 import { ensureDir } from "@std/fs/ensure-dir";
 
 // This value is changed in the release pipeline
-const LIMETTE_VERSION = "0.0.10";
+const LIMETTE_VERSION = "0.0.11";
 
 const projectName = prompt("Your project name?");
 
@@ -36,8 +36,8 @@ const denoJson = `
   },
   "imports": {
     "@limette/core": "jsr:@limette/core@${LIMETTE_VERSION}",
-    "/lit": "npm:/lit@^3.1.2/",
-    "lit": "npm:lit@^3.1.2",
+    "/lit": "npm:/lit@^3.2.0/",
+    "lit": "npm:lit@^3.2.0",
     "tailwindcss": "npm:tailwindcss@^3.4.7"
   },
   "fmt": {
@@ -120,6 +120,28 @@ export class Counter extends LitElement {
 customElements.define("island-counter", Counter);
 `;
 
+const _appRouteTs = `
+import { LitElement, html } from "lit";
+import type { AppTemplateOptions } from "@limette/core";
+
+export default class App extends LitElement {
+  render(app: AppTemplateOptions) {
+    return html\`<html>
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Limette</title>
+        <link rel="stylesheet" href="\${app.css}" />
+      </head>
+      <body>
+        \${app.component}
+        \${app.js}
+      </body>
+    </html>\`;
+  }
+}
+`;
+
 const indexRouteTs = `
 import { LitElement, html } from "lit";
 import "../islands/counter.ts";
@@ -174,6 +196,7 @@ Deno.writeTextFileSync(projectPath + "/deno.json", denoJson);
 Deno.writeTextFileSync(projectPath + "/dev.ts", devTs);
 Deno.writeTextFileSync(projectPath + "/main.ts", mainTs);
 Deno.writeTextFileSync(projectPath + "/islands/counter.ts", counterIslandTs);
+Deno.writeTextFileSync(projectPath + "/routes/_app.ts", _appRouteTs);
 Deno.writeTextFileSync(projectPath + "/routes/index.ts", indexRouteTs);
 Deno.writeTextFileSync(projectPath + "/routes/foo.ts", fooRouteTs);
 Deno.writeTextFileSync(projectPath + "/static/tailwind.css", tailwindStyleCSS);
