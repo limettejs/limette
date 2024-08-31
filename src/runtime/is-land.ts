@@ -88,7 +88,6 @@ export class Island extends LitElement {
   }
 
   render(): TemplateResult {
-    // ssr
     return html`<slot></slot>`;
   }
 }

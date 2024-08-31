@@ -13,7 +13,9 @@ import {
   ensureFile,
   join,
 } from "../deps.ts";
+import { fileExists } from "../server/utils.ts";
 import type { GetRouterOptions } from "../server/router.ts";
+import type { AppTemplateInterface } from "../server/ssr.ts";
 
 const TEST_FILE_PATTERN = /[._]test\.(?:[tj]sx?|[mc][tj]s)$/;
 
@@ -181,6 +183,14 @@ export async function getRoutes({
   devMode,
   loadFs,
 }: GetRouterOptions) {
+  if (!devMode && !buildAssets) {
+    return (
+      (await loadFs?.("_limette/routes.js")) as {
+        routes: BuildRoute[];
+      }
+    ).routes;
+  }
+
   const ignoreFilePattern = TEST_FILE_PATTERN;
   const routes: BuildRoute[] = [];
 
@@ -188,7 +198,7 @@ export async function getRoutes({
     includeDirs: false,
     includeSymlinks: false,
     exts: ["ts", "js"],
-    skip: [ignoreFilePattern],
+    skip: [ignoreFilePattern, new RegExp("/_app.(js|ts)$")],
   })) {
     const parsed = parse(entry.path);
     let path = parsed.dir.replace("routes", "") + "/" + parsed.name;
@@ -247,6 +257,30 @@ export async function getRoutes({
   return routes;
 }
 
+export async function getAppTemplate({ loadFs }: GetRouterOptions) {
+  const hasAppJs = await fileExists("./routes/_app.js").catch(() => false);
+  const hasAppTs = await fileExists("./routes/_app.ts").catch(() => false);
+  if (hasAppJs && hasAppTs) {
+    throw new Error(
+      "You have two app templates defined: _app.js and _app.ts. Use only one."
+    );
+  }
+
+  if (!hasAppJs && !hasAppTs) {
+    throw new Error("You don't an app template defined: _app.js and _app.ts.");
+  }
+
+  if (hasAppTs) {
+    return ((await loadFs?.("./routes/_app.ts")) as { default: unknown })
+      .default as AppTemplateInterface;
+  }
+
+  if (hasAppJs) {
+    return ((await loadFs?.("./routes/_app.js")) as { default: unknown })
+      .default as AppTemplateInterface;
+  }
+}
+
 export async function build() {
   const routes = await getRoutes({ buildAssets: true });
 
@@ -274,7 +308,8 @@ export async function build() {
     routesImportsString += `import * as route${routeIndex} from ".${route.relativeFilePath}";
 `;
 
-    routesArrayString += `{
+    routesArrayString += `
+  {
     id: "${route.id}", 
     path: "${route.path}",
     relativeFilePath: "${route.relativeFilePath}",
@@ -286,7 +321,7 @@ export async function build() {
       route.cssAssetPath ? `"${route.cssAssetPath}"` : `undefined`
     }
   },
-    `;
+`;
     routeIndex++;
   }
 

@@ -1,8 +1,11 @@
 import { html, unsafeHTML } from "../deps.ts";
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
-import type { LitElement } from "lit";
+import type { LitElement, TemplateResult } from "lit";
+// @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
+import type { DirectiveResult } from "lit/directives/unsafe-html.js";
+// @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
+import type { UnsafeHTMLDirective } from "lit/directives/unsafe-html.js";
 import type { BuildRoute } from "../dev/build.ts";
-import { toFileUrl } from "@std/path/to-file-url";
 
 import "../runtime/is-land.ts"; // should use limette?
 
@@ -10,14 +13,23 @@ type Params = {
   [key: string]: string;
 };
 
-type Constructor<T = {}> = new (...args: any[]) => T;
+export type AppTemplateOptions = {
+  css: string;
+  js: string[] | TemplateResult[] | DirectiveResult<UnsafeHTMLDirective>[];
+  component: DirectiveResult<UnsafeHTMLDirective>;
+};
 
 // Define the interface for the mixin
 export declare class ComponentCtxMixinInterface {
   get ctx(): string;
 }
 
-// const ComponentCtxMixin = <T extends Constructor<typeof LitElement>>(
+export declare class AppTemplateInterface {
+  prototype: {
+    render(app: AppTemplateOptions): TemplateResult;
+  };
+}
+
 const ComponentCtxMixin = (
   base: typeof LitElement,
   ctxArg: {
@@ -55,12 +67,12 @@ const ComponentCtxMixin = (
 };
 
 export function bootstrapContent(
+  AppTemplate: AppTemplateInterface,
   route: BuildRoute,
   ctx: {
     params: Params;
   }
 ) {
-  // const componentModule = await import(toFileUrl(route.absoluteFilePath).href);
   const componentModule = route.routeModule;
 
   const componentClass = ComponentCtxMixin(
@@ -78,22 +90,18 @@ export function bootstrapContent(
     params: ctx.params,
   })}</script>`;
 
-  return html` <html>
-    <head>
-      <title>Limette</title>
-      ${route.cssAssetPath
-        ? html`<link rel="stylesheet" href="${route.cssAssetPath}" />`
-        : ``}
-    </head>
-    <body>
-      ${unsafeHTML(component)}
-      <!-- -->
-      ${route.jsAssetPath ? unsafeHTML(ctxStr) : ``}
-      ${route.jsAssetPath
+  const appTemplateOptions: AppTemplateOptions = {
+    css: route.cssAssetPath ? route.cssAssetPath : ``,
+    js: [
+      route.jsAssetPath ? unsafeHTML(ctxStr) : ``,
+      route.jsAssetPath
         ? html`<script type="module" src="${route.jsAssetPath}"></script>`
-        : ``}
-    </body>
-  </html>`;
+        : ``,
+    ],
+    component: unsafeHTML(component),
+  };
+
+  return AppTemplate.prototype.render(appTemplateOptions);
 }
 
 function registerComponent(module: CustomElementConstructor, tagName: string) {

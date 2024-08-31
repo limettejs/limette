@@ -13,15 +13,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+## [0.0.11] - 2024-09-01
+
+### Added
+
+- BREAKING: Get full control over the html file using `routes/\_app.ts`
+
+### Changed
+
+- Upgrade Lit to 3.2.0
+
+### Fixed
+
 ## [0.0.10] - 2024-08-26
 
 ### Added
 
 - Build static routes
-
-### Changed
-
-### Fixed
 
 ## [0.0.9] - 2024-08-21
 
@@ -38,19 +46,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [0.0.8] - 2024-08-21
 
-### Added
-
 ### Changed
 
 - Use static assets for deno task start
 
-### Fixed
-
 ## [0.0.7] - 2024-08-13
-
-### Added
-
-### Changed
 
 ### Fixed
 
@@ -58,20 +58,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [0.0.6] - 2024-08-03
 
-### Added
-
 ### Changed
 
 - Updated examples
 - Use `@limette/core for imports
 
-### Fixed
-
 ## [0.0.5] - 2024-08-03
-
-### Added
-
-### Changed
 
 ### Fixed
 
@@ -79,29 +71,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [0.0.4] - 2024-08-03
 
-### Added
-
-### Changed
-
 ### Fixed
 
 - New dynamic import path
 
 ## [0.0.3] - 2024-08-02
 
-### Added
-
-### Changed
-
 ### Fixed
 
 - New dynamic import path
 
 ## [0.0.2] - 2024-08-01
-
-### Added
-
-### Changed
 
 ### Fixed
 
@@ -112,7 +92,3 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - The first version.
-
-### Changed
-
-### Fixed
