@@ -14,7 +14,7 @@ type Params = {
 };
 
 export type AppTemplateOptions = {
-  css: string;
+  css: DirectiveResult<UnsafeHTMLDirective> | string;
   js: string[] | TemplateResult[] | DirectiveResult<UnsafeHTMLDirective>[];
   component: DirectiveResult<UnsafeHTMLDirective>;
 };
@@ -91,7 +91,9 @@ export function bootstrapContent(
   })}</script>`;
 
   const appTemplateOptions: AppTemplateOptions = {
-    css: route.cssAssetPath ? route.cssAssetPath : ``,
+    css: route.cssAssetPath
+      ? unsafeHTML(`<link rel="stylesheet" href="${route.cssAssetPath}" />`)
+      : ``,
     js: [
       route.jsAssetPath ? unsafeHTML(ctxStr) : ``,
       route.jsAssetPath
