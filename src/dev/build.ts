@@ -258,16 +258,22 @@ export async function getRoutes({
 }
 
 export async function getAppTemplate({ loadFs }: GetRouterOptions) {
-  const hasAppJs = await fileExists("./routes/_app.js").catch(() => false);
-  const hasAppTs = await fileExists("./routes/_app.ts").catch(() => false);
-  if (hasAppJs && hasAppTs) {
+  const [checkTs, checkJs] = await Promise.allSettled([
+    fileExists("./routes/_app.ts"),
+    fileExists("./routes/_app.js"),
+  ]);
+
+  const hasAppTs = checkTs.status === "fulfilled";
+  const hasAppJs = checkJs.status === "fulfilled";
+
+  if (hasAppTs && hasAppJs) {
     throw new Error(
-      "You have two app templates defined: _app.js and _app.ts. Use only one."
+      "You have two app templates defined: _app.ts and _app.js. Use only one."
     );
   }
 
-  if (!hasAppJs && !hasAppTs) {
-    throw new Error("You don't an app template defined: _app.js and _app.ts.");
+  if (!hasAppTs && !hasAppJs) {
+    throw new Error("You don't an app template defined: _app.ts or _app.js.");
   }
 
   if (hasAppTs) {
