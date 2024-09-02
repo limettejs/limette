@@ -1,15 +1,33 @@
-import { Router, render, collectResult } from "../deps.ts";
+import { Router } from "../deps.ts";
+import type { RouterContext, OakResponse, OakRequest } from "../deps.ts";
 
-import { bootstrapContent } from "./ssr.ts";
+import { renderContent } from "./ssr.ts";
 import { getRoutes, getAppTemplate } from "../dev/build.ts";
-import { LimetteElementRenderer } from "./rendering/limette-element-renderer.ts";
-import type { AppTemplateInterface } from "./ssr.ts";
 
 export type GetRouterOptions = {
   buildAssets?: boolean;
   devMode?: boolean;
   staticRoutes?: boolean;
   loadFs?: (path: string) => Promise<unknown>;
+};
+
+export type Handlers = {
+  GET?(ctx: LimetteContext): Response | Promise<Response>;
+  POST?(ctx: LimetteContext): Response | Promise<Response>;
+  PUT?(ctx: LimetteContext): Response | Promise<Response>;
+  DELETE?(ctx: LimetteContext): Response | Promise<Response>;
+  PATCH?(ctx: LimetteContext): Response | Promise<Response>;
+  OPTIONS?(ctx: LimetteContext): Response | Promise<Response>;
+  HEAD?(ctx: LimetteContext): Response | Promise<Response>;
+};
+export type LimetteContext = {
+  readonly req: Request | OakRequest;
+  render(data?: unknown): Promise<Response> | Promise<OakResponse>;
+};
+
+export type ComponentContext = {
+  params: RouterContext<string>["params"];
+  data: unknown;
 };
 
 export async function getRouter(options: GetRouterOptions) {
@@ -19,6 +37,12 @@ export async function getRouter(options: GetRouterOptions) {
     getRoutes(options),
     getAppTemplate(options),
   ]);
+
+  if (!AppTemplate) {
+    throw new Error(
+      "You need to create an AppTemplate (_app.ts/js) to render a page."
+    );
+  }
 
   // Serve static files from memory on dev mode
   if (options?.devMode) {
@@ -38,24 +62,58 @@ export async function getRouter(options: GetRouterOptions) {
   }
 
   routes.map((route) => {
-    router.get(route.path, async (ctx) => {
-      const componentContext = { params: ctx.params };
+    // Register custom handlers
+    if (route.routeModule?.handler) {
+      for (const [handlerName, handlerFn] of Object.entries(
+        route.routeModule.handler
+      )) {
+        // Register route
+        router[handlerName.toLocaleLowerCase() as Lowercase<keyof Handlers>](
+          route.path,
+          async (routerContext: RouterContext<typeof route.path>) => {
+            const ctx: LimetteContext = {
+              req: routerContext.request,
+              render: async (data: ComponentContext["data"]) => {
+                if (!route.routeModule?.default) {
+                  throw new Error(
+                    "No component was provided. Make sure you export a component as default to be redered."
+                  );
+                }
 
-      const result = render(
-        await bootstrapContent(
-          AppTemplate as AppTemplateInterface,
-          route,
-          componentContext
-        ),
-        {
-          elementRenderers: [LimetteElementRenderer(route)],
-        }
-      );
-      const contents = await collectResult(result);
+                const content = await renderContent(
+                  AppTemplate,
+                  route,
+                  routerContext,
+                  data
+                );
 
-      ctx.response.type = "text/html";
-      ctx.response.body = contents;
-    });
+                return new Response(content, {
+                  status: 200,
+                  statusText: "OK",
+                  headers: new Headers({ "Content-Type": "text/html" }),
+                });
+              },
+            };
+            const response = await handlerFn(ctx);
+
+            routerContext.response.type = response.headers.get(
+              "Content-Type"
+            ) as string;
+            routerContext.response.headers = response.headers;
+            routerContext.response.body = response.body;
+          }
+        );
+      }
+    }
+
+    // Default behaviour if no GET handler is provided
+    if (route.routeModule?.default && !route.routeModule?.handler?.GET)
+      router.get(route.path, async (routerContext) => {
+        const content = await renderContent(AppTemplate, route, routerContext);
+
+        routerContext.response.type = "text/html";
+        routerContext.response.body = content;
+      });
   });
 
   return router;

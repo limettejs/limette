@@ -14,7 +14,7 @@ import {
   join,
 } from "../deps.ts";
 import { fileExists } from "../server/utils.ts";
-import type { GetRouterOptions } from "../server/router.ts";
+import type { GetRouterOptions, Handlers } from "../server/router.ts";
 import type { AppTemplateInterface } from "../server/ssr.ts";
 
 const TEST_FILE_PATTERN = /[._]test\.(?:[tj]sx?|[mc][tj]s)$/;
@@ -24,7 +24,7 @@ export type BuildRoute = {
   path: string;
   relativeFilePath: string;
   absoluteFilePath: string;
-  routeModule?: { default: unknown };
+  routeModule?: { default: unknown; handler?: Handlers };
   tagName: string;
   jsAssetContent: esbuild.OutputFile | undefined;
   jsAssetPath: string | undefined;
@@ -263,8 +263,8 @@ export async function getAppTemplate({ loadFs }: GetRouterOptions) {
     fileExists("./routes/_app.js"),
   ]);
 
-  const hasAppTs = checkTs.status === "fulfilled";
-  const hasAppJs = checkJs.status === "fulfilled";
+  const hasAppTs = checkTs.status === "fulfilled" && checkTs.value === true;
+  const hasAppJs = checkJs.status === "fulfilled" && checkJs.value === true;
 
   if (hasAppTs && hasAppJs) {
     throw new Error(
