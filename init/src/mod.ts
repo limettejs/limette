@@ -131,7 +131,7 @@ export default class App extends LitElement {
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Limette</title>
-        \${app.css}"
+        \${app.css}
       </head>
       <body>
         \${app.component}
