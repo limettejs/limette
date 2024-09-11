@@ -142,6 +142,7 @@ async function buildCSS(
   jsAssetContent: esbuild.OutputFile | undefined,
   { devMode }: { devMode?: boolean }
 ) {
+  const appTemplatePath = await getAppTemplatePath();
   let tempDirPath = "";
   let contentFlag = absoluteFilePath;
 
@@ -150,7 +151,7 @@ async function buildCSS(
     const bundlePathTemp = `${tempDirPath}/bundle.js`;
     await Deno.writeTextFile(bundlePathTemp, jsAssetContent.text, {});
 
-    contentFlag = `${contentFlag},${bundlePathTemp}`;
+    contentFlag = `${appTemplatePath},${contentFlag},${bundlePathTemp}`;
   }
 
   const command = new Deno.Command(`${Deno.execPath()}`, {
@@ -158,7 +159,7 @@ async function buildCSS(
       `run`,
       `--allow-all`,
       `npm:tailwindcss@^3.4.7`,
-      `--input=${Deno.cwd()}/static/tailwind.css`,
+      `--input=${join(Deno.cwd(), "/static/tailwind.css")}`,
       `--content=${contentFlag}`,
       !devMode ? `--minify` : ``,
     ],
@@ -284,6 +285,34 @@ export async function getAppTemplate({ loadFs }: GetRouterOptions) {
   if (hasAppJs) {
     return ((await loadFs?.("./routes/_app.js")) as { default: unknown })
       .default as AppTemplateInterface;
+  }
+}
+
+async function getAppTemplatePath() {
+  const [checkTs, checkJs] = await Promise.allSettled([
+    fileExists("./routes/_app.ts"),
+    fileExists("./routes/_app.js"),
+  ]);
+
+  const hasAppTs = checkTs.status === "fulfilled" && checkTs.value === true;
+  const hasAppJs = checkJs.status === "fulfilled" && checkJs.value === true;
+
+  if (hasAppTs && hasAppJs) {
+    throw new Error(
+      "You have two app templates defined: _app.ts and _app.js. Use only one."
+    );
+  }
+
+  if (!hasAppTs && !hasAppJs) {
+    throw new Error("You don't an app template defined: _app.ts or _app.js.");
+  }
+
+  if (hasAppTs) {
+    return "./routes/_app.ts";
+  }
+
+  if (hasAppJs) {
+    return "./routes/_app.js";
   }
 }
 
