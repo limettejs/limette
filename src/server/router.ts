@@ -1,5 +1,5 @@
 import { Router } from "../deps.ts";
-import type { RouterContext, OakResponse, OakRequest } from "../deps.ts";
+import { RouterContext, OakResponse, OakRequest } from "../deps.ts";
 
 import { renderContent } from "./ssr.ts";
 import { getRoutes, getAppTemplate } from "../dev/build.ts";
@@ -12,13 +12,27 @@ export type GetRouterOptions = {
 };
 
 export type Handlers = {
-  GET?(ctx: LimetteContext): Response | Promise<Response>;
-  POST?(ctx: LimetteContext): Response | Promise<Response>;
-  PUT?(ctx: LimetteContext): Response | Promise<Response>;
-  DELETE?(ctx: LimetteContext): Response | Promise<Response>;
-  PATCH?(ctx: LimetteContext): Response | Promise<Response>;
-  OPTIONS?(ctx: LimetteContext): Response | Promise<Response>;
-  HEAD?(ctx: LimetteContext): Response | Promise<Response>;
+  GET?(
+    ctx: LimetteContext
+  ): Response | OakResponse | Promise<Response | OakResponse>;
+  POST?(
+    ctx: LimetteContext
+  ): Response | OakResponse | Promise<Response | OakResponse>;
+  PUT?(
+    ctx: LimetteContext
+  ): Response | OakResponse | Promise<Response | OakResponse>;
+  DELETE?(
+    ctx: LimetteContext
+  ): Response | OakResponse | Promise<Response | OakResponse>;
+  PATCH?(
+    ctx: LimetteContext
+  ): Response | OakResponse | Promise<Response | OakResponse>;
+  OPTIONS?(
+    ctx: LimetteContext
+  ): Response | OakResponse | Promise<Response | OakResponse>;
+  HEAD?(
+    ctx: LimetteContext
+  ): Response | OakResponse | Promise<Response | OakResponse>;
 };
 export type LimetteContext = {
   readonly req: Request | OakRequest;

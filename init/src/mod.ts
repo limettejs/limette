@@ -1,7 +1,7 @@
 import { ensureDir } from "@std/fs/ensure-dir";
 
 // This value is changed in the release pipeline
-const LIMETTE_VERSION = "0.0.11";
+const LIMETTE_VERSION = "0.0.12";
 
 const projectName = prompt("Your project name?");
 
@@ -168,6 +168,13 @@ export default class Home extends LitElement {
 
 const fooRouteTs = `
 import { LitElement, html } from "lit";
+import type { Handlers } from "@limette/core";
+
+export const handler: Handlers = {
+  POST(_ctx) {
+    return new Response(\`Response for POST request!\`);
+  },
+};
 
 export default class Foo extends LitElement {
   render() {
