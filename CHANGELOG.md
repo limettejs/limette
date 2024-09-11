@@ -13,6 +13,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+## [0.0.12] - 2024-09-11
+
+### Added
+
+- Added support for custom handlers
+
+### Changed
+
+- BREAKING: Change style placeholder for `routes/\_app.ts`
+
 ## [0.0.11] - 2024-09-01
 
 ### Added

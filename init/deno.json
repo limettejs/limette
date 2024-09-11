@@ -1,6 +1,6 @@
 {
   "name": "@limette/init",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "exports": {
     ".": "./src/mod.ts"
   },

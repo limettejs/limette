@@ -2,7 +2,11 @@ export { Application } from "jsr:@oak/oak@16.1.0/application";
 export { Router } from "jsr:@oak/oak@16.1.0/router";
 export { send } from "jsr:@oak/oak@16.1.0";
 export type { RouterContext } from "jsr:@oak/oak@16.1.0/router";
-export type { Context } from "jsr:@oak/oak@16.1.0";
+export type {
+  Context,
+  Response as OakResponse,
+  Request as OakRequest,
+} from "jsr:@oak/oak@16.1.0";
 
 export { default as esbuild } from "npm:esbuild@0.23.1";
 export { denoPlugins } from "jsr:@luca/esbuild-deno-loader@0.10.3";
