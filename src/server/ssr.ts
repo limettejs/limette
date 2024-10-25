@@ -43,6 +43,25 @@ function registerComponent(module: CustomElementConstructor, tagName: string) {
   return `<lmt-route-${tagName}></lmt-route-${tagName}>`;
 }
 
+function moveHeadContent(htmlString: string) {
+  // Regex to capture the content inside <lmt-head> tags, allowing for attributes
+  const headContentRegex = /<lmt-head[^>]*>([\s\S]*?)<\/lmt-head>/;
+  const headContentMatch = htmlString.match(headContentRegex);
+
+  if (headContentMatch) {
+    // Extract the content inside <lmt-head>
+    const headContent = headContentMatch[1];
+
+    // Remove <lmt-head> and its content from the body
+    htmlString = htmlString.replace(headContentRegex, "");
+
+    // Insert the content of <lmt-head> just before </head>
+    htmlString = htmlString.replace("</head>", `${headContent}</head>`);
+  }
+
+  return htmlString;
+}
+
 const ComponentCtxMixin = (
   base: typeof LitElement,
   ctxArg: {
@@ -134,5 +153,5 @@ export async function renderContent(
     }
   );
   const content = await collectResult(result);
-  return content;
+  return moveHeadContent(content);
 }
