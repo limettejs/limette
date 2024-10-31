@@ -218,7 +218,7 @@ export async function getRoutes({
 
     // Generate tag name
     const id = encodeHex(
-      await window.crypto.subtle.digest("SHA-1", encoder.encode(path))
+      await globalThis.crypto.subtle.digest("SHA-1", encoder.encode(path))
     ).substring(0, 6);
     const tagName = convertToWebComponentTagName(path);
 
