@@ -136,7 +136,6 @@ function moveLmtHeadElementsFirstLevel(htmlString: string) {
   let lastTitleElement = null; // Track the last <title> element found
 
   function processLmtHeadElements(root: Document | DocumentFragment) {
-    console.log(root);
     // Find all <lmt-head> elements within the given root
     const lmtHeadElements = Array.from(root.querySelectorAll("lmt-head"));
 
@@ -199,39 +198,12 @@ function moveLmtHeadElementsFirstLevel(htmlString: string) {
   return doc.documentElement.outerHTML;
 }
 
-const ComponentCtxMixin = (
-  base: typeof LitElement,
-  ctxArg: {
-    params: Params;
-  }
-) => {
-  console.log("ctxArg", ctxArg);
+const ComponentCtxMixin = (base: typeof LitElement) => {
   class ComponentCtxClass extends base {
-    _ctx: string = "";
-
-    constructor() {
-      super();
-      let ctxSerialized;
-      try {
-        ctxSerialized = JSON.stringify(ctxArg);
-      } catch {
-        // do nothing
-      }
-      this._ctx = ctxSerialized ?? "";
-      console.log("ComponentCtxClass ctor", ctxArg);
-    }
+    __ctx: ComponentContext = { params: {}, data: undefined };
 
     get ctx() {
-      let ctxDeserialized;
-      try {
-        ctxDeserialized = this.ctxArg;
-      } catch {
-        // do nothing
-      }
-
-      console.log("get ctx", this.ctxArg);
-      // return JSON.parse(this._ctx);
-      return ctxDeserialized;
+      return this.__ctx;
     }
   }
   // return ComponentCtxClass as Constructor<ComponentCtxMixinInterface> & T;
@@ -244,15 +216,13 @@ export function bootstrapContent(
   componentContext: ComponentContext
 ) {
   const componentModule = route.routeModule;
-  console.log("bootstrapContent");
+
   const ComponentClass = ComponentCtxMixin(
-    componentModule?.default as typeof LitElement,
-    componentContext
+    componentModule?.default as typeof LitElement
   );
   const component = registerComponent(
     ComponentClass as unknown as CustomElementConstructor,
-    route.tagName,
-    componentContext
+    route.tagName
   );
 
   const ctxStr = `<script type="text/json" id="_lmt_ctx">${JSON.stringify(
@@ -281,7 +251,6 @@ export async function renderContent(
   routerContext: RouterContext<typeof route.path>,
   data?: ComponentContext["data"]
 ) {
-  console.log("params", routerContext.params);
   const componentContext = { params: routerContext.params, data };
 
   const result = render(
@@ -291,7 +260,7 @@ export async function renderContent(
       componentContext
     ),
     {
-      elementRenderers: [LimetteElementRenderer(route)],
+      elementRenderers: [LimetteElementRenderer(route, componentContext)],
     }
   );
   const rawContent = await collectResult(result);
