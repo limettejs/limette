@@ -1,7 +1,7 @@
 import { ensureDir } from "@std/fs/ensure-dir";
 
 // This value is changed in the release pipeline
-const LIMETTE_VERSION = "0.0.12";
+const LIMETTE_VERSION = "0.0.13";
 
 const projectName = prompt("Your project name?");
 
@@ -179,6 +179,9 @@ export const handler: Handlers = {
 export default class Foo extends LitElement {
   render() {
     return html\`
+      <lmt-head>
+        <title>Foo</title>
+      </lmt-head>
       <section class="flex items-center flex-col text-center pt-8">
         <h1 class="text-3xl font-bold text-lime-600 pb-4">Limette</h1>
         <div class="max-w-screen-sm">

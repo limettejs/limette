@@ -12,25 +12,24 @@ function hasCtx(el: Element): el is Element & { ctx: unknown } {
 }
 
 export class Island extends LitElement {
-  static styles: CSSResultOrNative = css`
+  static override styles: CSSResultOrNative = css`
     :host {
       display: contents;
     }
   `;
 
-  connectedCallback() {
+  override connectedCallback() {
     // make sure this element is never affected by defer-hydration
     (this as unknown as HTMLElement).removeAttribute("defer-hydration");
     super.connectedCallback();
   }
 
-  async update(changed: Map<string, unknown>) {
-    // await this.#setContext();
+  override update(changed: Map<string, unknown>) {
     this.#removeDefer();
     super.update(changed);
   }
 
-  async #setContext() {
+  #setContext() {
     const ctx = JSON.parse(
       document.querySelector("#_lmt_ctx")?.textContent ?? "{}"
     );
@@ -87,7 +86,7 @@ export class Island extends LitElement {
     }
   }
 
-  render(): TemplateResult {
+  override render(): TemplateResult {
     return html`<slot></slot>`;
   }
 }
