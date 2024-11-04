@@ -1,6 +1,6 @@
 {
   "name": "@limette/core",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "exports": {
     ".": "./src/mod.ts",
     "./runtime/is-land.ts": "./src/runtime/is-land.ts",
@@ -13,6 +13,7 @@
     "include": ["src/**", "deno.json", "README.md", "LICENSE"]
   },
   "imports": {
+    "@b-fuze/deno-dom": "jsr:@b-fuze/deno-dom@^0.1.48",
     "@limette/core": "./src/mod.ts",
     "@std/path": "jsr:@std/path@^1.0.2",
     "@std/semver": "jsr:@std/semver@^1.0.1",

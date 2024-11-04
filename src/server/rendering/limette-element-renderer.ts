@@ -5,8 +5,16 @@ import type { LitElement } from "lit";
 import { LitElementRenderer } from "../../deps.ts";
 import type { RenderInfo, RenderResult } from "../../deps.ts";
 import type { BuildRoute } from "../../dev/build.ts";
+import type { ComponentContext } from "../router.ts";
 
-export const LimetteElementRenderer = (route: BuildRoute) =>
+interface LimetteElement extends LitElement {
+  __ctx?: any; // Define the custom property here }
+}
+
+export const LimetteElementRenderer = (
+  route: BuildRoute,
+  componentContext: ComponentContext
+) =>
   class LimetteElementRenderer extends LitElementRenderer {
     /**
      * Render the element's shadow root children.
@@ -14,7 +22,7 @@ export const LimetteElementRenderer = (route: BuildRoute) =>
      * If `renderShadow()` returns undefined, no declarative shadow root is
      * emitted.
      */
-    renderShadow(_renderInfo: RenderInfo): RenderResult {
+    override renderShadow(_renderInfo: RenderInfo): RenderResult {
       if (this.element.hasAttribute("no-ssr")) {
         return "";
       }
@@ -22,6 +30,11 @@ export const LimetteElementRenderer = (route: BuildRoute) =>
       const ctor = this.element.constructor as typeof LitElement & {
         __tailwind: boolean;
       };
+
+      // Inject component context
+      if (this.tagName.startsWith("lmt-route-")) {
+        (this.element as LimetteElement).__ctx = componentContext;
+      }
 
       // Don't inject Tailwind CSS for <is-land>, no-tailwind attribute or if there is no CSS
       if (
