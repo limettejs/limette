@@ -9,8 +9,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Add support for <lmt-head> to control <head> section
-
 ### Changed
 
 ### Fixed
