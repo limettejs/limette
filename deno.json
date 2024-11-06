@@ -4,6 +4,7 @@
   "exports": {
     ".": "./src/mod.ts",
     "./runtime/is-land.ts": "./src/runtime/is-land.ts",
+    "./runtime/ssr-client/lit-element-hydrate-support": "./src/runtime/ssr-client/lit-element-hydrate-support.ts",
     "./runtime/refresh.ts": "./src/runtime/refresh.ts"
   },
   "tasks": {

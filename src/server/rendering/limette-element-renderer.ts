@@ -8,7 +8,7 @@ import type { BuildRoute } from "../../dev/build.ts";
 import type { ComponentContext } from "../router.ts";
 
 interface LimetteElement extends LitElement {
-  __ctx?: any; // Define the custom property here }
+  __ctx?: ComponentContext; // Define the custom property here }
 }
 
 export const LimetteElementRenderer = (
@@ -16,15 +16,60 @@ export const LimetteElementRenderer = (
   componentContext: ComponentContext
 ) =>
   class LimetteElementRenderer extends LitElementRenderer {
+    override connectedCallback(): void {
+      if (
+        this.element.hasAttribute("island") &&
+        !this.element.hasAttribute("ssr")
+      ) {
+        this.element.setAttribute("skip-hydration", "");
+      }
+
+      super.connectedCallback();
+    }
     /**
      * Render the element's shadow root children.
      *
      * If `renderShadow()` returns undefined, no declarative shadow root is
      * emitted.
      */
-    override renderShadow(_renderInfo: RenderInfo): RenderResult {
-      if (this.element.hasAttribute("no-ssr")) {
-        return "";
+    override renderShadow(renderInfo: RenderInfo): RenderResult {
+      // console.log("RENDERSHADOW SSR", this);
+
+      // We check if the element is inside of is-land element
+      const isIslandChild = renderInfo.customElementInstanceStack
+        .slice(0, -1)
+        .some((el) => el?.tagName === "is-land");
+
+      if (
+        (isIslandChild || this.element.hasAttribute("island")) &&
+        !this.element.hasAttribute("ssr")
+      ) {
+        if (this.element.hasAttribute("no-tailwind")) return;
+        // console.log(
+        //   this.tagName,
+        //   "no-ssr",
+        //   this.element.constructor.elementStyles
+        // );
+        // console.log("aaa", renderInfo.customElementHostStack);
+        // console.log("bbb", this.element.constructor.shadowRootOptions);
+        // return `<template shadowroot="open" shadowrootmode="open"
+        //   ><style>
+        //     @import url("/_limette/css/tailwind-6dbd54.css");
+        //   </style></template
+        // >`;
+        // console.log("hhhhh", renderInfo.customElementInstanceStack);
+        // return `<style>
+        //     @import url("/_limette/css/tailwind-6dbd54.css");
+        //   </style>
+        //   <!--lit-part 73bOaQSTJ+0=--><div></div><!--/lit-part-->`;
+        this.setAttribute("skip-hydrationvv", "ggg");
+        this.element.setAttribute("skip-hydrationvv", "sss");
+        return `<style>@import url("${route.cssAssetPath}");</style>`;
+        // return `<style>@import url("${route.cssAssetPath}");</style><!--lit-part-->ss<!--/lit-part-->`;
+        // return `<style>@import url("${route.cssAssetPath}");</style><!--lit-part 73bOaQSTJ+0=--><!--/lit-part-->`;
+        // this.element.render = () => html`${myDirective("loading")}`;
+        // ("lit-part 73bOaQSTJ+0=");
+        // // return;
       }
 
       const ctor = this.element.constructor as typeof LitElement & {
@@ -52,6 +97,6 @@ export const LimetteElementRenderer = (
         ctor.__tailwind = true;
       }
 
-      return super.renderShadow(_renderInfo);
+      return super.renderShadow(renderInfo);
     }
   };
