@@ -55,7 +55,8 @@ async function buildJS(path: string, { devMode }: { devMode?: boolean }) {
   if (!imports.length) return;
 
   const entryPoint = [
-    `import "https://esm.sh/@lit-labs/ssr-client@1.1.7/lit-element-hydrate-support.js";`,
+    // `import "https://esm.sh/@lit-labs/ssr-client@1.1.7/lit-element-hydrate-support.js";`,
+    `import "@limette/core/runtime/ssr-client/lit-element-hydrate-support.ts";`,
     `import "@limette/core/runtime/is-land.ts";`,
     devMode ? `import "@limette/core/runtime/refresh.ts";` : ``,
     ...imports,

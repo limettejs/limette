@@ -8,7 +8,7 @@ import type { BuildRoute } from "../../dev/build.ts";
 import type { ComponentContext } from "../router.ts";
 
 interface LimetteElement extends LitElement {
-  __ctx?: any; // Define the custom property here }
+  __ctx?: ComponentContext; // Define the custom property here }
 }
 
 export const LimetteElementRenderer = (
@@ -16,15 +16,30 @@ export const LimetteElementRenderer = (
   componentContext: ComponentContext
 ) =>
   class LimetteElementRenderer extends LitElementRenderer {
+    override connectedCallback(): void {
+      if (!this.element.hasAttribute("ssr")) {
+        this.element.setAttribute("skip-hydration", "");
+      }
+
+      super.connectedCallback();
+    }
     /**
      * Render the element's shadow root children.
      *
      * If `renderShadow()` returns undefined, no declarative shadow root is
      * emitted.
      */
-    override renderShadow(_renderInfo: RenderInfo): RenderResult {
-      if (this.element.hasAttribute("no-ssr")) {
-        return "";
+    override renderShadow(renderInfo: RenderInfo): RenderResult {
+      // We check if the element is inside of an is-land element
+      const isIsland = renderInfo.customElementInstanceStack
+        .slice(0, -1)
+        .some((el) => el?.tagName === "is-land");
+
+      if (isIsland && !this.element.hasAttribute("ssr")) {
+        // @ts-expect-error: LitElementRenderer actually accepts undefined as a returned value
+        if (this.element.hasAttribute("no-tailwind")) return;
+
+        return `<style>@import url("${route.cssAssetPath}");</style>`;
       }
 
       const ctor = this.element.constructor as typeof LitElement & {
@@ -52,6 +67,6 @@ export const LimetteElementRenderer = (
         ctor.__tailwind = true;
       }
 
-      return super.renderShadow(_renderInfo);
+      return super.renderShadow(renderInfo);
     }
   };

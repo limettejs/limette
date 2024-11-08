@@ -9,9 +9,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Add support for <lmt-head> to control <head> section
+### Changed
+
+### Fixed
+
+## [0.0.14] - 2024-11-04
+
+### Added
 
 ### Changed
+
+- BREAKING: Don't SSR islands by default, but use the `ssr` attribute to opt-in
 
 ### Fixed
 
@@ -19,12 +27,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Add support for <lmt-head> to control the <head> section
+- Add support for `<lmt-head>` to control the `<head>` section
 
 ### Fixed
 
 - Context is not updated between navigations
-- Extract Tailwind CSS from \_app.ts
+- Extract Tailwind CSS from `_app.ts`
 
 ## [0.0.12] - 2024-09-11
 
