@@ -36,6 +36,7 @@ export const LimetteElementRenderer = (
         .some((el) => el?.tagName === "is-land");
 
       if (isIsland && !this.element.hasAttribute("ssr")) {
+        // @ts-expect-error: LitElementRenderer actually accepts undefined as a returned value
         if (this.element.hasAttribute("no-tailwind")) return;
 
         return `<style>@import url("${route.cssAssetPath}");</style>`;

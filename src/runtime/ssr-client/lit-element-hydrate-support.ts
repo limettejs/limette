@@ -10,9 +10,8 @@
  * @packageDocumentation
  */
 
-import type { PropertyValues } from "npm:@lit/reactive-element";
-import { render, RenderOptions } from "npm:lit-html";
-// import { hydrate } from "./lib/hydrate-lit-html.js";
+import type { PropertyValues, RenderOptions } from "lit";
+import { render } from "lit/html.js";
 import { hydrate } from "npm:@lit-labs/ssr-client@1.1.7";
 // Keep consistent with `@lit-labs/ssr-dom-shim`
 const HYDRATE_INTERNALS_ATTR_PREFIX = "hydrate-internals-";
@@ -28,6 +27,7 @@ interface PatchableLitElement extends HTMLElement {
   _$needsHydration: boolean;
 }
 
+// @ts-expect-error: This is a builtin property from Lit
 globalThis.litElementHydrateSupport = ({
   LitElement,
 }: {
