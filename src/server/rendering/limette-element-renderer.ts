@@ -2,7 +2,7 @@
 import { unsafeCSS } from "lit";
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { LitElement } from "lit";
-import { LitElementRenderer } from "../../deps.ts";
+import { LitElementRenderer, render } from "../../deps.ts";
 import type { RenderInfo, RenderResult } from "../../deps.ts";
 import type { BuildRoute } from "../../dev/build.ts";
 import type { ComponentContext } from "../router.ts";
@@ -31,9 +31,10 @@ export const LimetteElementRenderer = (
      */
     override renderShadow(renderInfo: RenderInfo): RenderResult {
       // We check if the element is inside of an is-land element
-      const isIsland = renderInfo.customElementInstanceStack
-        .slice(0, -1)
-        .some((el) => el?.tagName === "is-land");
+      const isIsland =
+        route.islands?.includes(this.tagName) ||
+        renderInfo.customElementInstanceStack.at(-2)?.tagName === "is-land" ||
+        this.element.hasAttribute("island");
 
       if (isIsland && !this.element.hasAttribute("ssr")) {
         // @ts-expect-error: LitElementRenderer actually accepts undefined as a returned value

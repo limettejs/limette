@@ -13,15 +13,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-## [0.0.14] - 2024-11-04
+## [0.0.15] - 2024-11-11
 
 ### Added
+
+- Islands are automatically identified and there is no need to decorate them with the `island` attribute or the `<is-land>` wrappper
+
+### Fixed
+
+- Wrong export for `lit-element-hydrate-support.ts`
+
+## [0.0.14] - 2024-11-04
 
 ### Changed
 
 - BREAKING: Don't SSR islands by default, but use the `ssr` attribute to opt-in
-
-### Fixed
 
 ## [0.0.13] - 2024-11-04
 

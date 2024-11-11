@@ -1,5 +1,5 @@
 import { Router } from "../deps.ts";
-import { RouterContext, OakResponse, OakRequest } from "../deps.ts";
+import type { RouterContext, OakResponse, OakRequest } from "../deps.ts";
 
 import { renderContent } from "./ssr.ts";
 import { getRoutes, getAppTemplate } from "../dev/build.ts";

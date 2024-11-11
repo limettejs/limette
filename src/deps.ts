@@ -12,6 +12,9 @@ export { default as esbuild } from "npm:esbuild@0.23.1";
 export { denoPlugins } from "jsr:@luca/esbuild-deno-loader@0.10.3";
 export { parseImports } from "npm:parse-imports@2.1.1";
 
+export * as acorn from "npm:acorn@^8.14.0";
+export * as acornWalk from "npm:acorn-walk@8.3.4";
+
 export { DOMParser, Element } from "jsr:@b-fuze/deno-dom@0.1.48";
 
 export { walk } from "jsr:@std/fs@1.0.2/walk";
