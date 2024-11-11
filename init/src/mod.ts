@@ -1,7 +1,7 @@
 import { ensureDir } from "@std/fs/ensure-dir";
 
 // This value is changed in the release pipeline
-const LIMETTE_VERSION = "0.0.15";
+const LIMETTE_VERSION = "0.0.16";
 
 const projectName = prompt("Your project name?");
 
@@ -38,7 +38,7 @@ const denoJson = `
     "@limette/core": "jsr:@limette/core@${LIMETTE_VERSION}",
     "/lit": "npm:/lit@^3.2.0/",
     "lit": "npm:lit@^3.2.0",
-    "tailwindcss": "npm:tailwindcss@^3.4.7"
+    "tailwindcss": "npm:tailwindcss@^3.4.14"
   },
   "fmt": {
     "singleQuote": true
