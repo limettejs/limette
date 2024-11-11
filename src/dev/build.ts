@@ -16,6 +16,7 @@ import {
 import { fileExists } from "../server/utils.ts";
 import type { GetRouterOptions, Handlers } from "../server/router.ts";
 import type { AppTemplateInterface } from "../server/ssr.ts";
+import { getIslandsRegistered } from "./extract-islands-plugin.ts";
 
 const TEST_FILE_PATTERN = /[._]test\.(?:[tj]sx?|[mc][tj]s)$/;
 
@@ -30,11 +31,12 @@ export type BuildRoute = {
   jsAssetPath: string | undefined;
   cssAssetContent: string | undefined;
   cssAssetPath: string | undefined;
+  islands: string[] | undefined;
 };
 
 const encoder = new TextEncoder();
 
-async function getImports(file: string) {
+async function getIslandsImports(file: string) {
   const imports = [];
 
   const code = await Deno.readTextFile(file);
@@ -49,14 +51,19 @@ async function getImports(file: string) {
 }
 
 async function buildJS(path: string, { devMode }: { devMode?: boolean }) {
-  const imports = await getImports(path);
+  const imports = await getIslandsImports(path);
+  let result: { jsAssetContent?: esbuild.OutputFile; islands?: string[] } = {
+    jsAssetContent: undefined,
+    islands: undefined,
+  };
 
   // Without islands imported, we don't create any bundle for this route
-  if (!imports.length) return;
+  if (!imports.length) return result;
 
   const entryPoint = [
     // `import "https://esm.sh/@lit-labs/ssr-client@1.1.7/lit-element-hydrate-support.js";`,
     `import "@limette/core/runtime/ssr-client/lit-element-hydrate-support.ts";`,
+    `import "@limette/core/runtime/ssr-client/lit-element-hydrate-support-patch.ts";`,
     `import "@limette/core/runtime/is-land.ts";`,
     devMode ? `import "@limette/core/runtime/refresh.ts";` : ``,
     ...imports,
@@ -66,7 +73,7 @@ async function buildJS(path: string, { devMode }: { devMode?: boolean }) {
   const entrypointPath = `${tempDirPath}/entrypoint.js`;
   await Deno.writeTextFile(entrypointPath, entryPoint, {});
 
-  const result = await esbuild.build({
+  const esbuildResult = await esbuild.build({
     plugins: [
       ...denoPlugins({
         loader: "native",
@@ -83,9 +90,21 @@ async function buildJS(path: string, { devMode }: { devMode?: boolean }) {
 
   esbuild.stop();
 
-  await Deno.remove(tempDirPath, { recursive: true });
+  const jsAssetContent = esbuildResult.outputFiles?.[0];
 
-  return result.outputFiles?.[0];
+  try {
+    const islands = await getIslandsRegistered(
+      jsAssetContent.text,
+      entrypointPath
+    );
+    result = { jsAssetContent, islands };
+  } catch {
+    console.error("ERROR: There was an error while processing the islands.");
+  } finally {
+    await Deno.remove(tempDirPath, { recursive: true });
+  }
+
+  return result;
 }
 
 function convertFilenameToPattern(filename: string) {
@@ -224,9 +243,9 @@ export async function getRoutes({
     const tagName = convertToWebComponentTagName(path);
 
     // Generate JS assets
-    const jsAssetContent = buildAssets
+    const { jsAssetContent, islands } = buildAssets
       ? await buildJS(absoluteFilePath, { devMode })
-      : undefined;
+      : {};
     const jsAssetPath =
       jsAssetContent || buildAssets === false
         ? `/_limette/js/chunk-${id}.js`
@@ -252,6 +271,7 @@ export async function getRoutes({
       jsAssetPath,
       cssAssetContent,
       cssAssetPath,
+      islands,
     };
     routes.push(route);
   }
@@ -355,7 +375,8 @@ export async function build() {
     jsAssetPath: ${route.jsAssetPath ? `"${route.jsAssetPath}"` : `undefined`},
     cssAssetPath: ${
       route.cssAssetPath ? `"${route.cssAssetPath}"` : `undefined`
-    }
+    },
+    islands: ${JSON.stringify(route.islands)}
   },
 `;
     routeIndex++;

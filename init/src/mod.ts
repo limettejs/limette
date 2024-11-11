@@ -1,7 +1,7 @@
 import { ensureDir } from "@std/fs/ensure-dir";
 
 // This value is changed in the release pipeline
-const LIMETTE_VERSION = "0.0.14";
+const LIMETTE_VERSION = "0.0.15";
 
 const projectName = prompt("Your project name?");
 
@@ -154,7 +154,7 @@ export default class Home extends LitElement {
         <h1 class="text-3xl font-bold text-lime-600 pb-4">Limette</h1>
         <div class="max-w-screen-sm">
           <p class="pb-6">This is SSR content.</p>
-          <is-land><island-counter name="Iris"></island-counter></is-land>
+          <island-counter name="Iris"></island-counter>
 
           <section class="pt-5">
             <a href="/foo" class="text-indigo-600 underline">To foo</a>

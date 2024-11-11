@@ -1,10 +1,12 @@
 (() => {
+  if (typeof Deno !== "undefined" && !!Deno) return;
+
   let socket: WebSocket;
   let reconnectionTimerId: number;
 
   // Construct the WebSocket url from the current
   // page origin.
-  const requestUrl = `${window.location.origin.replace(
+  const requestUrl = `${globalThis.location.origin.replace(
     "http",
     "ws"
   )}/ws-refresh`;
@@ -23,7 +25,7 @@
    * Refresh the browser.
    */
   function refresh() {
-    window.location.reload();
+    globalThis.location.reload();
   }
 
   /**

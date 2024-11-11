@@ -1,10 +1,11 @@
 {
   "name": "@limette/core",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "exports": {
     ".": "./src/mod.ts",
     "./runtime/is-land.ts": "./src/runtime/is-land.ts",
-    "./runtime/ssr-client/lit-element-hydrate-support": "./src/runtime/ssr-client/lit-element-hydrate-support.ts",
+    "./runtime/ssr-client/lit-element-hydrate-support.ts": "./src/runtime/ssr-client/lit-element-hydrate-support.ts",
+    "./runtime/ssr-client/lit-element-hydrate-support-patch.ts": "./src/runtime/ssr-client/lit-element-hydrate-support-patch.ts",
     "./runtime/refresh.ts": "./src/runtime/refresh.ts"
   },
   "tasks": {
