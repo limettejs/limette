@@ -16,7 +16,8 @@ import {
 import { fileExists } from "../server/utils.ts";
 import type { GetRouterOptions, Handlers } from "../server/router.ts";
 import type { AppTemplateInterface } from "../server/ssr.ts";
-import { getIslandsRegistered } from "./extract-islands-plugin.ts";
+import { getIslandsRegistered } from "./extract-islands.ts";
+import { resolvePath, getTailwind } from "./path.ts";
 
 const TEST_FILE_PATTERN = /[._]test\.(?:[tj]sx?|[mc][tj]s)$/;
 
@@ -42,9 +43,16 @@ async function getIslandsImports(file: string) {
   const code = await Deno.readTextFile(file);
   // Lazily iterate over iterable of imports
   for (const $import of await parseImports(code, { resolveFrom: file })) {
-    const path = $import.moduleSpecifier.resolved;
+    const path = $import.moduleSpecifier.value;
+
+    if (!path) {
+      throw new Error(
+        `We can't process this import: ${$import.moduleSpecifier.code}`
+      );
+    }
+
     if (path?.includes?.("/islands/")) {
-      imports.push(`import "${path}";`);
+      imports.push(`import "${await resolvePath(path, file)}";`);
     }
   }
   return imports;
@@ -77,7 +85,7 @@ async function buildJS(path: string, { devMode }: { devMode?: boolean }) {
     plugins: [
       ...denoPlugins({
         loader: "native",
-        configPath: Deno.cwd() + "/deno.json",
+        configPath: join(Deno.cwd(), "deno.json"),
       }),
     ],
     entryPoints: [entrypointPath],
@@ -162,6 +170,10 @@ async function buildCSS(
   jsAssetContent: esbuild.OutputFile | undefined,
   { devMode }: { devMode?: boolean }
 ) {
+  const tailwindcss = await getTailwind();
+
+  if (!tailwindcss) throw new Error("Tailwind is missing from deno.json!");
+
   const appTemplatePath = await getAppTemplatePath();
   let tempDirPath = "";
   let contentFlag = absoluteFilePath;
@@ -178,7 +190,7 @@ async function buildCSS(
     args: [
       `run`,
       `--allow-all`,
-      `npm:tailwindcss@^3.4.7`,
+      tailwindcss,
       `--input=${join(Deno.cwd(), "/static/tailwind.css")}`,
       `--content=${contentFlag}`,
       !devMode ? `--minify` : ``,

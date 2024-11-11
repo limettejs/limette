@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+## [0.0.16] - 2024-11-12
+
+### Fixed
+
+- Islands imports now support `imports` config from deno.json
+- Tailwind's version is now read from deno.json
+
 ## [0.0.15] - 2024-11-11
 
 ### Added
