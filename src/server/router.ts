@@ -110,6 +110,7 @@ export async function getRouter(options: GetRouterOptions) {
             };
             const response = await handlerFn(ctx);
 
+            routerContext.response.status = response.status;
             routerContext.response.type = response.headers.get(
               "Content-Type"
             ) as string;
