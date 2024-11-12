@@ -12,7 +12,7 @@ export { default as esbuild } from "npm:esbuild@0.23.1";
 export { denoPlugins } from "jsr:@luca/esbuild-deno-loader@0.11.0";
 export { parseImports } from "npm:parse-imports@2.1.1";
 
-export { DOMParser, Element } from "jsr:@b-fuze/deno-dom@0.1.48";
+export { DOMParser } from "jsr:@b-fuze/deno-dom@0.1.48";
 
 export { walk } from "jsr:@std/fs@1.0.2/walk";
 export { parse, join, isAbsolute, dirname } from "jsr:@std/path@1.0.3";

@@ -1,11 +1,4 @@
-import {
-  html,
-  unsafeHTML,
-  render,
-  collectResult,
-  DOMParser,
-  Element,
-} from "../deps.ts";
+import { html, unsafeHTML, render, collectResult, DOMParser } from "../deps.ts";
 import type { RouterContext } from "../deps.ts";
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { LitElement, TemplateResult } from "lit";
@@ -40,7 +33,7 @@ export declare class AppTemplateInterface {
   };
 }
 
-function registerComponent(
+function registerRouteComponent(
   ComponentClass: CustomElementConstructor,
   tagName: string
 ) {
@@ -125,79 +118,6 @@ function moveLmtHeadElements(htmlString: string) {
   return doc.documentElement.outerHTML;
 }
 
-function moveLmtHeadElementsFirstLevel(htmlString: string) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(
-    htmlString,
-    "text/html"
-  ) as unknown as Document;
-
-  const uniqueElements = new Map(); // Track the last unique element by key
-  let lastTitleElement = null; // Track the last <title> element found
-
-  function processLmtHeadElements(root: Document | DocumentFragment) {
-    // Find all <lmt-head> elements within the given root
-    const lmtHeadElements = Array.from(root.querySelectorAll("lmt-head"));
-
-    lmtHeadElements.forEach((wrapper) => {
-      Array.from(wrapper.children).forEach((child) => {
-        if (child.tagName === "TITLE") {
-          // Keep only the last <title> element found
-          lastTitleElement = child;
-        } else {
-          const key = child.getAttribute("key");
-
-          if (key) {
-            // Only keep the latest element with each key
-            uniqueElements.set(key, child);
-          } else {
-            // Treat children without a key as unique
-            uniqueElements.set(Symbol(), child);
-          }
-        }
-      });
-
-      // Remove the <lmt-head> wrapper from the DOM
-      wrapper.remove();
-    });
-  }
-
-  // Process <lmt-head> elements in the main DOM
-  processLmtHeadElements(doc);
-
-  // Process <lmt-head> elements within each declarative shadow DOM template
-  const templates = doc.querySelectorAll(
-    "template[shadowroot]"
-  ) as unknown as HTMLTemplateElement[];
-  templates.forEach((template) => {
-    processLmtHeadElements(template.content); // Directly use template.content without re-parsing
-  });
-
-  // Remove redundant elements in <head> that match keys in uniqueElements
-  Array.from(doc.head.querySelectorAll("[key]")).forEach((headElement) => {
-    const key = headElement.getAttribute("key");
-    if (key && uniqueElements.has(key)) {
-      headElement.remove();
-    }
-  });
-
-  // Remove any existing <title> elements in <head> if we have a new one
-  if (lastTitleElement) {
-    Array.from(doc.head.querySelectorAll("title")).forEach((title) =>
-      title.remove()
-    );
-    // Append the last <title> element found to <head>
-    doc.head.appendChild(lastTitleElement);
-  }
-
-  // Append the deduplicated elements to <head>
-  uniqueElements.forEach((element) => {
-    doc.head.appendChild(element);
-  });
-
-  return doc.documentElement.outerHTML;
-}
-
 const ComponentCtxMixin = (base: typeof LitElement) => {
   class ComponentCtxClass extends base {
     __ctx: ComponentContext = { params: {}, data: undefined };
@@ -220,7 +140,7 @@ export function bootstrapContent(
   const ComponentClass = ComponentCtxMixin(
     componentModule?.default as typeof LitElement
   );
-  const component = registerComponent(
+  const component = registerRouteComponent(
     ComponentClass as unknown as CustomElementConstructor,
     route.tagName
   );
