@@ -1,24 +1,24 @@
-export { Application } from "jsr:@oak/oak@16.1.0/application";
-export { Router } from "jsr:@oak/oak@16.1.0/router";
-export { send } from "jsr:@oak/oak@16.1.0";
-export type { RouterContext } from "jsr:@oak/oak@16.1.0/router";
+export { Application } from "jsr:@oak/oak@17.1.3/application";
+export { Router } from "jsr:@oak/oak@17.1.3/router";
+export { send } from "jsr:@oak/oak@17.1.3";
+export type { RouterContext } from "jsr:@oak/oak@17.1.3/router";
 export type {
   Context,
   Response as OakResponse,
   Request as OakRequest,
-} from "jsr:@oak/oak@16.1.0";
+} from "jsr:@oak/oak@17.1.3";
 
-export { default as esbuild } from "npm:esbuild@0.23.1";
+export { default as esbuild } from "npm:esbuild@0.24.0";
 export { denoPlugins } from "jsr:@luca/esbuild-deno-loader@0.11.0";
-export { parseImports } from "npm:parse-imports@2.1.1";
+export { parseImports } from "npm:parse-imports@2.2.1";
 
 export { DOMParser } from "jsr:@b-fuze/deno-dom@0.1.48";
 
-export { walk } from "jsr:@std/fs@1.0.2/walk";
-export { parse, join, isAbsolute, dirname } from "jsr:@std/path@1.0.3";
-export { emptyDir } from "jsr:@std/fs@1.0.2/empty-dir";
-export { ensureFile } from "jsr:@std/fs@1.0.2/ensure-file";
-export { encodeHex } from "jsr:@std/encoding@1.0.3/hex";
+export { walk } from "jsr:@std/fs@1.0.5/walk";
+export { parse, join, isAbsolute, dirname } from "jsr:@std/path@1.0.8";
+export { emptyDir } from "jsr:@std/fs@1.0.5/empty-dir";
+export { ensureFile } from "jsr:@std/fs@1.0.5/ensure-file";
+export { encodeHex } from "jsr:@std/encoding@1.0.5/hex";
 
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 export { unsafeHTML } from "lit/directives/unsafe-html.js";
