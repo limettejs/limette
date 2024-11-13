@@ -12,6 +12,12 @@ import type { ComponentContext } from "./router.ts";
 
 import "../runtime/is-land.ts"; // should use limette?
 
+import { installWindowOnGlobal } from "npm:@lit-labs/ssr/lib/dom-shim.js";
+installWindowOnGlobal();
+// Set window object, because the shim doesn't do it
+// @ts-ignore some components use the `window` reference for registration process
+globalThis.window = globalThis;
+
 type Params = {
   [key: string]: string;
 };
