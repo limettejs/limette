@@ -24,5 +24,6 @@ export { encodeHex } from "jsr:@std/encoding@1.0.5/hex";
 export { unsafeHTML } from "lit/directives/unsafe-html.js";
 export { html, render } from "npm:@lit-labs/ssr@3.2.2";
 export { collectResult } from "npm:@lit-labs/ssr@3.2.2/lib/render-result.js";
+export { installWindowOnGlobal } from "npm:@lit-labs/ssr@3.2.2/lib/dom-shim.js";
 export { LitElementRenderer } from "npm:@lit-labs/ssr@3.2.2/lib/lit-element-renderer.js";
 export type { RenderInfo, RenderResult } from "npm:@lit-labs/ssr@3.2.2";

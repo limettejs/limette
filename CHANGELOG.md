@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+## [0.0.17] - 2024-11-13
+
+### Fixed
+
+- Make `window` available on server for registering web components
+- Set the response status property returned by a custom handler
+
 ## [0.0.16] - 2024-11-12
 
 ### Fixed
