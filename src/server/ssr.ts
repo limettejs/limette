@@ -22,7 +22,7 @@ type Params = {
   [key: string]: string;
 };
 
-export type AppTemplateOptions = {
+export type AppRootOptions = {
   css: DirectiveResult<UnsafeHTMLDirective> | string;
   js: string[] | TemplateResult[] | DirectiveResult<UnsafeHTMLDirective>[];
   component: DirectiveResult<UnsafeHTMLDirective>;
@@ -35,7 +35,7 @@ export declare class ComponentCtxMixinInterface {
 
 export declare class AppTemplateInterface {
   prototype: {
-    render(app: AppTemplateOptions): TemplateResult;
+    render(app: AppRootOptions): TemplateResult;
   };
 }
 
@@ -137,7 +137,7 @@ const ComponentCtxMixin = (base: typeof LitElement) => {
 };
 
 export function bootstrapContent(
-  AppTemplate: AppTemplateInterface,
+  AppRoot: AppTemplateInterface,
   route: BuildRoute,
   componentContext: ComponentContext
 ) {
@@ -155,7 +155,7 @@ export function bootstrapContent(
     componentContext
   )}</script>`;
 
-  const appTemplateOptions: AppTemplateOptions = {
+  const appTemplateOptions: AppRootOptions = {
     css: route.cssAssetPath
       ? unsafeHTML(`<link rel="stylesheet" href="${route.cssAssetPath}" />`)
       : ``,
@@ -168,11 +168,11 @@ export function bootstrapContent(
     component: unsafeHTML(component),
   };
 
-  return AppTemplate.prototype.render(appTemplateOptions);
+  return AppRoot.prototype.render(appTemplateOptions);
 }
 
 export async function renderContent(
-  AppTemplate: AppTemplateInterface,
+  AppRoot: AppTemplateInterface,
   route: BuildRoute,
   routerContext: RouterContext<typeof route.path>,
   data?: ComponentContext["data"]
@@ -181,7 +181,7 @@ export async function renderContent(
 
   const result = render(
     await bootstrapContent(
-      AppTemplate as AppTemplateInterface,
+      AppRoot as AppTemplateInterface,
       route,
       componentContext
     ),
