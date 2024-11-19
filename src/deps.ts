@@ -15,7 +15,7 @@ export { parseImports } from "npm:parse-imports@2.2.1";
 export { DOMParser } from "jsr:@b-fuze/deno-dom@0.1.48";
 
 export { walk } from "jsr:@std/fs@1.0.5/walk";
-export { parse, join, isAbsolute, dirname } from "jsr:@std/path@1.0.8";
+export { parse, join, isAbsolute, dirname, toFileUrl, resolve, normalize, SEPARATOR } from "jsr:@std/path@1.0.8";
 export { emptyDir } from "jsr:@std/fs@1.0.5/empty-dir";
 export { ensureFile } from "jsr:@std/fs@1.0.5/ensure-file";
 export { encodeHex } from "jsr:@std/encoding@1.0.5/hex";

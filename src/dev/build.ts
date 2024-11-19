@@ -12,6 +12,10 @@ import {
   emptyDir,
   ensureFile,
   join,
+  SEPARATOR,
+  resolve,
+  normalize,
+  toFileUrl
 } from "../deps.ts";
 import { fileExists } from "../server/utils.ts";
 import type { GetRouterOptions, Handlers } from "../server/router.ts";
@@ -78,7 +82,7 @@ async function buildJS(path: string, { devMode }: { devMode?: boolean }) {
   ].join("\n");
 
   const tempDirPath = await Deno.makeTempDir();
-  const entrypointPath = `${tempDirPath}/entrypoint.js`;
+  const entrypointPath = join(tempDirPath, '/entrypoint.js');
   await Deno.writeTextFile(entrypointPath, entryPoint, {});
 
   const esbuildResult = await esbuild.build({
@@ -88,7 +92,7 @@ async function buildJS(path: string, { devMode }: { devMode?: boolean }) {
         configPath: join(Deno.cwd(), "deno.json"),
       }),
     ],
-    entryPoints: [entrypointPath],
+    entryPoints: [toFileUrl(entrypointPath).href],
     sourcemap: devMode,
     minify: !devMode,
     bundle: true,
@@ -275,7 +279,7 @@ export async function getRoutes({
     const route: BuildRoute = {
       id,
       path,
-      relativeFilePath: `./${entry.path}`,
+      relativeFilePath:`.${SEPARATOR}${entry.path}`,
       absoluteFilePath,
       routeModule: (await loadFs?.(entry.path)) as { default: unknown },
       tagName,
@@ -373,7 +377,7 @@ export async function build() {
     }
 
     // Generate static routes file
-    routesImportsString += `import * as route${routeIndex} from ".${route.relativeFilePath}";
+    routesImportsString += `import * as route${routeIndex} from "${toFileUrl(route.absoluteFilePath)}";
 `;
 
     routesArrayString += `
