@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Make `window` available on server for registering web components
 - Set the response status property returned by a custom handler
-- Fix file paths on windows #29
+- Wrong file paths on windows #29
 
 ## [0.0.16] - 2024-11-12
 
