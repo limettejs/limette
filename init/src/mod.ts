@@ -1,7 +1,7 @@
 import { ensureDir } from "@std/fs/ensure-dir";
 
 // This value is changed in the release pipeline
-const LIMETTE_VERSION = "0.0.16";
+const LIMETTE_VERSION = "0.0.17";
 
 const projectName = prompt("Your project name?");
 
@@ -122,10 +122,10 @@ customElements.define("island-counter", Counter);
 
 const _appRouteTs = `
 import { LitElement, html } from "lit";
-import type { AppTemplateOptions } from "@limette/core";
+import type { AppRootOptions } from "@limette/core";
 
 export default class App extends LitElement {
-  render(app: AppTemplateOptions) {
+  render(app: AppRootOptions) {
     return html\`<html>
       <head>
         <meta charset="utf-8" />

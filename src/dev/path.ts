@@ -1,4 +1,4 @@
-import { join, isAbsolute, dirname } from "../deps.ts";
+import { join, isAbsolute, dirname, toFileUrl } from "../deps.ts";
 
 let tailwindcss: string | undefined = undefined;
 
@@ -35,7 +35,7 @@ export async function resolvePath(
   // Step 4: If it's still a relative path, resolve it to an absolute path
   if (!isAbsolute(inputPath)) {
     const baseDir = dirname(basePath);
-    inputPath = join(baseDir, inputPath);
+    inputPath = toFileUrl(join(baseDir, inputPath)).href;
   }
 
   // Step 5: Return the resolved absolute path

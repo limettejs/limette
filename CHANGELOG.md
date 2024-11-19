@@ -13,6 +13,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+## [0.0.17] - 2024-11-20
+
+### Changed
+
+- BREAKING: Rename `AppTemplate` to `AppRoot`
+
+### Fixed
+
+- Make `window` available on server for registering web components
+- Set the response status property returned by a custom handler
+- Wrong file paths on windows #29
+
 ## [0.0.16] - 2024-11-12
 
 ### Fixed

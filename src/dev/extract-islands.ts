@@ -39,8 +39,10 @@ async function injectPatches(path: string) {
   // **Step 2: Inject DOM Shim Import from lit-labs/ssr**
   const domShimImport = `
     // Import the DOM shim for SSR to provide customElements, window, and document
-    import { installWindowOnGlobal } from "npm:@lit-labs/ssr/lib/dom-shim.js";
+    import { installWindowOnGlobal } from "npm:@lit-labs/ssr@3.2.2/lib/dom-shim.js";
     installWindowOnGlobal();
+    // Set window object, because the shim doesn't do it
+    globalThis.window = globalThis;
   `;
 
   // **Step 2: Inject Patches for console and customElements.define**

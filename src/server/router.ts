@@ -47,14 +47,14 @@ export type ComponentContext = {
 export async function getRouter(options: GetRouterOptions) {
   const router = new Router();
 
-  const [routes, AppTemplate] = await Promise.all([
+  const [routes, AppRoot] = await Promise.all([
     getRoutes(options),
     getAppTemplate(options),
   ]);
 
-  if (!AppTemplate) {
+  if (!AppRoot) {
     throw new Error(
-      "You need to create an AppTemplate (_app.ts/js) to render a page."
+      "You need to create an AppRoot (_app.ts/js) to render a page."
     );
   }
 
@@ -95,7 +95,7 @@ export async function getRouter(options: GetRouterOptions) {
                 }
 
                 const content = await renderContent(
-                  AppTemplate,
+                  AppRoot,
                   route,
                   routerContext,
                   data
@@ -110,6 +110,7 @@ export async function getRouter(options: GetRouterOptions) {
             };
             const response = await handlerFn(ctx);
 
+            routerContext.response.status = response.status;
             routerContext.response.type = response.headers.get(
               "Content-Type"
             ) as string;
@@ -123,7 +124,7 @@ export async function getRouter(options: GetRouterOptions) {
     // Default behaviour if no GET handler is provided
     if (route.routeModule?.default && !route.routeModule?.handler?.GET)
       router.get(route.path, async (routerContext) => {
-        const content = await renderContent(AppTemplate, route, routerContext);
+        const content = await renderContent(AppRoot, route, routerContext);
 
         routerContext.response.type = "text/html";
         routerContext.response.body = content;
