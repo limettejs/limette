@@ -13,6 +13,7 @@ import type { ComponentContext } from "./router.ts";
 import "../runtime/is-land.ts"; // should use limette?
 
 import { installWindowOnGlobal } from "../deps.ts";
+
 installWindowOnGlobal();
 // Set window object, because the shim doesn't do it
 // @ts-ignore some components use the `window` reference for registration process
@@ -52,7 +53,7 @@ function registerRouteComponent(
   return `<lmt-route-${tagName}></lmt-route-${tagName}>`;
 }
 
-function moveLmtHeadElements(htmlString: string) {
+function processHeadAndShadowRoots(htmlString: string) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(
     htmlString,
@@ -95,6 +96,28 @@ function moveLmtHeadElements(htmlString: string) {
       processLmtHeadElements(template.content); // Process the content of each declarative shadow DOM template
     });
   }
+
+  function processLmtShadowRoots(node: Document | DocumentFragment) {
+    // Select all <template> elements in the current node
+    const templates = node.querySelectorAll("template");
+
+    templates.forEach((template) => {
+      // Only process templates with shadowroot="disabled"
+      if (template?.getAttribute("shadowroot") === "disabled") {
+        // Recursively process the content of this template
+        processLmtShadowRoots(template.content);
+
+        // Replace the <template> with its content
+        const parent = template.parentNode;
+        const content = template.content;
+        parent?.replaceChild(content, template);
+      }
+      // Skip templates with other shadowroot values (if any)
+    });
+  }
+
+  // Process shadow roots
+  processLmtShadowRoots(doc);
 
   // Start by processing the main document
   processLmtHeadElements(doc);
@@ -189,9 +212,11 @@ export async function renderContent(
       elementRenderers: [LimetteElementRenderer(route, componentContext)],
     }
   );
+
+  // Collect the output from the generator
   const rawContent = await collectResult(result);
 
-  const content = moveLmtHeadElements(rawContent);
+  const content = processHeadAndShadowRoots(rawContent);
 
   return content;
 }

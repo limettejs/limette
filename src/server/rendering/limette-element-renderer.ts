@@ -30,11 +30,23 @@ export const LimetteElementRenderer = (
      * emitted.
      */
     override renderShadow(renderInfo: RenderInfo): RenderResult {
+      const ctor = this.element.constructor as typeof LitElement & {
+        __tailwind: boolean;
+        lightDom: boolean;
+      };
+
       // We check if the element is inside of an is-land element
       const isIsland =
         route.islands?.includes(this.tagName) ||
         renderInfo.customElementInstanceStack.at(-2)?.tagName === "is-land" ||
         this.element.hasAttribute("island");
+
+      // Islands are CSR'ed, so we can't render them in light DOM
+      if (ctor?.lightDom && !isIsland) {
+        this.shadowRootOptions.mode = "disabled";
+      } else {
+        this.shadowRootOptions.mode = "open";
+      }
 
       if (isIsland && !this.element.hasAttribute("ssr")) {
         // @ts-expect-error: LitElementRenderer actually accepts undefined as a returned value
@@ -42,10 +54,6 @@ export const LimetteElementRenderer = (
 
         return `<style>@import url("${route.cssAssetPath}");</style>`;
       }
-
-      const ctor = this.element.constructor as typeof LitElement & {
-        __tailwind: boolean;
-      };
 
       // Inject component context
       if (this.tagName.startsWith("lmt-route-")) {
