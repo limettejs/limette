@@ -71,10 +71,13 @@ export const LimetteElementRenderer = (
        *    - there is no CSS
        */
       if (
-        this.tagName !== "is-land" &&
-        !this.element.hasAttribute("no-tailwind") &&
-        ctor.__tailwind !== true &&
-        route.cssAssetPath
+        (this.tagName !== "is-land" &&
+          !this.element.hasAttribute("no-tailwind") &&
+          ctor.__tailwind !== true &&
+          route.cssAssetPath &&
+          !this.tagName.startsWith("lmt-route-")) ||
+        (this.tagName.startsWith("lmt-route-") &&
+          ctor?.disableLightDom === true)
       ) {
         // Inject Tailwind CSS import
         ctor.elementStyles?.unshift?.(
