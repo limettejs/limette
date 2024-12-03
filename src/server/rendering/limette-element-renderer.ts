@@ -62,7 +62,14 @@ export const LimetteElementRenderer = (
         (this.element as LimetteElement).__ctx = componentContext;
       }
 
-      // Don't inject Tailwind CSS for <is-land>, no-tailwind attribute or if there is no CSS
+      //
+      /**
+       * Don't inject Tailwind CSS for
+       *    - <is-land>,
+       *    - <lmt-route-...> + light DOM
+       *    - no-tailwind attribute
+       *    - there is no CSS
+       */
       if (
         this.tagName !== "is-land" &&
         !this.element.hasAttribute("no-tailwind") &&

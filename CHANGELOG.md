@@ -13,6 +13,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+## [0.0.18] - 2024-12-04
+
+### Added
+
+- Add `disableLightDom` option to disable light DOM for server components
+
+### Changed
+
+- BREAKING: Enable by default light DOM rendering for server components
+
 ## [0.0.17] - 2024-11-20
 
 ### Changed
