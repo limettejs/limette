@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - BREAKING: Enable by default light DOM rendering for server components
+- Update Lit version
+- Update Tailwind version
 
 ## [0.0.17] - 2024-11-20
 

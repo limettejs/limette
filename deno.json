@@ -1,6 +1,6 @@
 {
   "name": "@limette/core",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "exports": {
     ".": "./src/mod.ts",
     "./runtime/is-land.ts": "./src/runtime/is-land.ts",
@@ -19,9 +19,9 @@
     "@limette/core": "./src/mod.ts",
     "@std/path": "jsr:@std/path@^1.0.2",
     "@std/semver": "jsr:@std/semver@^1.0.1",
-    "/lit": "npm:/lit@^3.2.0/",
-    "lit": "npm:lit@^3.2.0",
-    "tailwindcss": "npm:tailwindcss@^3.4.7"
+    "/lit": "npm:/lit@^3.2.1/",
+    "lit": "npm:lit@^3.2.1",
+    "tailwindcss": "npm:tailwindcss@^3.4.17"
   },
   "fmt": {
     "singleQuote": true
