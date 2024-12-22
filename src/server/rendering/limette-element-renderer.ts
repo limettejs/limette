@@ -11,6 +11,8 @@ interface LimetteElement extends LitElement {
   __ctx?: ComponentContext; // Define the custom property here }
 }
 
+type LmtShadowRootMode = "open" | "closed" | "disabled";
+
 export const LimetteElementRenderer = (
   route: BuildRoute,
   componentContext: ComponentContext
@@ -32,7 +34,7 @@ export const LimetteElementRenderer = (
     override renderShadow(renderInfo: RenderInfo): RenderResult {
       const ctor = this.element.constructor as typeof LitElement & {
         __tailwind: boolean;
-        lightDom: boolean;
+        disableLightDom: boolean;
       };
 
       // We check if the element is inside of an is-land element
@@ -42,8 +44,8 @@ export const LimetteElementRenderer = (
         this.element.hasAttribute("island");
 
       // Islands are CSR'ed, so we can't render them in light DOM
-      if (ctor?.lightDom && !isIsland) {
-        this.shadowRootOptions.mode = "disabled";
+      if (ctor?.disableLightDom !== true && !isIsland) {
+        (this.shadowRootOptions.mode as LmtShadowRootMode) = "disabled";
       } else {
         this.shadowRootOptions.mode = "open";
       }
@@ -60,12 +62,21 @@ export const LimetteElementRenderer = (
         (this.element as LimetteElement).__ctx = componentContext;
       }
 
-      // Don't inject Tailwind CSS for <is-land>, no-tailwind attribute or if there is no CSS
+      /**
+       * Don't inject Tailwind CSS for
+       *    - <is-land>,
+       *    - no-tailwind attribute
+       *    - there is no CSS
+       *    - <lmt-route-...> + light DOM
+       */
       if (
-        this.tagName !== "is-land" &&
-        !this.element.hasAttribute("no-tailwind") &&
-        ctor.__tailwind !== true &&
-        route.cssAssetPath
+        (this.tagName !== "is-land" &&
+          !this.element.hasAttribute("no-tailwind") &&
+          ctor.__tailwind !== true &&
+          route.cssAssetPath &&
+          !this.tagName.startsWith("lmt-route-")) ||
+        (this.tagName.startsWith("lmt-route-") &&
+          ctor?.disableLightDom === true)
       ) {
         // Inject Tailwind CSS import
         ctor.elementStyles?.unshift?.(
