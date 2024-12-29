@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Add `params` property to LimetteContext
+
 ### Changed
+
+- BREAKING: rename `req` property to `request` for LimetteContext
 
 ### Fixed
 

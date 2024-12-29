@@ -35,7 +35,8 @@ export type Handlers = {
   ): Response | OakResponse | Promise<Response | OakResponse>;
 };
 export type LimetteContext = {
-  readonly req: Request | OakRequest;
+  readonly request: Request | OakRequest;
+  readonly params: RouterContext<string>["params"];
   render(data?: unknown): Promise<Response> | Promise<OakResponse>;
 };
 
@@ -86,7 +87,8 @@ export async function getRouter(options: GetRouterOptions) {
           route.path,
           async (routerContext: RouterContext<typeof route.path>) => {
             const ctx: LimetteContext = {
-              req: routerContext.request,
+              request: routerContext.request,
+              params: routerContext.params,
               render: async (data: ComponentContext["data"]) => {
                 if (!route.routeModule?.default) {
                   throw new Error(
