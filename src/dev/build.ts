@@ -13,13 +13,12 @@ import {
   ensureFile,
   join,
   SEPARATOR,
-  resolve,
-  normalize,
-  toFileUrl
+  toFileUrl,
 } from "../deps.ts";
 import { fileExists } from "../server/utils.ts";
 import type { GetRouterOptions, Handlers } from "../server/router.ts";
 import type { AppTemplateInterface } from "../server/ssr.ts";
+import type { Middleware } from "../deps.ts";
 import { getIslandsRegistered } from "./extract-islands.ts";
 import { resolvePath, getTailwind } from "./path.ts";
 
@@ -37,6 +36,8 @@ export type BuildRoute = {
   cssAssetContent: string | undefined;
   cssAssetPath: string | undefined;
   islands: string[] | undefined;
+  middlewares: { default: Middleware }[] | [];
+  middlewarePaths: string[] | [];
 };
 
 const encoder = new TextEncoder();
@@ -82,7 +83,7 @@ async function buildJS(path: string, { devMode }: { devMode?: boolean }) {
   ].join("\n");
 
   const tempDirPath = await Deno.makeTempDir();
-  const entrypointPath = join(tempDirPath, '/entrypoint.js');
+  const entrypointPath = join(tempDirPath, "/entrypoint.js");
   await Deno.writeTextFile(entrypointPath, entryPoint, {});
 
   const esbuildResult = await esbuild.build({
@@ -230,6 +231,7 @@ export async function getRoutes({
 
   const ignoreFilePattern = TEST_FILE_PATTERN;
   const routes: BuildRoute[] = [];
+  const allMiddlewareFiles = await getMiddlewareFiles();
 
   for await (const entry of walk("./routes", {
     includeDirs: false,
@@ -276,10 +278,30 @@ export async function getRoutes({
         ? `/_limette/css/tailwind-${id}.css`
         : undefined;
 
+    // For buildAssets, we set the middlewares as an array of paths, otherwise an array of modules
+    const middlewares = devMode
+      ? ((await getMiddlewaresForRoute({
+          filePath: entry.path,
+          allMiddlewareFiles: allMiddlewareFiles,
+          loadFs: loadFs,
+          valueType: "module",
+        })) as { default: Middleware }[])
+      : [];
+
+    const middlewarePaths =
+      !devMode && buildAssets
+        ? ((await getMiddlewaresForRoute({
+            filePath: entry.path,
+            allMiddlewareFiles: allMiddlewareFiles,
+            loadFs: loadFs,
+            valueType: "absolutePath",
+          })) as string[])
+        : [];
+
     const route: BuildRoute = {
       id,
       path,
-      relativeFilePath:`.${SEPARATOR}${entry.path}`,
+      relativeFilePath: `.${SEPARATOR}${entry.path}`,
       absoluteFilePath,
       routeModule: (await loadFs?.(entry.path)) as { default: unknown },
       tagName,
@@ -288,11 +310,76 @@ export async function getRoutes({
       cssAssetContent,
       cssAssetPath,
       islands,
+      middlewares: middlewares,
+      middlewarePaths: middlewarePaths,
     };
     routes.push(route);
   }
 
   return routes;
+}
+
+// Method to get all _middleware files
+async function getMiddlewareFiles(): Promise<Map<string, string>> {
+  const middlewareFiles = new Map();
+  for await (const entry of walk("./routes", {
+    includeDirs: false,
+    includeSymlinks: false,
+    exts: ["ts", "js"],
+    match: [new RegExp("/_middleware.(ts|js)$")],
+  })) {
+    const parsed = parse(entry.path);
+    middlewareFiles.set(parsed.dir, entry.path);
+  }
+  return middlewareFiles;
+}
+
+// Method to find middleware files in the tree of a given file path
+async function getMiddlewaresForRoute({
+  filePath,
+  allMiddlewareFiles,
+  loadFs,
+  valueType,
+}: {
+  filePath: string;
+  allMiddlewareFiles: Map<string, string>;
+  loadFs?: (path: string) => Promise<unknown>;
+  valueType: "module" | "relativePath" | "absolutePath";
+}): Promise<{ default: Middleware }[] | string[] | []> {
+  if (allMiddlewareFiles.size === 0) return [];
+
+  // Remove file name from path
+  const pathSegments = filePath.split("/").slice(0, -1); // ["foo", "bar"]
+
+  // Build directory paths from root to the file's directory using a for...of loop
+  const directoriesToCheck: string[] = [];
+  let currentDir = "";
+
+  for (const segment of pathSegments) {
+    currentDir = join(currentDir, segment);
+    directoriesToCheck.push(currentDir);
+  }
+
+  const middlewareFilesForRoute = directoriesToCheck
+    .filter((dir) => allMiddlewareFiles.has(dir))
+    .map((dir) => allMiddlewareFiles.get(dir) ?? "")
+    .filter(Boolean);
+
+  // Return array of relative paths
+  if (valueType === "relativePath") {
+    return middlewareFilesForRoute;
+  }
+
+  // Return array of absolute paths
+  if (valueType === "absolutePath") {
+    return middlewareFilesForRoute.map((path) => join(Deno.cwd(), path));
+  }
+
+  return await Promise.all(
+    middlewareFilesForRoute.map(
+      (file) => loadFs?.(file) as unknown as { default: Middleware }
+    )
+  );
 }
 
 export async function getAppTemplate({ loadFs }: GetRouterOptions) {
@@ -361,6 +448,8 @@ export async function build() {
   let routeIndex = 0;
   let routesImportsString = ``;
   let routesArrayString = ``;
+  let middlewareImportsString = ``;
+  const importedMiddlewares = new Map();
 
   for (const route of routes) {
     if (route.jsAssetContent?.contents) {
@@ -377,8 +466,21 @@ export async function build() {
     }
 
     // Generate static routes file
-    routesImportsString += `import * as route${routeIndex} from "${toFileUrl(route.absoluteFilePath)}";
+    routesImportsString += `import * as route${routeIndex} from "${toFileUrl(
+      route.absoluteFilePath
+    )}";
 `;
+
+    middlewareImportsString += route.middlewarePaths
+      .filter((path) => !importedMiddlewares.has(path))
+      .map((path) => {
+        const middlewareModuleName = `middleware${importedMiddlewares.size}`;
+        importedMiddlewares.set(path, middlewareModuleName);
+        return `\nimport * as ${middlewareModuleName} from "${toFileUrl(
+          path
+        )}";`;
+      })
+      .join("");
 
     routesArrayString += `
   {
@@ -392,16 +494,19 @@ export async function build() {
     cssAssetPath: ${
       route.cssAssetPath ? `"${route.cssAssetPath}"` : `undefined`
     },
-    islands: ${JSON.stringify(route.islands)}
+    islands: ${JSON.stringify(route.islands)},
+    middlewares: [${route.middlewarePaths
+      .map((path) => importedMiddlewares.get(path))
+      .join()}]
   },
 `;
     routeIndex++;
   }
 
-  routesArrayString = `export const routes = [${routesArrayString}];`;
+  routesArrayString = `\n\nexport const routes = [${routesArrayString}];`;
 
   await Deno.writeTextFile(
     "./_limette/routes.js",
-    routesImportsString + routesArrayString
+    routesImportsString + middlewareImportsString + routesArrayString
   );
 }
