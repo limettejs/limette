@@ -84,9 +84,10 @@ export async function getRouter(options: GetRouterOptions) {
   }
 
   routes.map((route) => {
-    const middlewares: Middleware[] = route.middlewares
-      .map((module) => module?.default)
-      .filter(Boolean);
+    const middlewares = route.middlewares
+      .map((module) => module?.handler)
+      .flat()
+      .filter(Boolean) as Middleware[];
 
     // Register custom handlers
     if (route.routeModule?.handler) {

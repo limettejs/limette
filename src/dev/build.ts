@@ -36,7 +36,7 @@ export type BuildRoute = {
   cssAssetContent: string | undefined;
   cssAssetPath: string | undefined;
   islands: string[] | undefined;
-  middlewares: { default: Middleware }[] | [];
+  middlewares: { handler?: Middleware | Middleware[] }[] | [];
   middlewarePaths: string[] | [];
 };
 
@@ -237,7 +237,11 @@ export async function getRoutes({
     includeDirs: false,
     includeSymlinks: false,
     exts: ["ts", "js"],
-    skip: [ignoreFilePattern, new RegExp("/_app.(js|ts)$")],
+    skip: [
+      ignoreFilePattern,
+      new RegExp("/_app.(js|ts)$"),
+      new RegExp("/_middleware.(js|ts)$"),
+    ],
   })) {
     const parsed = parse(entry.path);
     let path = parsed.dir.replace("routes", "") + "/" + parsed.name;
@@ -285,7 +289,7 @@ export async function getRoutes({
           allMiddlewareFiles: allMiddlewareFiles,
           loadFs: loadFs,
           valueType: "module",
-        })) as { default: Middleware }[])
+        })) as { handler: Middleware | Middleware[] }[])
       : [];
 
     const middlewarePaths =
@@ -345,7 +349,7 @@ async function getMiddlewaresForRoute({
   allMiddlewareFiles: Map<string, string>;
   loadFs?: (path: string) => Promise<unknown>;
   valueType: "module" | "relativePath" | "absolutePath";
-}): Promise<{ default: Middleware }[] | string[] | []> {
+}): Promise<{ handler: Middleware | Middleware[] }[] | string[] | []> {
   if (allMiddlewareFiles.size === 0) return [];
 
   // Remove file name from path
@@ -377,7 +381,8 @@ async function getMiddlewaresForRoute({
 
   return await Promise.all(
     middlewareFilesForRoute.map(
-      (file) => loadFs?.(file) as unknown as { default: Middleware }
+      (file) =>
+        loadFs?.(file) as unknown as { handler: Middleware | Middleware[] }
     )
   );
 }
