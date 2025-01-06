@@ -21,6 +21,9 @@ import type { AppTemplateInterface } from "../server/ssr.ts";
 import type { Middleware } from "../deps.ts";
 import { getIslandsRegistered } from "./extract-islands.ts";
 import { resolvePath, getTailwind } from "./path.ts";
+// @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
+import type { LitElement } from "lit";
+import type { RouteModule, LayoutModule, MiddlewareModule } from "../types.ts";
 
 const TEST_FILE_PATTERN = /[._]test\.(?:[tj]sx?|[mc][tj]s)$/;
 
@@ -29,15 +32,17 @@ export type BuildRoute = {
   path: string;
   relativeFilePath: string;
   absoluteFilePath: string;
-  routeModule?: { default: unknown; handler?: Handlers };
+  routeModule?: RouteModule;
   tagName: string;
   jsAssetContent: esbuild.OutputFile | undefined;
   jsAssetPath: string | undefined;
   cssAssetContent: string | undefined;
   cssAssetPath: string | undefined;
   islands: string[] | undefined;
-  middlewares: { handler?: Middleware | Middleware[] }[] | [];
+  middlewares: MiddlewareModule[] | [];
   middlewarePaths: string[] | [];
+  layouts: LayoutModule[] | [];
+  layoutPaths: string[] | [];
 };
 
 const encoder = new TextEncoder();
@@ -232,6 +237,7 @@ export async function getRoutes({
   const ignoreFilePattern = TEST_FILE_PATTERN;
   const routes: BuildRoute[] = [];
   const allMiddlewareFiles = await getMiddlewareFiles();
+  const allLayoutFiles = await getLayoutFiles();
 
   for await (const entry of walk("./routes", {
     includeDirs: false,
@@ -241,6 +247,7 @@ export async function getRoutes({
       ignoreFilePattern,
       new RegExp("/_app.(js|ts)$"),
       new RegExp("/_middleware.(js|ts)$"),
+      new RegExp("/_layout.(js|ts)$"),
     ],
   })) {
     const parsed = parse(entry.path);
@@ -289,7 +296,7 @@ export async function getRoutes({
           allMiddlewareFiles: allMiddlewareFiles,
           loadFs: loadFs,
           valueType: "module",
-        })) as { handler: Middleware | Middleware[] }[])
+        })) as MiddlewareModule[])
       : [];
 
     const middlewarePaths =
@@ -302,12 +309,26 @@ export async function getRoutes({
           })) as string[])
         : [];
 
+    const layouts = (await getLayoutsForRoute({
+      filePath: entry.path,
+      allLayoutFiles: allLayoutFiles,
+      loadFs: loadFs,
+      valueType: "module",
+    })) as LayoutModule[];
+
+    const layoutPaths = (await getLayoutsForRoute({
+      filePath: entry.path,
+      allLayoutFiles: allLayoutFiles,
+      loadFs: loadFs,
+      valueType: "absolutePath",
+    })) as string[];
+
     const route: BuildRoute = {
       id,
       path,
       relativeFilePath: `.${SEPARATOR}${entry.path}`,
       absoluteFilePath,
-      routeModule: (await loadFs?.(entry.path)) as { default: unknown },
+      routeModule: (await loadFs?.(entry.path)) as RouteModule,
       tagName,
       jsAssetContent,
       jsAssetPath,
@@ -316,6 +337,8 @@ export async function getRoutes({
       islands,
       middlewares: middlewares,
       middlewarePaths: middlewarePaths,
+      layouts: layouts,
+      layoutPaths: layoutPaths,
     };
     routes.push(route);
   }
@@ -349,7 +372,7 @@ async function getMiddlewaresForRoute({
   allMiddlewareFiles: Map<string, string>;
   loadFs?: (path: string) => Promise<unknown>;
   valueType: "module" | "relativePath" | "absolutePath";
-}): Promise<{ handler: Middleware | Middleware[] }[] | string[] | []> {
+}): Promise<MiddlewareModule[] | string[] | []> {
   if (allMiddlewareFiles.size === 0) return [];
 
   // Remove file name from path
@@ -381,9 +404,69 @@ async function getMiddlewaresForRoute({
 
   return await Promise.all(
     middlewareFilesForRoute.map(
-      (file) =>
-        loadFs?.(file) as unknown as { handler: Middleware | Middleware[] }
+      (file) => loadFs?.(file) as unknown as MiddlewareModule
     )
+  );
+}
+
+// Method to get all _layout files
+async function getLayoutFiles(): Promise<Map<string, string>> {
+  const layoutFiles = new Map();
+  for await (const entry of walk("./routes", {
+    includeDirs: false,
+    includeSymlinks: false,
+    exts: ["ts", "js"],
+    match: [new RegExp("/_layout.(ts|js)$")],
+  })) {
+    const parsed = parse(entry.path);
+    layoutFiles.set(parsed.dir, entry.path);
+  }
+  return layoutFiles;
+}
+
+// Method to find middleware files in the tree of a given file path
+async function getLayoutsForRoute({
+  filePath,
+  allLayoutFiles,
+  loadFs,
+  valueType,
+}: {
+  filePath: string;
+  allLayoutFiles: Map<string, string>;
+  loadFs?: (path: string) => Promise<unknown>;
+  valueType: "module" | "relativePath" | "absolutePath";
+}): Promise<LayoutModule[] | string[] | []> {
+  if (allLayoutFiles.size === 0) return [];
+
+  // Remove file name from path
+  const pathSegments = filePath.split("/").slice(0, -1); // ["foo", "bar"]
+
+  // Build directory paths from root to the file's directory using a for...of loop
+  const directoriesToCheck: string[] = [];
+  let currentDir = "";
+
+  for (const segment of pathSegments) {
+    currentDir = join(currentDir, segment);
+    directoriesToCheck.push(currentDir);
+  }
+
+  const layoutFilesForRoute = directoriesToCheck
+    .filter((dir) => allLayoutFiles.has(dir))
+    .map((dir) => allLayoutFiles.get(dir) ?? "")
+    .filter(Boolean);
+
+  // Return array of relative paths
+  if (valueType === "relativePath") {
+    return layoutFilesForRoute;
+  }
+
+  // Return array of absolute paths
+  if (valueType === "absolutePath") {
+    return layoutFilesForRoute.map((path) => join(Deno.cwd(), path));
+  }
+
+  return await Promise.all(
+    layoutFilesForRoute.map((file) => loadFs?.(file) as unknown as LayoutModule)
   );
 }
 
@@ -455,6 +538,8 @@ export async function build() {
   let routesArrayString = ``;
   let middlewareImportsString = ``;
   const importedMiddlewares = new Map();
+  let layoutImportsString = `\n`;
+  const importedLayouts = new Map();
 
   for (const route of routes) {
     if (route.jsAssetContent?.contents) {
@@ -487,6 +572,15 @@ export async function build() {
       })
       .join("");
 
+    layoutImportsString += route.layoutPaths
+      .filter((path) => !importedLayouts.has(path))
+      .map((path) => {
+        const layoutModuleName = `layout${importedLayouts.size}`;
+        importedLayouts.set(path, layoutModuleName);
+        return `\nimport * as ${layoutModuleName} from "${toFileUrl(path)}";`;
+      })
+      .join("");
+
     routesArrayString += `
   {
     id: "${route.id}", 
@@ -502,6 +596,9 @@ export async function build() {
     islands: ${JSON.stringify(route.islands)},
     middlewares: [${route.middlewarePaths
       .map((path) => importedMiddlewares.get(path))
+      .join()}],
+    layouts: [${route.layoutPaths
+      .map((path) => importedLayouts.get(path))
       .join()}]
   },
 `;
@@ -512,6 +609,9 @@ export async function build() {
 
   await Deno.writeTextFile(
     "./_limette/routes.js",
-    routesImportsString + middlewareImportsString + routesArrayString
+    routesImportsString +
+      middlewareImportsString +
+      layoutImportsString +
+      routesArrayString
   );
 }

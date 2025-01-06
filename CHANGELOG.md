@@ -9,7 +9,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [0.0.19] - 2025-01-07
+
+### Added
+
 - Add support for `Middlewares`
+- Add support for `Layouts`
 - Add `params` property to LimetteContext
 
 ### Changed

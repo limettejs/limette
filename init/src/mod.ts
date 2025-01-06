@@ -1,7 +1,7 @@
 import { ensureDir } from "@std/fs/ensure-dir";
 
 // This value is changed in the release pipeline
-const LIMETTE_VERSION = "0.0.18";
+const LIMETTE_VERSION = "0.0.19";
 
 const projectName = prompt("Your project name?");
 
