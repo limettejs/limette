@@ -1,5 +1,10 @@
 import { Router } from "../deps.ts";
-import type { RouterContext, OakResponse, OakRequest } from "../deps.ts";
+import type {
+  RouterContext,
+  OakResponse,
+  OakRequest,
+  Middleware,
+} from "../deps.ts";
 
 import { renderContent } from "./ssr.ts";
 import { getRoutes, getAppTemplate } from "../dev/build.ts";
@@ -35,7 +40,10 @@ export type Handlers = {
   ): Response | OakResponse | Promise<Response | OakResponse>;
 };
 export type LimetteContext = {
-  readonly req: Request | OakRequest;
+  readonly request: Request | OakRequest;
+  readonly response: Response | OakResponse;
+  readonly cookies: RouterContext<string>["cookies"];
+  readonly params: RouterContext<string>["params"];
   render(data?: unknown): Promise<Response> | Promise<OakResponse>;
 };
 
@@ -76,59 +84,83 @@ export async function getRouter(options: GetRouterOptions) {
   }
 
   routes.map((route) => {
+    const middlewares = route.middlewares
+      .map((module) => module?.handler)
+      .flat()
+      .filter(Boolean) as Middleware[];
+
     // Register custom handlers
     if (route.routeModule?.handler) {
       for (const [handlerName, handlerFn] of Object.entries(
         route.routeModule.handler
       )) {
+        const routeHandler = async (
+          routerContext: RouterContext<typeof route.path>
+        ) => {
+          const ctx: LimetteContext = {
+            request: routerContext.request,
+            response: routerContext.response,
+            cookies: routerContext.cookies,
+            params: routerContext.params,
+            render: async (data: ComponentContext["data"]) => {
+              if (!route.routeModule?.default) {
+                throw new Error(
+                  "No component was provided. Make sure you export a component as default to be redered."
+                );
+              }
+
+              const content = await renderContent(
+                AppRoot,
+                route,
+                routerContext,
+                data
+              );
+
+              return new Response(content, {
+                status: 200,
+                statusText: "OK",
+                headers: new Headers({ "Content-Type": "text/html" }),
+              });
+            },
+          };
+          const response = await handlerFn(ctx);
+
+          routerContext.response.status = response.status;
+          routerContext.response.type = response.headers.get(
+            "Content-Type"
+          ) as string;
+          routerContext.response.headers = response.headers;
+          routerContext.response.body = response.body;
+        };
+
         // Register route
         router[handlerName.toLocaleLowerCase() as Lowercase<keyof Handlers>](
           route.path,
-          async (routerContext: RouterContext<typeof route.path>) => {
-            const ctx: LimetteContext = {
-              req: routerContext.request,
-              render: async (data: ComponentContext["data"]) => {
-                if (!route.routeModule?.default) {
-                  throw new Error(
-                    "No component was provided. Make sure you export a component as default to be redered."
-                  );
-                }
-
-                const content = await renderContent(
-                  AppRoot,
-                  route,
-                  routerContext,
-                  data
-                );
-
-                return new Response(content, {
-                  status: 200,
-                  statusText: "OK",
-                  headers: new Headers({ "Content-Type": "text/html" }),
-                });
-              },
-            };
-            const response = await handlerFn(ctx);
-
-            routerContext.response.status = response.status;
-            routerContext.response.type = response.headers.get(
-              "Content-Type"
-            ) as string;
-            routerContext.response.headers = response.headers;
-            routerContext.response.body = response.body;
-          }
+          // @ts-ignore middlewares is always a tuple
+          ...middlewares,
+          routeHandler
         );
       }
     }
 
     // Default behaviour if no GET handler is provided
-    if (route.routeModule?.default && !route.routeModule?.handler?.GET)
-      router.get(route.path, async (routerContext) => {
+    if (route.routeModule?.default && !route.routeModule?.handler?.GET) {
+      const routeHandler = async (
+        routerContext: RouterContext<typeof route.path>
+      ) => {
         const content = await renderContent(AppRoot, route, routerContext);
 
         routerContext.response.type = "text/html";
         routerContext.response.body = content;
-      });
+      };
+
+      router.get(
+        route.path,
+        // @ts-ignore middlewares is always a tuple
+        ...middlewares,
+        routeHandler
+      );
+    }
   });
 
   return router;

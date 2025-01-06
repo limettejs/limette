@@ -13,6 +13,7 @@ import type { ComponentContext } from "./router.ts";
 import "../runtime/is-land.ts"; // should use limette?
 
 import { installWindowOnGlobal } from "../deps.ts";
+import { LayoutModule } from "../types.ts";
 
 installWindowOnGlobal();
 // Set window object, because the shim doesn't do it
@@ -159,20 +160,43 @@ const ComponentCtxMixin = (base: typeof LitElement) => {
   return ComponentCtxClass;
 };
 
-export function bootstrapContent(
+export async function bootstrapContent(
   AppRoot: AppTemplateInterface,
   route: BuildRoute,
   componentContext: ComponentContext
 ) {
-  const componentModule = route.routeModule;
+  const routeModule = route.routeModule;
+  const routeConfig = routeModule?.config;
 
   const ComponentClass = ComponentCtxMixin(
-    componentModule?.default as typeof LitElement
+    routeModule?.default as unknown as typeof LitElement
   );
-  const component = registerRouteComponent(
-    ComponentClass as unknown as CustomElementConstructor,
-    route.tagName
+  let component = unsafeHTML(
+    registerRouteComponent(
+      ComponentClass as unknown as CustomElementConstructor,
+      route.tagName
+    )
   );
+
+  /**
+   * Render the layouts only if there are any layouts and the inherited layouts are not skipped.
+   * When a route uses skipInheritedLayouts, no layout will be used.
+   * When a layout uses skipInheritedLayouts, only that layout is used.
+   */
+  if (route.layouts.length > 0 && routeConfig?.skipInheritedLayouts !== true) {
+    // Check if the inherited layouts should be skipped, in which case we only
+    // render the last layout in the chain
+    const skipInheritedLayouts =
+      route.layouts.at(-1)?.config?.skipInheritedLayouts;
+
+    component = await renderLayout({
+      component: component,
+      layouts: !skipInheritedLayouts
+        ? (route.layouts as LayoutModule[])
+        : ([route.layouts.at(-1)] as LayoutModule[]),
+      componentContext: componentContext,
+    });
+  }
 
   const ctxStr = `<script type="text/json" id="_lmt_ctx">${JSON.stringify(
     componentContext
@@ -188,10 +212,36 @@ export function bootstrapContent(
         ? html`<script type="module" src="${route.jsAssetPath}"></script>`
         : ``,
     ],
-    component: unsafeHTML(component),
+    component: component,
   };
 
   return AppRoot.prototype.render(appTemplateOptions);
+}
+
+async function renderLayout({
+  component,
+  layouts,
+  componentContext,
+}: {
+  component: DirectiveResult<UnsafeHTMLDirective>;
+  layouts: LayoutModule[];
+  componentContext: ComponentContext;
+}) {
+  if (layouts.length === 0) return;
+
+  const layoutsReversed = [...layouts].reverse();
+
+  let result = component;
+  for await (const Layout of layoutsReversed) {
+    // @ts-ignore this should be fixed in the future
+    result = await Layout.default.prototype.render.call(
+      // @ts-ignore this should be fixed in the future
+      Object.assign(Layout.default.prototype, { ctx: componentContext }),
+      result
+    );
+  }
+
+  return result;
 }
 
 export async function renderContent(

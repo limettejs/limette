@@ -13,6 +13,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+## [0.0.19] - 2025-01-07
+
+### Added
+
+- Add support for `Middlewares`
+- Add support for `Layouts`
+- Add `params` property to LimetteContext
+
+### Changed
+
+- BREAKING: rename `req` property to `request` for LimetteContext
+
+### Fixed
+
 ## [0.0.18] - 2024-12-04
 
 ### Added
