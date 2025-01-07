@@ -1,18 +1,18 @@
+[Documentation](https://limette.dev/docs/) | [Getting started](https://limette.dev/docs/getting-started/create-a-project/) | [API Reference](https://jsr.io/@limette/core/doc)
+
 # Limette
 
 <img align="right" src="https://limette.dev/assets/images/logo.svg" width="200px" alt="The Limette logo: a green limette with two leaves">
 
-The JavaScript framework for Deno and Web Components.
+Limette is a full-stack JavaScript framework for Web Components and Deno.
 
-> This is WIP.
+## ✨ Features
 
-## Features
-
-- Deno on server
 - Web Components (with Lit) on browser
+- Deno on server
 - Island-based architecture
 - File system routing
-- Tailwind support
+- Tailwind and TypeScript support out of the box
 
 ## Create a new Limette project
 
