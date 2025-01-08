@@ -206,6 +206,7 @@ async function buildCSS(
       !devMode ? `--minify` : ``,
     ],
     stdout: "piped",
+    stderr: "null",
     cwd: Deno.cwd(),
   });
   const process = command.spawn();
