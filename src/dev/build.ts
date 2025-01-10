@@ -471,7 +471,9 @@ async function getLayoutsForRoute({
   );
 }
 
-export async function getAppTemplate({ loadFs }: GetRouterOptions) {
+export async function getAppTemplate({
+  loadFs,
+}: GetRouterOptions): Promise<AppTemplateInterface> {
   const [checkTs, checkJs] = await Promise.allSettled([
     fileExists("./routes/_app.ts"),
     fileExists("./routes/_app.js"),
@@ -495,10 +497,8 @@ export async function getAppTemplate({ loadFs }: GetRouterOptions) {
       .default as AppTemplateInterface;
   }
 
-  if (hasAppJs) {
-    return ((await loadFs?.("./routes/_app.js")) as { default: unknown })
-      .default as AppTemplateInterface;
-  }
+  return ((await loadFs?.("./routes/_app.js")) as { default: unknown })
+    .default as AppTemplateInterface;
 }
 
 async function getAppTemplatePath() {

@@ -26,9 +26,9 @@ export {
   normalize,
   SEPARATOR,
 } from "jsr:@std/path@1.0.8";
-export { emptyDir } from "jsr:@std/fs@1.0.5/empty-dir";
-export { ensureFile } from "jsr:@std/fs@1.0.5/ensure-file";
+export { emptyDir, ensureFile, exists } from "jsr:@std/fs@1.0.5";
 export { encodeHex } from "jsr:@std/encoding@1.0.5/hex";
+export { serveDir } from "jsr:@std/http@1.0.12/file-server";
 
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 export { unsafeHTML } from "lit/directives/unsafe-html.js";

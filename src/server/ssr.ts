@@ -1,5 +1,5 @@
 import { html, unsafeHTML, render, collectResult, DOMParser } from "../deps.ts";
-import type { RouterContext } from "../deps.ts";
+import type { Context } from "../router/app.ts";
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { LitElement, TemplateResult } from "lit";
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
@@ -13,7 +13,7 @@ import type { ComponentContext } from "./router.ts";
 import "../runtime/is-land.ts"; // should use limette?
 
 import { installWindowOnGlobal } from "../deps.ts";
-import { LayoutModule } from "../types.ts";
+import type { LayoutModule } from "../types.ts";
 
 installWindowOnGlobal();
 // Set window object, because the shim doesn't do it
@@ -247,10 +247,10 @@ async function renderLayout({
 export async function renderContent(
   AppRoot: AppTemplateInterface,
   route: BuildRoute,
-  routerContext: RouterContext<typeof route.path>,
+  ctx: Context,
   data?: ComponentContext["data"]
 ) {
-  const componentContext = { params: routerContext.params, data };
+  const componentContext = { params: ctx.params, data };
 
   const result = render(
     await bootstrapContent(

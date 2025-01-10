@@ -6,6 +6,7 @@ import type {
   Middleware,
 } from "../deps.ts";
 
+import type { Context } from "../router/app.ts";
 import { renderContent } from "./ssr.ts";
 import { getRoutes, getAppTemplate } from "../dev/build.ts";
 
@@ -17,27 +18,13 @@ export type GetRouterOptions = {
 };
 
 export type Handlers = {
-  GET?(
-    ctx: LimetteContext
-  ): Response | OakResponse | Promise<Response | OakResponse>;
-  POST?(
-    ctx: LimetteContext
-  ): Response | OakResponse | Promise<Response | OakResponse>;
-  PUT?(
-    ctx: LimetteContext
-  ): Response | OakResponse | Promise<Response | OakResponse>;
-  DELETE?(
-    ctx: LimetteContext
-  ): Response | OakResponse | Promise<Response | OakResponse>;
-  PATCH?(
-    ctx: LimetteContext
-  ): Response | OakResponse | Promise<Response | OakResponse>;
-  OPTIONS?(
-    ctx: LimetteContext
-  ): Response | OakResponse | Promise<Response | OakResponse>;
-  HEAD?(
-    ctx: LimetteContext
-  ): Response | OakResponse | Promise<Response | OakResponse>;
+  GET?(ctx: Context): Response | Promise<Response>;
+  POST?(ctx: Context): Response | Promise<Response>;
+  PUT?(ctx: Context): Response | Promise<Response>;
+  DELETE?(ctx: Context): Response | Promise<Response>;
+  PATCH?(ctx: Context): Response | Promise<Response>;
+  OPTIONS?(ctx: Context): Response | Promise<Response>;
+  HEAD?(ctx: Context): Response | Promise<Response>;
 };
 export type LimetteContext = {
   readonly request: Request | OakRequest;
