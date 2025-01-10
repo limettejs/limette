@@ -18,7 +18,6 @@ import {
 import { fileExists } from "../server/utils.ts";
 import type { GetRouterOptions, Handlers } from "../server/router.ts";
 import type { AppTemplateInterface } from "../server/ssr.ts";
-import type { Middleware } from "../deps.ts";
 import { getIslandsRegistered } from "./extract-islands.ts";
 import { resolvePath, getTailwind } from "./path.ts";
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members

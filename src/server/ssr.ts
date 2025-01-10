@@ -1,5 +1,5 @@
 import { html, unsafeHTML, render, collectResult, DOMParser } from "../deps.ts";
-import type { Context } from "../router/app.ts";
+import type { Context } from "./app.ts";
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { LitElement, TemplateResult } from "lit";
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members

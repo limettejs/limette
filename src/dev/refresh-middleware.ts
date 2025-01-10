@@ -1,4 +1,4 @@
-import type { Context } from "../router/app.ts";
+import type { Context } from "../server/app.ts";
 
 /**
  * In-memory store of open WebSockets for
