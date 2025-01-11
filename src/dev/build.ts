@@ -16,7 +16,7 @@ import {
   toFileUrl,
 } from "../deps.ts";
 import { fileExists } from "../server/utils.ts";
-import type { GetRouterOptions, Handlers } from "../server/router.ts";
+import type { GetRouterOptions } from "../server/router.ts";
 import type { AppTemplateInterface } from "../server/ssr.ts";
 import { getIslandsRegistered } from "./extract-islands.ts";
 import { resolvePath, getTailwind } from "./path.ts";
