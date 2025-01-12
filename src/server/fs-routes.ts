@@ -41,7 +41,7 @@ export async function setFsRoutes(app: App, options: BuildRoutesOptions) {
   }
 
   // Serve static files from memory on dev mode
-  if (app._getDevMode() === true) {
+  if (app.config.mode === "development") {
     app.get("/_limette/js/chunk-:id.js", (ctx) => {
       const { id } = ctx.params;
       const route = routes.find((r) => r.id === id);

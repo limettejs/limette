@@ -97,13 +97,12 @@ export function mergePaths(a: string, b: string) {
 function normalizeConfig(options?: AppConfig): ResolvedAppConfig {
   return {
     basePath: options?.basePath || "",
-    mode: options?.mode || "development",
+    mode: options?.mode || "production",
   };
 }
 
 export class App {
   config: ResolvedAppConfig;
-  #devMode: boolean = false;
   #fsRoutesOptions: FsRoutesOptions = {
     enabled: false,
     loadFs: undefined,
@@ -116,12 +115,6 @@ export class App {
     this.config = normalizeConfig(config);
   }
 
-  _getDevMode(): boolean {
-    return this.#devMode;
-  }
-  _setDevMode(devMode: boolean): void {
-    this.#devMode = devMode;
-  }
   _setFsRoutesOption(options: FsRoutesOptions): void {
     this.#fsRoutesOptions = options;
   }
@@ -234,12 +227,12 @@ export class App {
     }
 
     // For dev mode, use the refresh middleware
-    if (this.#devMode) {
+    if (this.config.mode === "development") {
       this.use(refreshMiddleware);
     }
 
     // For production mode, use the static build middleware
-    if (!this.#devMode) {
+    if (this.config.mode === "production") {
       this.get("/_limette/*", staticBuildMiddleware);
     }
 
@@ -249,8 +242,8 @@ export class App {
     // Set routes
     if (this.#fsRoutesOptions?.enabled === true) {
       await setFsRoutes(this, {
-        buildAssets: this.#devMode,
-        devMode: this.#devMode,
+        buildAssets: this.config.mode === "development",
+        devMode: this.config.mode === "development",
         loadFs: this.#fsRoutesOptions.loadFs,
       });
     }

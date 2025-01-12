@@ -5,7 +5,7 @@ export async function dev(app: App) {
   if (Deno.args.includes("build")) {
     await build();
   } else {
-    app._setDevMode(true);
+    app.config.mode = "development";
     app.listen();
   }
 }
