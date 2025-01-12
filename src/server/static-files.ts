@@ -1,7 +1,10 @@
 import { serveDir, exists, join } from "../deps.ts";
 import type { Context } from "./app.ts";
 
-export async function staticMiddleware(ctx: Context) {
+/**
+ * Middleware to serve files from the static files.
+ */
+export async function staticFiles(ctx: Context): Promise<Response> {
   if (ctx.request.method.toLowerCase() !== "get") {
     return ctx.next();
   }

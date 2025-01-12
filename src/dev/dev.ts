@@ -1,11 +1,11 @@
 import { build } from "./build.ts";
-import type { LimetteApp } from "../server/app.ts";
+import type { App } from "../server/app.ts";
 
-export async function dev(app: LimetteApp) {
+export async function dev(app: App) {
   if (Deno.args.includes("build")) {
     await build();
   } else {
-    app.setDevMode(true);
+    app._setDevMode(true);
     app.listen();
   }
 }

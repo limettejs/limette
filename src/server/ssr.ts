@@ -1,5 +1,5 @@
 import { html, unsafeHTML, render, collectResult, DOMParser } from "../deps.ts";
-import type { Context } from "./app.ts";
+import type { Context, ComponentContext } from "./app.ts";
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { LitElement, TemplateResult } from "lit";
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
@@ -8,7 +8,6 @@ import type { DirectiveResult } from "lit/directives/unsafe-html.js";
 import type { UnsafeHTMLDirective } from "lit/directives/unsafe-html.js";
 import type { BuildRoute } from "../dev/build.ts";
 import { LimetteElementRenderer } from "./rendering/limette-element-renderer.ts";
-import type { ComponentContext } from "./router.ts";
 
 import "../runtime/is-land.ts"; // should use limette?
 

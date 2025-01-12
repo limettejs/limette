@@ -55,14 +55,18 @@ await dev(app);
 `;
 
 const mainTs = `
-import { LimetteApp } from "@limette/core";
+import { App, staticFiles, fsRoutes } from "@limette/core";
 
-export const app = new LimetteApp();
+export const app = new App();
 
-app.setLoadFs((path: string) => import(\`./\${path}\`));
+app.use(staticFiles);
+
+fsRoutes(app, {
+  loadFs: (path: string) => import(\`./\${path}\`),
+});
 
 if (import.meta.main) {
-  app.listen({ port: 8000 });
+  app.listen();
 }
 `;
 

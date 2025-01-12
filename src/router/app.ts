@@ -1,18 +1,17 @@
-import { type Method, UrlPatternRouter } from "./router.ts";
+import { type Method, UrlPatternRouter, setRoutes } from "./router.ts";
 import { type MiddlewareFn, runMiddlewares } from "./middleware.ts";
-import { staticBuildMiddleware } from "./static-files.ts";
+import { staticMiddleware, staticBuildMiddleware } from "./static-files.ts";
 import { refreshMiddleware } from "../dev/refresh-middleware.ts";
 import { HttpError } from "./error.ts";
-import { FsRoutesOptions, setFsRoutes } from "./fs-routes.ts";
 
 interface AppConfig {
   basePath?: string;
-  mode?: "development" | "production";
+  loadFs: (path: string) => Promise<unknown>;
 }
 
 interface ResolvedAppConfig {
   basePath: string;
-  mode: "development" | "production";
+  loadFs: (path: string) => Promise<unknown>;
 }
 
 export type ListenOptions = Partial<
@@ -33,11 +32,6 @@ export interface Context extends ContextInit {
   error: unknown;
   render: (data?: unknown) => Promise<Response>;
   redirect(path: string, status?: number): Response;
-}
-
-export interface ComponentContext {
-  params: Context["params"];
-  data: unknown;
 }
 
 export class Context implements Context {
@@ -94,36 +88,25 @@ export function mergePaths(a: string, b: string) {
   return a + b;
 }
 
-function normalizeConfig(options?: AppConfig): ResolvedAppConfig {
+function normalizeConfig(options: AppConfig): ResolvedAppConfig {
   return {
-    basePath: options?.basePath || "",
-    mode: options?.mode || "development",
+    basePath: options.basePath || "",
+    loadFs: options.loadFs,
   };
 }
 
 export class App {
   config: ResolvedAppConfig;
   #devMode: boolean = false;
-  #fsRoutesOptions: FsRoutesOptions = {
-    enabled: false,
-    loadFs: undefined,
-  };
-
   middlewares: MiddlewareFn[] = [];
   #router = new UrlPatternRouter();
 
-  constructor(config?: AppConfig) {
+  constructor(config: AppConfig) {
     this.config = normalizeConfig(config);
   }
 
-  _getDevMode() {
-    return this.#devMode;
-  }
-  _setDevMode(devMode: boolean) {
+  setDevMode(devMode: boolean) {
     this.#devMode = devMode;
-  }
-  _setFsRoutesOption(options: FsRoutesOptions) {
-    this.#fsRoutesOptions = options;
   }
 
   use(middleware: MiddlewareFn): this {
@@ -244,16 +227,14 @@ export class App {
     }
 
     // Serve static files
-    // this.use(staticFiles);
+    this.use(staticMiddleware);
 
     // Set routes
-    if (this.#fsRoutesOptions?.enabled === true) {
-      await setFsRoutes(this, {
-        buildAssets: this.#devMode,
-        devMode: this.#devMode,
-        loadFs: this.#fsRoutesOptions.loadFs,
-      });
-    }
+    await setRoutes(this, {
+      buildAssets: this.#devMode,
+      devMode: this.#devMode,
+      loadFs: this.config.loadFs,
+    });
 
     const handler = this.handler();
     if (options.port) {

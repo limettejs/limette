@@ -5,7 +5,7 @@ import type { LitElement } from "lit";
 import { LitElementRenderer } from "../../deps.ts";
 import type { RenderInfo, RenderResult } from "../../deps.ts";
 import type { BuildRoute } from "../../dev/build.ts";
-import type { ComponentContext } from "../router.ts";
+import type { ComponentContext } from "../app.ts";
 
 interface LimetteElement extends LitElement {
   __ctx?: ComponentContext; // Define the custom property here }

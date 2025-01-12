@@ -14,14 +14,12 @@ import {
   join,
   SEPARATOR,
   toFileUrl,
+  exists,
 } from "../deps.ts";
-import { fileExists } from "../server/utils.ts";
-import type { GetRouterOptions } from "../server/router.ts";
+import type { BuildRoutesOptions } from "../server/fs-routes.ts";
 import type { AppTemplateInterface } from "../server/ssr.ts";
 import { getIslandsRegistered } from "./extract-islands.ts";
 import { resolvePath, getTailwind } from "./path.ts";
-// @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
-import type { LitElement } from "lit";
 import type { RouteModule, LayoutModule, MiddlewareModule } from "../types.ts";
 
 const TEST_FILE_PATTERN = /[._]test\.(?:[tj]sx?|[mc][tj]s)$/;
@@ -225,7 +223,7 @@ export async function getRoutes({
   buildAssets,
   devMode,
   loadFs,
-}: GetRouterOptions) {
+}: BuildRoutesOptions) {
   if (!devMode && !buildAssets) {
     return (
       (await loadFs?.("_limette/routes.js")) as {
@@ -472,10 +470,10 @@ async function getLayoutsForRoute({
 
 export async function getAppTemplate({
   loadFs,
-}: GetRouterOptions): Promise<AppTemplateInterface> {
+}: BuildRoutesOptions): Promise<AppTemplateInterface> {
   const [checkTs, checkJs] = await Promise.allSettled([
-    fileExists("./routes/_app.ts"),
-    fileExists("./routes/_app.js"),
+    exists("./routes/_app.ts", { isFile: true }),
+    exists("./routes/_app.js", { isFile: true }),
   ]);
 
   const hasAppTs = checkTs.status === "fulfilled" && checkTs.value === true;
@@ -502,8 +500,8 @@ export async function getAppTemplate({
 
 async function getAppTemplatePath() {
   const [checkTs, checkJs] = await Promise.allSettled([
-    fileExists("./routes/_app.ts"),
-    fileExists("./routes/_app.js"),
+    exists("./routes/_app.ts", { isFile: true }),
+    exists("./routes/_app.js", { isFile: true }),
   ]);
 
   const hasAppTs = checkTs.status === "fulfilled" && checkTs.value === true;
