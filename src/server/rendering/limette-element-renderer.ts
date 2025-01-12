@@ -2,8 +2,8 @@
 import { unsafeCSS } from "lit";
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { LitElement } from "lit";
-import { LitElementRenderer } from "../../deps.ts";
-import type { RenderInfo, RenderResult } from "../../deps.ts";
+import { LitElementRenderer } from "@lit-labs/ssr/lib/lit-element-renderer.js";
+import type { RenderInfo, RenderResult } from "@lit-labs/ssr";
 import type { BuildRoute } from "../../dev/build.ts";
 import type { ComponentContext } from "../app.ts";
 

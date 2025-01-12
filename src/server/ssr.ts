@@ -1,17 +1,21 @@
-import { html, unsafeHTML, render, collectResult, DOMParser } from "../deps.ts";
-import type { Context, ComponentContext } from "./app.ts";
+import { html, render } from "@lit-labs/ssr";
+// @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
+import { unsafeHTML } from "lit/directives/unsafe-html.js";
+import { collectResult } from "@lit-labs/ssr/lib/render-result.js";
+import { DOMParser } from "@b-fuze/deno-dom";
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { LitElement, TemplateResult } from "lit";
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { DirectiveResult } from "lit/directives/unsafe-html.js";
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { UnsafeHTMLDirective } from "lit/directives/unsafe-html.js";
+import type { Context, ComponentContext } from "./app.ts";
 import type { BuildRoute } from "../dev/build.ts";
 import { LimetteElementRenderer } from "./rendering/limette-element-renderer.ts";
 
 import "../runtime/is-land.ts"; // should use limette?
 
-import { installWindowOnGlobal } from "../deps.ts";
+import { installWindowOnGlobal } from "@lit-labs/ssr/lib/dom-shim.js";
 import type { LayoutModule } from "../types.ts";
 
 installWindowOnGlobal();

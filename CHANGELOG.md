@@ -13,6 +13,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+## [0.1.0] - 2025-01-13
+
+### Added
+
+### Changed
+
+- BREAKING: Change Middleware's signature
+- Replace Oak router with a custom router
+- Disable Tailwind logs
+
+### Fixed
+
 ## [0.0.19] - 2025-01-07
 
 ### Added

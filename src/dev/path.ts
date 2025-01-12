@@ -1,4 +1,4 @@
-import { join, isAbsolute, dirname, toFileUrl } from "../deps.ts";
+import { join, isAbsolute, dirname, toFileUrl } from "@std/path";
 
 let tailwindcss: string | undefined = undefined;
 

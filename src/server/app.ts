@@ -3,7 +3,7 @@ import { type MiddlewareFn, runMiddlewares } from "./middleware.ts";
 import { staticBuildMiddleware } from "./static-files.ts";
 import { refreshMiddleware } from "../dev/refresh-middleware.ts";
 import { HttpError } from "./error.ts";
-import { FsRoutesOptions, setFsRoutes } from "./fs-routes.ts";
+import { type FsRoutesOptions, setFsRoutes } from "./fs-routes.ts";
 
 interface AppConfig {
   basePath?: string;

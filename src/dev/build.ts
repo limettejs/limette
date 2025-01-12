@@ -1,21 +1,9 @@
-// Import the WASM build on platforms where running subprocesses is not
-// permitted, such as Deno Deploy, or when running without `--allow-run`.
-// import * as esbuild from "https://deno.land/x/esbuild@0.20.2/wasm.js";
-
-import {
-  esbuild,
-  denoPlugins,
-  walk,
-  parse,
-  encodeHex,
-  parseImports,
-  emptyDir,
-  ensureFile,
-  join,
-  SEPARATOR,
-  toFileUrl,
-  exists,
-} from "../deps.ts";
+import * as esbuild from "esbuild";
+import { denoPlugins } from "@luca/esbuild-deno-loader";
+import { parseImports } from "parse-imports";
+import { parse, join, toFileUrl, SEPARATOR } from "@std/path";
+import { walk, emptyDir, ensureFile, exists } from "@std/fs";
+import { encodeHex } from "@std/encoding";
 import type { BuildRoutesOptions } from "../server/fs-routes.ts";
 import type { AppTemplateInterface } from "../server/ssr.ts";
 import { getIslandsRegistered } from "./extract-islands.ts";

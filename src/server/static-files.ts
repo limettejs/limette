@@ -1,4 +1,6 @@
-import { serveDir, exists, join } from "../deps.ts";
+import { join } from "@std/path";
+import { exists } from "@std/fs";
+import { serveDir } from "@std/http";
 import type { Context } from "./app.ts";
 
 /**
