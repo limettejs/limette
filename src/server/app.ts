@@ -116,13 +116,13 @@ export class App {
     this.config = normalizeConfig(config);
   }
 
-  _getDevMode() {
+  _getDevMode(): boolean {
     return this.#devMode;
   }
-  _setDevMode(devMode: boolean) {
+  _setDevMode(devMode: boolean): void {
     this.#devMode = devMode;
   }
-  _setFsRoutesOption(options: FsRoutesOptions) {
+  _setFsRoutesOption(options: FsRoutesOptions): void {
     this.#fsRoutesOptions = options;
   }
 
@@ -166,7 +166,7 @@ export class App {
     return this;
   }
 
-  handler() {
+  handler(): Deno.ServeHandler {
     return async (request: Request, conn: Deno.ServeHandlerInfo) => {
       const url = new URL(request.url);
       // Prevent open redirect attacks

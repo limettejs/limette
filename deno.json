@@ -31,6 +31,9 @@
     "parse-imports": "npm:parse-imports@2.2.1",
     "tailwindcss": "npm:tailwindcss@^3.4.17"
   },
+  "compilerOptions": {
+    "lib": ["dom", "dom.asynciterable", "deno.ns"]
+  },
   "fmt": {
     "singleQuote": true
   },
