@@ -4,6 +4,7 @@ import { staticBuildMiddleware } from "./static-files.ts";
 import { refreshMiddleware } from "../dev/refresh-middleware.ts";
 import { HttpError } from "./error.ts";
 import { type FsRoutesOptions, setFsRoutes } from "./fs-routes.ts";
+import { bgGreen, blue } from "@std/fmt/colors";
 
 interface AppConfig {
   basePath?: string;
@@ -206,6 +207,7 @@ export class App {
   }
 
   async listen(options: ListenOptions = {}): Promise<void> {
+    const t0 = performance.now();
     if (!options.onListen) {
       options.onListen = (params) => {
         const pathname = this.config.basePath + "/";
@@ -251,7 +253,13 @@ export class App {
     const handler = this.handler();
     if (options.port) {
       Deno.serve(options, handler);
-      console.log(`Limette app started on: http://localhost:${options.port}`);
+      const t1 = performance.now();
+      const duration = ((t1 - t0) / 1000).toFixed(2);
+      console.log(
+        `🟢 ${bgGreen(" Limette ")} app started (${duration}s): ${blue(
+          `http://localhost:${options.port}`
+        )}`
+      );
     } else {
       // No port specified, check for a free port. Instead of picking just
       // any port we'll check if the next one is free for UX reasons.
@@ -262,7 +270,13 @@ export class App {
         try {
           Deno.serve({ ...options, port }, handler);
           firstError = undefined;
-          console.log(`Limette app started on: http://localhost:${port}`);
+          const t1 = performance.now();
+          const duration = ((t1 - t0) / 1000).toFixed(2);
+          console.log(
+            `🟢 ${bgGreen(" Limette ")} app started (${duration}s): ${blue(
+              `http://localhost:${port}`
+            )}`
+          );
           break;
         } catch (err) {
           if (err instanceof Deno.errors.AddrInUse) {

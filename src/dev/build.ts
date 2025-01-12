@@ -515,6 +515,7 @@ async function getAppTemplatePath() {
 }
 
 export async function build() {
+  const t0 = performance.now();
   const routes = await getRoutes({ buildAssets: true });
 
   await emptyDir("./_limette");
@@ -600,4 +601,7 @@ export async function build() {
       layoutImportsString +
       routesArrayString
   );
+
+  const t1 = performance.now();
+  console.log(`✅ Build done. (${((t1 - t0) / 1000).toFixed(2)}s)`);
 }
