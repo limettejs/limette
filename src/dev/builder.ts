@@ -1,4 +1,4 @@
-import type { App } from "../server/app.ts";
+import type { App, ListenOptions } from "../server/app.ts";
 import { build } from "./build.ts";
 import { refreshMiddleware } from "./refresh-middleware.ts";
 
@@ -19,7 +19,7 @@ export class Builder {
     return await build(app, { target: this.options.target });
   }
 
-  listen(app: App) {
+  listen(app: App, options: ListenOptions) {
     app.config.mode = "development";
 
     app.builder = this;
@@ -27,6 +27,6 @@ export class Builder {
     // For dev mode, use the refresh middleware
     app.use(refreshMiddleware);
 
-    app.listen();
+    app.listen(options);
   }
 }
