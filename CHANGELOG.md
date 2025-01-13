@@ -17,13 +17,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Added support for `port` and other Deno.serve() options
+- Added support for `target` for JS assets
+- Added time duration for starting or building the app in the console
+
 ### Changed
 
+- BREAKING: Use FS Routes as a plugin
+- BREAKING: Use Tailwind as a plugin
 - BREAKING: Change Middleware's signature
+- BREAKING: Change Context's signature
 - Replace Oak router with a custom router
 - Disable Tailwind logs
 
 ### Fixed
+
+- Include reload mechanism in dev mode, even if there is no JS bundle to include
 
 ## [0.0.19] - 2025-01-07
 
