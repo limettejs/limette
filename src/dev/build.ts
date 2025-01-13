@@ -64,7 +64,8 @@ async function buildJS(path: string, options: BuildRoutesOptions) {
   };
 
   // Without islands imported, we don't create any bundle for this route
-  if (!imports.length) return result;
+  // For devMode, we create a bundle for the refresh snippet
+  if (!imports.length && !devMode) return result;
 
   const entryPoint = [
     // `import "https://esm.sh/@lit-labs/ssr-client@1.1.7/lit-element-hydrate-support.js";`,
