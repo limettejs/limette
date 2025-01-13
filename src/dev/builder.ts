@@ -9,7 +9,7 @@ export interface BuilderOptions {
 export class Builder {
   options: BuilderOptions;
 
-  constructor(options: BuilderOptions) {
+  constructor(options?: BuilderOptions) {
     this.options = {
       target: options?.target ?? ["chrome99", "firefox99", "safari15"],
     };
