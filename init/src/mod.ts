@@ -48,10 +48,16 @@ const denoJson = `
 `;
 
 const devTs = `
-import { dev } from "@limette/core";
+import { Builder, tailwind } from "@limette/core";
 import { app } from "./main.ts";
 
-await dev(app);
+const builder = new Builder();
+tailwind(app);
+if (Deno.args.includes("build")) {
+  await builder.build(app);
+} else {
+  await builder.listen(app);
+}
 `;
 
 const mainTs = `
@@ -62,7 +68,7 @@ export const app = new App();
 app.use(staticFiles);
 
 fsRoutes(app, {
-  loadFs: (path: string) => import(\`./\${path}\`),
+  loadFile: (path: string) => import(\`./\${path}\`),
 });
 
 if (import.meta.main) {

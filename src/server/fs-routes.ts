@@ -2,33 +2,28 @@ import { getRoutes, getAppTemplate } from "../dev/build.ts";
 import type { App, Context, ComponentContext } from "./app.ts";
 import type { Method } from "./router.ts";
 import { renderContent } from "./ssr.ts";
-
-export interface FsRoutesOptions {
-  enabled?: boolean;
-  loadFs?: (path: string) => Promise<unknown>;
-}
+import type { BuilderOptions } from "../dev/builder.ts";
 
 export interface BuildRoutesOptions {
   buildAssets?: boolean;
   devMode?: boolean;
-  loadFs?: (path: string) => Promise<unknown>;
-}
-
-export function fsRoutes(app: App, options: FsRoutesOptions) {
-  if (typeof options?.loadFs !== "function") {
-    throw new Error("Option missing: loadFs.");
-  }
-
-  app._setFsRoutesOption({
-    enabled: true,
-    loadFs: options.loadFs,
-  });
+  tailwind?: boolean;
+  target?: BuilderOptions["target"];
+  loadFile?: (path: string) => Promise<unknown>;
 }
 
 /**
  * This will load the fs routes in the app.listen() method , only if the `fsRoutes` was called.
  */
-export async function setFsRoutes(app: App, options: BuildRoutesOptions) {
+export async function setFsRoutes(app: App) {
+  const options: BuildRoutesOptions = {
+    buildAssets: app.config.mode === "development",
+    devMode: app.config.mode === "development",
+    tailwind: app.builtinPluginOptions.tailwind.enabled,
+    target: app.builder?.options.target,
+    loadFile: app.builtinPluginOptions.fsRoutes.loadFile,
+  };
+
   const [routes, AppRoot] = await Promise.all([
     getRoutes(options),
     getAppTemplate(options),

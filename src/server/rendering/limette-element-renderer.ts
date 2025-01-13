@@ -50,7 +50,7 @@ export const LimetteElementRenderer = (
         this.shadowRootOptions.mode = "open";
       }
 
-      if (isIsland && !this.element.hasAttribute("ssr")) {
+      if (isIsland && route.cssAssetPath && !this.element.hasAttribute("ssr")) {
         // @ts-expect-error: LitElementRenderer actually accepts undefined as a returned value
         if (this.element.hasAttribute("no-tailwind")) return;
 

@@ -3,7 +3,7 @@ import type { App } from "../server/app.ts";
 
 export async function dev(app: App) {
   if (Deno.args.includes("build")) {
-    await build();
+    await build(app);
   } else {
     app.config.mode = "development";
     app.listen();

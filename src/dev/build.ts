@@ -4,6 +4,7 @@ import { parseImports } from "parse-imports";
 import { parse, join, toFileUrl, SEPARATOR } from "@std/path";
 import { walk, emptyDir, ensureFile, exists } from "@std/fs";
 import { encodeHex } from "@std/encoding";
+import type { App } from "../server/app.ts";
 import type { BuildRoutesOptions } from "../server/fs-routes.ts";
 import type { AppTemplateInterface } from "../server/ssr.ts";
 import { getIslandsRegistered } from "./extract-islands.ts";
@@ -53,7 +54,9 @@ async function getIslandsImports(file: string) {
   return imports;
 }
 
-async function buildJS(path: string, { devMode }: { devMode?: boolean }) {
+async function buildJS(path: string, options: BuildRoutesOptions) {
+  const { devMode, target } = options;
+
   const imports = await getIslandsImports(path);
   let result: { jsAssetContent?: esbuild.OutputFile; islands?: string[] } = {
     jsAssetContent: undefined,
@@ -88,6 +91,7 @@ async function buildJS(path: string, { devMode }: { devMode?: boolean }) {
     minify: !devMode,
     bundle: true,
     format: "esm",
+    target: target,
     write: false,
   });
 
@@ -163,8 +167,10 @@ function convertToWebComponentTagName(str: string) {
 async function buildCSS(
   absoluteFilePath: string,
   jsAssetContent: esbuild.OutputFile | undefined,
-  { devMode }: { devMode?: boolean }
+  options: BuildRoutesOptions
 ) {
+  const { devMode } = options;
+
   const tailwindcss = await getTailwind();
 
   if (!tailwindcss) throw new Error("Tailwind is missing from deno.json!");
@@ -207,14 +213,12 @@ async function buildCSS(
   return css;
 }
 
-export async function getRoutes({
-  buildAssets,
-  devMode,
-  loadFs,
-}: BuildRoutesOptions) {
+export async function getRoutes(options: BuildRoutesOptions) {
+  const { buildAssets, devMode, tailwind, loadFile } = options;
+
   if (!devMode && !buildAssets) {
     return (
-      (await loadFs?.("_limette/routes.js")) as {
+      (await loadFile?.("_limette/routes.js")) as {
         routes: BuildRoute[];
       }
     ).routes;
@@ -259,7 +263,7 @@ export async function getRoutes({
 
     // Generate JS assets
     const { jsAssetContent, islands } = buildAssets
-      ? await buildJS(absoluteFilePath, { devMode })
+      ? await buildJS(absoluteFilePath, options)
       : {};
     const jsAssetPath =
       jsAssetContent || buildAssets === false
@@ -267,9 +271,10 @@ export async function getRoutes({
         : undefined;
 
     // Generate CSS assets
-    const cssAssetContent = buildAssets
-      ? await buildCSS(absoluteFilePath, jsAssetContent, { devMode })
-      : undefined;
+    const cssAssetContent =
+      buildAssets && tailwind
+        ? await buildCSS(absoluteFilePath, jsAssetContent, { devMode })
+        : undefined;
     const cssAssetPath =
       cssAssetContent || buildAssets === false
         ? `/_limette/css/tailwind-${id}.css`
@@ -280,7 +285,7 @@ export async function getRoutes({
       ? ((await getMiddlewaresForRoute({
           filePath: entry.path,
           allMiddlewareFiles: allMiddlewareFiles,
-          loadFs: loadFs,
+          loadFile: loadFile,
           valueType: "module",
         })) as MiddlewareModule[])
       : [];
@@ -290,7 +295,7 @@ export async function getRoutes({
         ? ((await getMiddlewaresForRoute({
             filePath: entry.path,
             allMiddlewareFiles: allMiddlewareFiles,
-            loadFs: loadFs,
+            loadFile: loadFile,
             valueType: "absolutePath",
           })) as string[])
         : [];
@@ -298,14 +303,14 @@ export async function getRoutes({
     const layouts = (await getLayoutsForRoute({
       filePath: entry.path,
       allLayoutFiles: allLayoutFiles,
-      loadFs: loadFs,
+      loadFile: loadFile,
       valueType: "module",
     })) as LayoutModule[];
 
     const layoutPaths = (await getLayoutsForRoute({
       filePath: entry.path,
       allLayoutFiles: allLayoutFiles,
-      loadFs: loadFs,
+      loadFile: loadFile,
       valueType: "absolutePath",
     })) as string[];
 
@@ -314,7 +319,7 @@ export async function getRoutes({
       path,
       relativeFilePath: `.${SEPARATOR}${entry.path}`,
       absoluteFilePath,
-      routeModule: (await loadFs?.(entry.path)) as RouteModule,
+      routeModule: (await loadFile?.(entry.path)) as RouteModule,
       tagName,
       jsAssetContent,
       jsAssetPath,
@@ -351,12 +356,12 @@ async function getMiddlewareFiles(): Promise<Map<string, string>> {
 async function getMiddlewaresForRoute({
   filePath,
   allMiddlewareFiles,
-  loadFs,
+  loadFile,
   valueType,
 }: {
   filePath: string;
   allMiddlewareFiles: Map<string, string>;
-  loadFs?: (path: string) => Promise<unknown>;
+  loadFile?: (path: string) => Promise<unknown>;
   valueType: "module" | "relativePath" | "absolutePath";
 }): Promise<MiddlewareModule[] | string[] | []> {
   if (allMiddlewareFiles.size === 0) return [];
@@ -390,7 +395,7 @@ async function getMiddlewaresForRoute({
 
   return await Promise.all(
     middlewareFilesForRoute.map(
-      (file) => loadFs?.(file) as unknown as MiddlewareModule
+      (file) => loadFile?.(file) as unknown as MiddlewareModule
     )
   );
 }
@@ -414,12 +419,12 @@ async function getLayoutFiles(): Promise<Map<string, string>> {
 async function getLayoutsForRoute({
   filePath,
   allLayoutFiles,
-  loadFs,
+  loadFile,
   valueType,
 }: {
   filePath: string;
   allLayoutFiles: Map<string, string>;
-  loadFs?: (path: string) => Promise<unknown>;
+  loadFile?: (path: string) => Promise<unknown>;
   valueType: "module" | "relativePath" | "absolutePath";
 }): Promise<LayoutModule[] | string[] | []> {
   if (allLayoutFiles.size === 0) return [];
@@ -452,12 +457,14 @@ async function getLayoutsForRoute({
   }
 
   return await Promise.all(
-    layoutFilesForRoute.map((file) => loadFs?.(file) as unknown as LayoutModule)
+    layoutFilesForRoute.map(
+      (file) => loadFile?.(file) as unknown as LayoutModule
+    )
   );
 }
 
 export async function getAppTemplate({
-  loadFs,
+  loadFile,
 }: BuildRoutesOptions): Promise<AppTemplateInterface> {
   const [checkTs, checkJs] = await Promise.allSettled([
     exists("./routes/_app.ts", { isFile: true }),
@@ -478,11 +485,11 @@ export async function getAppTemplate({
   }
 
   if (hasAppTs) {
-    return ((await loadFs?.("./routes/_app.ts")) as { default: unknown })
+    return ((await loadFile?.("./routes/_app.ts")) as { default: unknown })
       .default as AppTemplateInterface;
   }
 
-  return ((await loadFs?.("./routes/_app.js")) as { default: unknown })
+  return ((await loadFile?.("./routes/_app.js")) as { default: unknown })
     .default as AppTemplateInterface;
 }
 
@@ -514,9 +521,15 @@ async function getAppTemplatePath() {
   }
 }
 
-export async function build() {
+export async function build(app: App, options?: BuildRoutesOptions) {
+  const { target } = options ?? {};
+
   const t0 = performance.now();
-  const routes = await getRoutes({ buildAssets: true });
+  const routes = await getRoutes({
+    buildAssets: true,
+    target: target,
+    tailwind: app?.builtinPluginOptions?.tailwind?.enabled,
+  });
 
   await emptyDir("./_limette");
 

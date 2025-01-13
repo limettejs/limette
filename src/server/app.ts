@@ -1,19 +1,23 @@
 import { type Method, UrlPatternRouter } from "./router.ts";
 import { type MiddlewareFn, runMiddlewares } from "./middleware.ts";
 import { staticBuildMiddleware } from "./static-files.ts";
-import { refreshMiddleware } from "../dev/refresh-middleware.ts";
 import { HttpError } from "./error.ts";
-import { type FsRoutesOptions, setFsRoutes } from "./fs-routes.ts";
+import { setFsRoutes } from "./fs-routes.ts";
 import { bgGreen, blue } from "@std/fmt/colors";
+import type { FsRoutesPluginOptions } from "../plugins/fs-routes.ts";
+import type { TailwindPluginOptions } from "../plugins/tailwind.ts";
+import type { Builder } from "../dev/builder.ts";
 
 interface AppConfig {
   basePath?: string;
   mode?: "development" | "production";
+  builder?: Builder;
 }
 
 interface ResolvedAppConfig {
   basePath: string;
   mode: "development" | "production";
+  builder?: Builder;
 }
 
 export type ListenOptions = Partial<
@@ -21,6 +25,11 @@ export type ListenOptions = Partial<
 > & {
   remoteAddress?: string;
 };
+
+interface BuiltinPluginOptions {
+  fsRoutes: FsRoutesPluginOptions;
+  tailwind: TailwindPluginOptions;
+}
 
 export interface ContextInit {
   request: Request;
@@ -99,25 +108,39 @@ function normalizeConfig(options?: AppConfig): ResolvedAppConfig {
   return {
     basePath: options?.basePath || "",
     mode: options?.mode || "production",
+    builder: options?.builder,
   };
 }
 
 export class App {
   config: ResolvedAppConfig;
-  #fsRoutesOptions: FsRoutesOptions = {
-    enabled: false,
-    loadFs: undefined,
+  builder?: Builder;
+  #builtinPluginOptions: BuiltinPluginOptions = {
+    fsRoutes: {
+      enabled: false,
+      loadFile: undefined,
+    },
+    tailwind: {
+      enabled: false,
+    },
   };
 
   middlewares: MiddlewareFn[] = [];
   #router = new UrlPatternRouter();
 
+  get builtinPluginOptions() {
+    return this.#builtinPluginOptions;
+  }
+
   constructor(config?: AppConfig) {
     this.config = normalizeConfig(config);
   }
 
-  _setFsRoutesOption(options: FsRoutesOptions): void {
-    this.#fsRoutesOptions = options;
+  _setBuiltinPluginOptions<K extends keyof BuiltinPluginOptions>(
+    pluginName: K,
+    options: BuiltinPluginOptions[K]
+  ): void {
+    this.#builtinPluginOptions[pluginName] = options;
   }
 
   use(middleware: MiddlewareFn): this {
@@ -228,26 +251,14 @@ export class App {
       };
     }
 
-    // For dev mode, use the refresh middleware
-    if (this.config.mode === "development") {
-      this.use(refreshMiddleware);
-    }
-
     // For production mode, use the static build middleware
     if (this.config.mode === "production") {
       this.get("/_limette/*", staticBuildMiddleware);
     }
 
-    // Serve static files
-    // this.use(staticFiles);
-
     // Set routes
-    if (this.#fsRoutesOptions?.enabled === true) {
-      await setFsRoutes(this, {
-        buildAssets: this.config.mode === "development",
-        devMode: this.config.mode === "development",
-        loadFs: this.#fsRoutesOptions.loadFs,
-      });
+    if (this.#builtinPluginOptions.fsRoutes?.enabled === true) {
+      await setFsRoutes(this);
     }
 
     const handler = this.handler();
