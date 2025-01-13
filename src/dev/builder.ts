@@ -19,7 +19,7 @@ export class Builder {
     return await build(app, { target: this.options.target });
   }
 
-  listen(app: App, options: ListenOptions) {
+  listen(app: App, options?: ListenOptions) {
     app.config.mode = "development";
 
     app.builder = this;
