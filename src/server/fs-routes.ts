@@ -1,4 +1,4 @@
-import { getRoutes, getAppTemplate } from "../dev/build.ts";
+import { getRoutes, getAppWrapper } from "../dev/build.ts";
 import type { App } from "./app.ts";
 import type { Method } from "./router.ts";
 import type { BuilderOptions } from "../dev/builder.ts";
@@ -24,14 +24,14 @@ export async function setFsRoutes(app: App) {
     loadFile: app.builtinPluginOptions.fsRoutes.loadFile,
   };
 
-  const [routes, AppRoot] = await Promise.all([
+  const [routes, AppWrapper] = await Promise.all([
     getRoutes(options),
-    getAppTemplate(options),
+    getAppWrapper(options),
   ]);
 
-  if (!AppRoot) {
+  if (!AppWrapper) {
     throw new Error(
-      "You need to create an AppRoot (_app.ts/js) to render a page."
+      "You need to create an AppWrapper (_app.ts/js) to render a page."
     );
   }
 
@@ -61,7 +61,7 @@ export async function setFsRoutes(app: App) {
   }
 
   for (const route of routes) {
-    const handlers = handlersForRoute(route, AppRoot);
+    const handlers = handlersForRoute(route, AppWrapper);
 
     // Register error pages
     if (route.path.endsWith("/_error") && handlers?.GET) {

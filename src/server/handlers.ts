@@ -1,7 +1,7 @@
 import type { BuildRoute } from "../dev/build.ts";
 import type { Context, ComponentContext } from "./context.ts";
 import type { MiddlewareFn } from "./middlewares.ts";
-import { type AppTemplateInterface, renderContent } from "./ssr.ts";
+import { type AppWrapperInterface, renderContent } from "./ssr.ts";
 
 export interface Handlers {
   GET?: MiddlewareFn;
@@ -15,7 +15,7 @@ export interface Handlers {
 
 export function handlersForRoute(
   route: BuildRoute,
-  AppRoot: AppTemplateInterface
+  AppWrapper: AppWrapperInterface
 ) {
   const handlers: Handlers = {};
 
@@ -32,7 +32,7 @@ export function handlersForRoute(
 
           ctx.data = data;
 
-          const content = await renderContent(AppRoot, route, ctx);
+          const content = await renderContent(AppWrapper, route, ctx);
 
           return new Response(content, {
             status: 200,
@@ -51,7 +51,7 @@ export function handlersForRoute(
   if (route.routeModule?.default && !route.routeModule?.handler?.GET) {
     // TODO: Add render method to ctx for this case
     const handler = async (ctx: Context) => {
-      const content = await renderContent(AppRoot, route, ctx);
+      const content = await renderContent(AppWrapper, route, ctx);
 
       return new Response(content, {
         status: 200,

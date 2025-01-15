@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - BREAKING: Use Tailwind as a plugin
 - BREAKING: Change Middleware's signature
 - BREAKING: Change Context's signature
+- BREAKING: Rename `AppRoot` to `AppWrapper`
 - Replace Oak router with a custom router
 - Disable Tailwind logs
 

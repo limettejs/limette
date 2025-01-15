@@ -8,7 +8,7 @@ import { getIslandsRegistered } from "./extract-islands.ts";
 import { resolvePath, getTailwind } from "./path.ts";
 import type { App } from "../server/app.ts";
 import type { BuildRoutesOptions } from "../server/fs-routes.ts";
-import type { AppTemplateInterface } from "../server/ssr.ts";
+import type { AppWrapperInterface } from "../server/ssr.ts";
 import type { LayoutModule } from "../server/layouts.ts";
 import type { MiddlewareModule } from "../server/middlewares.ts";
 import type { RouteModule } from "../server/router.ts";
@@ -178,7 +178,7 @@ async function buildCSS(
 
   if (!tailwindcss) throw new Error("Tailwind is missing from deno.json!");
 
-  const appTemplatePath = await getAppTemplatePath();
+  const appWrapperPath = await getAppWrapperPath();
   let tempDirPath = "";
   let contentFlag = absoluteFilePath;
 
@@ -187,7 +187,7 @@ async function buildCSS(
     const bundlePathTemp = `${tempDirPath}/bundle.js`;
     await Deno.writeTextFile(bundlePathTemp, jsAssetContent.text, {});
 
-    contentFlag = `${appTemplatePath},${contentFlag},${bundlePathTemp}`;
+    contentFlag = `${appWrapperPath},${contentFlag},${bundlePathTemp}`;
   }
 
   const command = new Deno.Command(`${Deno.execPath()}`, {
@@ -468,9 +468,9 @@ async function getLayoutsForRoute({
   );
 }
 
-export async function getAppTemplate({
+export async function getAppWrapper({
   loadFile,
-}: BuildRoutesOptions): Promise<AppTemplateInterface> {
+}: BuildRoutesOptions): Promise<AppWrapperInterface> {
   const [checkTs, checkJs] = await Promise.allSettled([
     exists("./routes/_app.ts", { isFile: true }),
     exists("./routes/_app.js", { isFile: true }),
@@ -491,14 +491,14 @@ export async function getAppTemplate({
 
   if (hasAppTs) {
     return ((await loadFile?.("./routes/_app.ts")) as { default: unknown })
-      .default as AppTemplateInterface;
+      .default as AppWrapperInterface;
   }
 
   return ((await loadFile?.("./routes/_app.js")) as { default: unknown })
-    .default as AppTemplateInterface;
+    .default as AppWrapperInterface;
 }
 
-async function getAppTemplatePath() {
+async function getAppWrapperPath() {
   const [checkTs, checkJs] = await Promise.allSettled([
     exists("./routes/_app.ts", { isFile: true }),
     exists("./routes/_app.js", { isFile: true }),

@@ -132,10 +132,10 @@ customElements.define("island-counter", Counter);
 
 const _appRouteTs = `
 import { LitElement, html } from "lit";
-import type { AppRootOptions } from "@limette/core";
+import type { AppWrapperOptions } from "@limette/core";
 
 export default class App extends LitElement {
-  render(app: AppRootOptions) {
+  render(app: AppWrapperOptions) {
     return html\`<html>
       <head>
         <meta charset="utf-8" />

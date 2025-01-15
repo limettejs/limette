@@ -27,20 +27,20 @@ type Params = {
   [key: string]: string;
 };
 
-export type AppRootOptions = {
+export type AppWrapperOptions = {
   css: DirectiveResult<UnsafeHTMLDirective> | string;
   js: string[] | TemplateResult[] | DirectiveResult<UnsafeHTMLDirective>[];
   component: DirectiveResult<UnsafeHTMLDirective>;
 };
 
 // Define the interface for the mixin
-export declare class ComponentCtxMixinInterface {
+export declare class ComponentContextMixinInterface {
   get ctx(): string;
 }
 
-export declare class AppTemplateInterface {
+export declare class AppWrapperInterface {
   prototype: {
-    render(app: AppRootOptions): TemplateResult;
+    render(app: AppWrapperOptions): TemplateResult;
   };
 }
 
@@ -151,28 +151,29 @@ function processHeadAndShadowRoots(htmlString: string) {
   return doc.documentElement.outerHTML;
 }
 
-const ComponentCtxMixin = (base: typeof LitElement) => {
-  class ComponentCtxClass extends base {
-    __ctx: ComponentContext = { params: {}, data: undefined };
+const ComponentContextMixin = (base: typeof LitElement, ctx: Context) => {
+  class ContextClass extends base {
+    __ctx: Context = ctx;
 
     get ctx() {
       return this.__ctx;
     }
   }
-  // return ComponentCtxClass as Constructor<ComponentCtxMixinInterface> & T;
-  return ComponentCtxClass;
+
+  return ContextClass;
 };
 
 export async function bootstrapContent(
-  AppRoot: AppTemplateInterface,
+  AppWrapper: AppWrapperInterface,
   route: BuildRoute,
   ctx: Context
 ) {
   const routeModule = route.routeModule;
   const routeConfig = routeModule?.config;
 
-  const ComponentClass = ComponentCtxMixin(
-    routeModule?.default as unknown as typeof LitElement
+  const ComponentClass = ComponentContextMixin(
+    routeModule?.default as unknown as typeof LitElement,
+    ctx
   );
   let component = unsafeHTML(
     registerRouteComponent(
@@ -205,7 +206,7 @@ export async function bootstrapContent(
     ctx
   )}</script>`;
 
-  const appTemplateOptions: AppRootOptions = {
+  const appWrapperOptions: AppWrapperOptions = {
     css: route.cssAssetPath
       ? unsafeHTML(`<link rel="stylesheet" href="${route.cssAssetPath}" />`)
       : ``,
@@ -218,7 +219,7 @@ export async function bootstrapContent(
     component: component,
   };
 
-  return AppRoot.prototype.render(appTemplateOptions);
+  return AppWrapper.prototype.render(appWrapperOptions);
 }
 
 async function renderLayout({
@@ -248,18 +249,12 @@ async function renderLayout({
 }
 
 export async function renderContent(
-  AppRoot: AppTemplateInterface,
+  AppWrapper: AppWrapperInterface,
   route: BuildRoute,
   ctx: Context
 ) {
-  const componentContext = { params: ctx.params, data: undefined };
-
   const result = render(
-    await bootstrapContent(
-      AppRoot as AppTemplateInterface,
-      route,
-      ctx //componentContext
-    ),
+    await bootstrapContent(AppWrapper as AppWrapperInterface, route, ctx),
     {
       elementRenderers: [LimetteElementRenderer(route, ctx)],
     }
