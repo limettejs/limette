@@ -1,8 +1,9 @@
-import { getRoutes, getAppWrapper } from "../dev/build.ts";
+import { getRoutes, getAppWrapper, type BuildRoute } from "../dev/build.ts";
 import type { App } from "./app.ts";
 import type { Method } from "./router.ts";
 import type { BuilderOptions } from "../dev/builder.ts";
 import { handlersForRoute } from "./handlers.ts";
+import type { AppWrapperComponentClass } from "./ssr.ts";
 
 export interface BuildRoutesOptions {
   buildAssets?: boolean;
@@ -24,10 +25,8 @@ export async function setFsRoutes(app: App) {
     loadFile: app.builtinPluginOptions.fsRoutes.loadFile,
   };
 
-  const [routes, AppWrapper] = await Promise.all([
-    getRoutes(options),
-    getAppWrapper(options),
-  ]);
+  const [routes, AppWrapper]: [BuildRoute[], AppWrapperComponentClass] =
+    await Promise.all([getRoutes(options), getAppWrapper(options)]);
 
   if (!AppWrapper) {
     throw new Error(

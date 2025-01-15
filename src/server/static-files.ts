@@ -1,7 +1,7 @@
 import { join } from "@std/path";
 import { exists } from "@std/fs";
 import { serveDir } from "@std/http";
-import type { Context } from "./app.ts";
+import type { Context } from "./context.ts";
 
 /**
  * Middleware to serve files from the static files.

@@ -1,7 +1,7 @@
 import type { BuildRoute } from "../dev/build.ts";
-import type { Context, ComponentContext } from "./context.ts";
+import type { Context } from "./context.ts";
 import type { MiddlewareFn } from "./middlewares.ts";
-import { type AppWrapperInterface, renderContent } from "./ssr.ts";
+import { type AppWrapperComponentClass, renderContent } from "./ssr.ts";
 
 export interface Handlers {
   GET?: MiddlewareFn;
@@ -15,7 +15,7 @@ export interface Handlers {
 
 export function handlersForRoute(
   route: BuildRoute,
-  AppWrapper: AppWrapperInterface
+  AppWrapper: AppWrapperComponentClass
 ) {
   const handlers: Handlers = {};
 

@@ -2,7 +2,7 @@ import { type Method, UrlPatternRouter } from "./router.ts";
 import { type MiddlewareFn, runMiddlewares } from "./middlewares.ts";
 import { staticBuildMiddleware } from "./static-files.ts";
 import { HttpError } from "./error.ts";
-import { setFsRoutes } from "./fs-routes.ts";
+import { setFsRoutes } from "./fs.ts";
 import { bgGreen, blue } from "@std/fmt/colors";
 import type { FsRoutesPluginOptions } from "../plugins/fs-routes.ts";
 import type { TailwindPluginOptions } from "../plugins/tailwind.ts";
@@ -167,7 +167,7 @@ export class App {
       } catch (err) {
         // Check if we have an error page registered for the url
         const errorRoute = this.#router.matchError(url);
-        console.log(err, errorRoute);
+
         if (errorRoute.handler) {
           if (err instanceof HttpError) {
             ctx.error = err;
@@ -233,9 +233,9 @@ export class App {
       const t1 = performance.now();
       const duration = ((t1 - t0) / 1000).toFixed(2);
       console.log(
-        `🟢 ${bgGreen(" Limette ")} app started (${duration}s): ${blue(
+        `🟢 ${bgGreen(" Limette ")} app started (${duration}s) \n\t ${blue(
           `http://localhost:${options.port}`
-        )}`
+        )}\n`
       );
     } else {
       // No port specified, check for a free port. Instead of picking just
@@ -250,9 +250,9 @@ export class App {
           const t1 = performance.now();
           const duration = ((t1 - t0) / 1000).toFixed(2);
           console.log(
-            `🟢 ${bgGreen(" Limette ")} app started (${duration}s): ${blue(
+            `🟢 ${bgGreen(" Limette ")} app started (${duration}s) \n\t ${blue(
               `http://localhost:${port}`
-            )}`
+            )}\n`
           );
           break;
         } catch (err) {

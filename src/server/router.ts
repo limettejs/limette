@@ -64,8 +64,6 @@ export class UrlPatternRouter {
         typeof path === "string" ? new URLPattern({ pathname: path }) : path,
       handler: fn,
     });
-
-    console.log("add error", path);
   }
 
   add(

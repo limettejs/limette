@@ -1,4 +1,4 @@
-import type { Context } from "../server/app.ts";
+import type { Context } from "../server/context.ts";
 
 /**
  * In-memory store of open WebSockets for
@@ -18,7 +18,7 @@ export async function refreshMiddleware(ctx: Context) {
   const searchParams = ctx.url.searchParams;
 
   if (searchParams.get("type") === "http") {
-    console.log("send refresh");
+    console.log("Reload the app");
     sockets.forEach((socket) => {
       socket.send("refresh");
     });

@@ -38,10 +38,15 @@ export declare class ComponentContextMixinInterface {
   get ctx(): string;
 }
 
-export declare class AppWrapperInterface {
-  prototype: {
-    render(app: AppWrapperOptions): TemplateResult;
-  };
+export interface AppWrapperComponentClass {
+  new (): AppWrapperComponent;
+  ctx: Context;
+  render(app: AppWrapperOptions): TemplateResult | Promise<TemplateResult>;
+}
+
+export interface AppWrapperComponent {
+  ctx: Context;
+  render(app: AppWrapperOptions): TemplateResult | Promise<TemplateResult>;
 }
 
 function registerRouteComponent(
@@ -164,7 +169,7 @@ const ComponentContextMixin = (base: typeof LitElement, ctx: Context) => {
 };
 
 export async function bootstrapContent(
-  AppWrapper: AppWrapperInterface,
+  AppWrapper: AppWrapperComponentClass,
   route: BuildRoute,
   ctx: Context
 ) {
@@ -219,7 +224,9 @@ export async function bootstrapContent(
     component: component,
   };
 
-  return AppWrapper.prototype.render(appWrapperOptions);
+  const appWrapper = new AppWrapper();
+  appWrapper.ctx = ctx;
+  return await appWrapper.render(appWrapperOptions);
 }
 
 async function renderLayout({
@@ -236,25 +243,23 @@ async function renderLayout({
   const layoutsReversed = [...layouts].reverse();
 
   let result = component;
-  for await (const Layout of layoutsReversed) {
-    // @ts-ignore this should be fixed in the future
-    result = await Layout.default.prototype.render.call(
-      // @ts-ignore this should be fixed in the future
-      Object.assign(Layout.default.prototype, { ctx: ctx }),
-      result
-    );
+  for await (const LayoutModule of layoutsReversed) {
+    const LayoutComponent = LayoutModule.default;
+    const layout = new LayoutComponent();
+    layout.ctx = ctx;
+    result = await layout.render(result);
   }
 
   return result;
 }
 
 export async function renderContent(
-  AppWrapper: AppWrapperInterface,
+  AppWrapper: AppWrapperComponentClass,
   route: BuildRoute,
   ctx: Context
 ) {
   const result = render(
-    await bootstrapContent(AppWrapper as AppWrapperInterface, route, ctx),
+    await bootstrapContent(AppWrapper as AppWrapperComponentClass, route, ctx),
     {
       elementRenderers: [LimetteElementRenderer(route, ctx)],
     }

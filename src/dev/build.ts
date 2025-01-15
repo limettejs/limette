@@ -7,8 +7,8 @@ import { encodeHex } from "@std/encoding";
 import { getIslandsRegistered } from "./extract-islands.ts";
 import { resolvePath, getTailwind } from "./path.ts";
 import type { App } from "../server/app.ts";
-import type { BuildRoutesOptions } from "../server/fs-routes.ts";
-import type { AppWrapperInterface } from "../server/ssr.ts";
+import type { BuildRoutesOptions } from "../server/fs.ts";
+import type { AppWrapperComponentClass } from "../server/ssr.ts";
 import type { LayoutModule } from "../server/layouts.ts";
 import type { MiddlewareModule } from "../server/middlewares.ts";
 import type { RouteModule } from "../server/router.ts";
@@ -470,7 +470,7 @@ async function getLayoutsForRoute({
 
 export async function getAppWrapper({
   loadFile,
-}: BuildRoutesOptions): Promise<AppWrapperInterface> {
+}: BuildRoutesOptions): Promise<AppWrapperComponentClass> {
   const [checkTs, checkJs] = await Promise.allSettled([
     exists("./routes/_app.ts", { isFile: true }),
     exists("./routes/_app.js", { isFile: true }),
@@ -491,11 +491,11 @@ export async function getAppWrapper({
 
   if (hasAppTs) {
     return ((await loadFile?.("./routes/_app.ts")) as { default: unknown })
-      .default as AppWrapperInterface;
+      .default as AppWrapperComponentClass;
   }
 
   return ((await loadFile?.("./routes/_app.js")) as { default: unknown })
-    .default as AppWrapperInterface;
+    .default as AppWrapperComponentClass;
 }
 
 async function getAppWrapperPath() {
