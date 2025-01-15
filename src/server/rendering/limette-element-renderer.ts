@@ -31,7 +31,6 @@ export const LimetteElementRenderer = (route: BuildRoute, ctx: Context) =>
     override renderShadow(renderInfo: RenderInfo): RenderResult {
       const ctor = this.element.constructor as typeof LitElement & {
         __tailwind: boolean;
-        disableLightDom: boolean;
       };
 
       // We check if the element is inside of an is-land element
@@ -41,7 +40,7 @@ export const LimetteElementRenderer = (route: BuildRoute, ctx: Context) =>
         this.element.hasAttribute("island");
 
       // Islands are CSR'ed, so we can't render them in light DOM
-      if (ctor?.disableLightDom !== true && !isIsland) {
+      if (!isIsland) {
         (this.shadowRootOptions.mode as LmtShadowRootMode) = "disabled";
       } else {
         this.shadowRootOptions.mode = "open";
@@ -72,8 +71,7 @@ export const LimetteElementRenderer = (route: BuildRoute, ctx: Context) =>
           ctor.__tailwind !== true &&
           route.cssAssetPath &&
           !this.tagName.startsWith("lmt-route-")) ||
-        (this.tagName.startsWith("lmt-route-") &&
-          ctor?.disableLightDom === true)
+        this.tagName.startsWith("lmt-route-")
       ) {
         // Inject Tailwind CSS import
         ctor.elementStyles?.unshift?.(

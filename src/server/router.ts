@@ -56,7 +56,7 @@ export class UrlPatternRouter {
     let path = pathname;
 
     if (typeof pathname === "string" && pathname.endsWith("/_error")) {
-      path = pathname.substring(0, pathname.length - 7) + "/:path*";
+      path = pathname.substring(0, pathname.length - 7) + "/*";
     }
 
     this.#errors.push({

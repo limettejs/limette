@@ -6,12 +6,12 @@ export interface ContextInit {
   info: Deno.ServeHandlerInfo;
   params: Record<string, string>;
   config: AppConfig;
-  data: unknown;
   next: () => Promise<Response>;
 }
 export interface Context extends ContextInit {
+  data: unknown;
   error: unknown;
-  render: (data?: unknown) => Promise<Response>;
+  render: (data?: Context["data"]) => Promise<Response>;
   redirect(path: string, status?: number): Response;
 }
 

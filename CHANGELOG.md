@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - BREAKING: Change Middleware's signature
 - BREAKING: Change Context's signature
 - BREAKING: Rename `AppRoot` to `AppWrapper`
+- BREAKING: Remove `disableLightDom` option to disable light DOM for server components
 - Replace Oak router with a custom router
 - Disable Tailwind logs
 
