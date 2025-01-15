@@ -1,6 +1,10 @@
-import type { Context } from "./app.ts";
+import type { Context } from "./context.ts";
 
 export type MiddlewareFn = (ctx: Context) => Response | Promise<Response>;
+
+export interface MiddlewareModule {
+  handler: MiddlewareFn | MiddlewareFn[];
+}
 
 export function runMiddlewares(
   middlewares: MiddlewareFn[][],

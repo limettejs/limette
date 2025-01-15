@@ -1,8 +1,8 @@
 import { getRoutes, getAppTemplate } from "../dev/build.ts";
-import type { App, Context, ComponentContext } from "./app.ts";
+import type { App } from "./app.ts";
 import type { Method } from "./router.ts";
-import { renderContent } from "./ssr.ts";
 import type { BuilderOptions } from "../dev/builder.ts";
+import { handlersForRoute } from "./handlers.ts";
 
 export interface BuildRoutesOptions {
   buildAssets?: boolean;
@@ -60,59 +60,26 @@ export async function setFsRoutes(app: App) {
     });
   }
 
-  routes.map((route) => {
+  for (const route of routes) {
+    const handlers = handlersForRoute(route, AppRoot);
+
+    // Register error pages
+    if (route.path.endsWith("/_error") && handlers?.GET) {
+      app.error(route.path, handlers.GET);
+      continue;
+    }
+
     const middlewares = route.middlewares
       .map((module) => module?.handler)
       .flat();
 
-    // Register custom handlers
-    if (route.routeModule?.handler) {
-      for (const [method, handlerFn] of Object.entries(
-        route.routeModule.handler
-      )) {
-        const routeHandler = async (ctx: Context) => {
-          ctx.render = async (data: ComponentContext["data"]) => {
-            if (!route.routeModule?.default) {
-              throw new Error(
-                "No component was provided. Make sure you export a component as default to be redered."
-              );
-            }
-
-            const content = await renderContent(AppRoot, route, ctx, data);
-
-            return new Response(content, {
-              status: 200,
-              statusText: "OK",
-              headers: new Headers({ "Content-Type": "text/html" }),
-            });
-          };
-
-          return await handlerFn(ctx);
-        };
-
-        // Register route
-        app[method.toLocaleLowerCase() as Lowercase<Method>](
-          route.path,
-          ...middlewares,
-          routeHandler
-        );
-      }
+    for (const [method, handler] of Object.entries(handlers)) {
+      // Register route
+      app[method.toLocaleLowerCase() as Lowercase<Method>](
+        route.path,
+        ...middlewares,
+        handler
+      );
     }
-
-    // Default behaviour if no GET handler is provided
-    if (route.routeModule?.default && !route.routeModule?.handler?.GET) {
-      const routeHandler = async (ctx: Context) => {
-        const content = await renderContent(AppRoot, route, ctx);
-
-        return new Response(content, {
-          status: 200,
-          headers: {
-            "Content-Type": "text/html",
-          },
-        });
-      };
-
-      app.get(route.path, ...middlewares, routeHandler);
-    }
-  });
+  }
 }

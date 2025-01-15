@@ -4,12 +4,14 @@ import { parseImports } from "parse-imports";
 import { parse, join, toFileUrl, SEPARATOR } from "@std/path";
 import { walk, emptyDir, ensureFile, exists } from "@std/fs";
 import { encodeHex } from "@std/encoding";
+import { getIslandsRegistered } from "./extract-islands.ts";
+import { resolvePath, getTailwind } from "./path.ts";
 import type { App } from "../server/app.ts";
 import type { BuildRoutesOptions } from "../server/fs-routes.ts";
 import type { AppTemplateInterface } from "../server/ssr.ts";
-import { getIslandsRegistered } from "./extract-islands.ts";
-import { resolvePath, getTailwind } from "./path.ts";
-import type { RouteModule, LayoutModule, MiddlewareModule } from "../types.ts";
+import type { LayoutModule } from "../server/layouts.ts";
+import type { MiddlewareModule } from "../server/middlewares.ts";
+import type { RouteModule } from "../server/router.ts";
 
 const TEST_FILE_PATTERN = /[._]test\.(?:[tj]sx?|[mc][tj]s)$/;
 
@@ -227,8 +229,10 @@ export async function getRoutes(options: BuildRoutesOptions) {
 
   const ignoreFilePattern = TEST_FILE_PATTERN;
   const routes: BuildRoute[] = [];
-  const allMiddlewareFiles = await getMiddlewareFiles();
-  const allLayoutFiles = await getLayoutFiles();
+  const [allMiddlewareFiles, allLayoutFiles] = await Promise.all([
+    getMiddlewareFiles(),
+    getLayoutFiles(),
+  ]);
 
   for await (const entry of walk("./routes", {
     includeDirs: false,

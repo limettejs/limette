@@ -9,14 +9,14 @@ import type { LitElement, TemplateResult } from "lit";
 import type { DirectiveResult } from "lit/directives/unsafe-html.js";
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { UnsafeHTMLDirective } from "lit/directives/unsafe-html.js";
-import type { Context, ComponentContext } from "./app.ts";
+import type { Context, ComponentContext } from "./context.ts";
 import type { BuildRoute } from "../dev/build.ts";
 import { LimetteElementRenderer } from "./rendering/limette-element-renderer.ts";
 
 import "../runtime/is-land.ts"; // should use limette?
 
 import { installWindowOnGlobal } from "@lit-labs/ssr/lib/dom-shim.js";
-import type { LayoutModule } from "../types.ts";
+import type { LayoutModule } from "./layouts.ts";
 
 installWindowOnGlobal();
 // Set window object, because the shim doesn't do it
@@ -166,7 +166,7 @@ const ComponentCtxMixin = (base: typeof LitElement) => {
 export async function bootstrapContent(
   AppRoot: AppTemplateInterface,
   route: BuildRoute,
-  componentContext: ComponentContext
+  ctx: Context
 ) {
   const routeModule = route.routeModule;
   const routeConfig = routeModule?.config;
@@ -197,12 +197,12 @@ export async function bootstrapContent(
       layouts: !skipInheritedLayouts
         ? (route.layouts as LayoutModule[])
         : ([route.layouts.at(-1)] as LayoutModule[]),
-      componentContext: componentContext,
+      ctx: ctx,
     });
   }
 
   const ctxStr = `<script type="text/json" id="_lmt_ctx">${JSON.stringify(
-    componentContext
+    ctx
   )}</script>`;
 
   const appTemplateOptions: AppRootOptions = {
@@ -224,11 +224,11 @@ export async function bootstrapContent(
 async function renderLayout({
   component,
   layouts,
-  componentContext,
+  ctx,
 }: {
   component: DirectiveResult<UnsafeHTMLDirective>;
   layouts: LayoutModule[];
-  componentContext: ComponentContext;
+  ctx: Context;
 }) {
   if (layouts.length === 0) return;
 
@@ -239,7 +239,7 @@ async function renderLayout({
     // @ts-ignore this should be fixed in the future
     result = await Layout.default.prototype.render.call(
       // @ts-ignore this should be fixed in the future
-      Object.assign(Layout.default.prototype, { ctx: componentContext }),
+      Object.assign(Layout.default.prototype, { ctx: ctx }),
       result
     );
   }
@@ -250,19 +250,18 @@ async function renderLayout({
 export async function renderContent(
   AppRoot: AppTemplateInterface,
   route: BuildRoute,
-  ctx: Context,
-  data?: ComponentContext["data"]
+  ctx: Context
 ) {
-  const componentContext = { params: ctx.params, data };
+  const componentContext = { params: ctx.params, data: undefined };
 
   const result = render(
     await bootstrapContent(
       AppRoot as AppTemplateInterface,
       route,
-      componentContext
+      ctx //componentContext
     ),
     {
-      elementRenderers: [LimetteElementRenderer(route, componentContext)],
+      elementRenderers: [LimetteElementRenderer(route, ctx)],
     }
   );
 

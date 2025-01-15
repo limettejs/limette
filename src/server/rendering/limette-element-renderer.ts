@@ -5,18 +5,15 @@ import type { LitElement } from "lit";
 import { LitElementRenderer } from "@lit-labs/ssr/lib/lit-element-renderer.js";
 import type { RenderInfo, RenderResult } from "@lit-labs/ssr";
 import type { BuildRoute } from "../../dev/build.ts";
-import type { ComponentContext } from "../app.ts";
+import type { Context } from "../context.ts";
 
 interface LimetteElement extends LitElement {
-  __ctx?: ComponentContext; // Define the custom property here }
+  __ctx?: Context; // Define the custom property here }
 }
 
 type LmtShadowRootMode = "open" | "closed" | "disabled";
 
-export const LimetteElementRenderer = (
-  route: BuildRoute,
-  componentContext: ComponentContext
-) =>
+export const LimetteElementRenderer = (route: BuildRoute, ctx: Context) =>
   class LimetteElementRenderer extends LitElementRenderer {
     override connectedCallback(): void {
       if (!this.element.hasAttribute("ssr")) {
@@ -59,7 +56,7 @@ export const LimetteElementRenderer = (
 
       // Inject component context
       if (this.tagName.startsWith("lmt-route-")) {
-        (this.element as LimetteElement).__ctx = componentContext;
+        (this.element as LimetteElement).__ctx = ctx;
       }
 
       /**

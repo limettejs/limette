@@ -141,6 +141,7 @@ export class HttpError {
     message: string = getMessage(status),
     public options?: ErrorOptions
   ) {
+    this.status = status;
     this.message = message;
     if (status >= 500) {
       this.#error = new Error();

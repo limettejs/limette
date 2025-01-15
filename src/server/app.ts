@@ -1,5 +1,5 @@
 import { type Method, UrlPatternRouter } from "./router.ts";
-import { type MiddlewareFn, runMiddlewares } from "./middleware.ts";
+import { type MiddlewareFn, runMiddlewares } from "./middlewares.ts";
 import { staticBuildMiddleware } from "./static-files.ts";
 import { HttpError } from "./error.ts";
 import { setFsRoutes } from "./fs-routes.ts";
@@ -7,8 +7,9 @@ import { bgGreen, blue } from "@std/fmt/colors";
 import type { FsRoutesPluginOptions } from "../plugins/fs-routes.ts";
 import type { TailwindPluginOptions } from "../plugins/tailwind.ts";
 import type { Builder } from "../dev/builder.ts";
+import { Context } from "./context.ts";
 
-interface AppConfig {
+export interface AppConfig {
   basePath?: string;
   mode?: "development" | "production";
   builder?: Builder;
@@ -29,61 +30,6 @@ export type ListenOptions = Partial<
 interface BuiltinPluginOptions {
   fsRoutes: FsRoutesPluginOptions;
   tailwind: TailwindPluginOptions;
-}
-
-export interface ContextInit {
-  request: Request;
-  url: URL;
-  info: Deno.ServeHandlerInfo;
-  params: Record<string, string>;
-  config: AppConfig;
-  next: () => Promise<Response>;
-}
-export interface Context extends ContextInit {
-  error: unknown;
-  render: (data?: unknown) => Promise<Response>;
-  redirect(path: string, status?: number): Response;
-}
-
-export interface ComponentContext {
-  params: Context["params"];
-  data: unknown;
-}
-
-export class Context implements Context {
-  constructor({ request, url, info, params, config, next }: ContextInit) {
-    this.request = request;
-    this.url = url;
-    this.info = info;
-    this.params = params;
-    this.config = config;
-    this.next = next;
-  }
-
-  redirect(pathOrUrl: string, status = 302): Response {
-    let location = pathOrUrl;
-
-    // Disallow protocol relative URLs
-    if (pathOrUrl !== "/" && pathOrUrl.startsWith("/")) {
-      let idx = pathOrUrl.indexOf("?");
-      if (idx === -1) {
-        idx = pathOrUrl.indexOf("#");
-      }
-
-      const pathname = idx > -1 ? pathOrUrl.slice(0, idx) : pathOrUrl;
-      const search = idx > -1 ? pathOrUrl.slice(idx) : "";
-
-      // Remove double slashes to prevent open redirect vulnerability.
-      location = `${pathname.replaceAll(/\/+/g, "/")}${search}`;
-    }
-
-    return new Response(null, {
-      status,
-      headers: {
-        location,
-      },
-    });
-  }
 }
 
 const DEFAULT_NOT_FOUND = () => {
@@ -145,6 +91,11 @@ export class App {
 
   use(middleware: MiddlewareFn): this {
     this.#router.addMiddleware(middleware);
+    return this;
+  }
+
+  error(pathname: string | URLPattern, middleware: MiddlewareFn): this {
+    this.#router.addError(pathname, middleware);
     return this;
   }
 
@@ -214,6 +165,21 @@ export class App {
         }
         return await runMiddlewares(handlers, ctx);
       } catch (err) {
+        // Check if we have an error page registered for the url
+        const errorRoute = this.#router.matchError(url);
+        console.log(err, errorRoute);
+        if (errorRoute.handler) {
+          if (err instanceof HttpError) {
+            ctx.error = err;
+          }
+          try {
+            return await runMiddlewares([[errorRoute.handler]], ctx);
+          } catch (e) {
+            console.error(e);
+            return new Response("Internal server error", { status: 500 });
+          }
+        }
+
         if (err instanceof HttpError) {
           if (err.status >= 500) {
             // deno-lint-ignore no-console

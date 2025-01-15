@@ -1,8 +1,20 @@
-import type { MiddlewareFn } from "./middleware.ts";
 import "./ssr.ts";
-import type { Context } from "./app.ts";
+// @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
+import type { LitElement } from "lit";
+import type { MiddlewareFn } from "./middlewares.ts";
+import type { Handlers } from "./handlers.ts";
 
 export type Method = "HEAD" | "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+
+export interface RouteConfig {
+  skipInheritedLayouts: boolean; // Skip already inherited layouts
+}
+
+export interface RouteModule {
+  config: RouteConfig;
+  handler: Handlers;
+  default: LitElement;
+}
 
 interface RouteResult {
   params: Record<string, string>;
@@ -18,22 +30,42 @@ export interface Route {
   handlers: MiddlewareFn[];
 }
 
-export type Handlers = {
-  GET?(ctx: Context): Response | Promise<Response>;
-  POST?(ctx: Context): Response | Promise<Response>;
-  PUT?(ctx: Context): Response | Promise<Response>;
-  DELETE?(ctx: Context): Response | Promise<Response>;
-  PATCH?(ctx: Context): Response | Promise<Response>;
-  OPTIONS?(ctx: Context): Response | Promise<Response>;
-  HEAD?(ctx: Context): Response | Promise<Response>;
-};
+interface ErrorRoute {
+  path: URLPattern;
+  handler: MiddlewareFn;
+}
+
+interface ErrorRouteResult {
+  params: Record<string, string>;
+  handler: MiddlewareFn | undefined;
+  methodMatch: boolean;
+  patternMatch: boolean;
+  pattern: string | null;
+}
 
 export class UrlPatternRouter {
   #routes: Route[] = [];
   #middlewares: MiddlewareFn[] = [];
+  #errors: ErrorRoute[] = [];
 
   addMiddleware(fn: MiddlewareFn) {
     this.#middlewares.push(fn);
+  }
+
+  addError(pathname: string | URLPattern, fn: MiddlewareFn) {
+    let path = pathname;
+
+    if (typeof pathname === "string" && pathname.endsWith("/_error")) {
+      path = pathname.substring(0, pathname.length - 7) + "/:path*";
+    }
+
+    this.#errors.push({
+      path:
+        typeof path === "string" ? new URLPattern({ pathname: path }) : path,
+      handler: fn,
+    });
+
+    console.log("add error", path);
   }
 
   add(
@@ -84,6 +116,30 @@ export class UrlPatternRouter {
           result.methodMatch = true;
           return result;
         }
+      }
+    }
+
+    return result;
+  }
+
+  matchError(url: URL): ErrorRouteResult {
+    const result: ErrorRouteResult = {
+      params: {},
+      handler: undefined,
+      methodMatch: false,
+      patternMatch: false,
+      pattern: null,
+    };
+
+    for (const route of this.#errors) {
+      const match = route.path.exec(url);
+      if (match !== null) {
+        result.handler = route.handler;
+        result.methodMatch = true;
+        result.patternMatch = true;
+        result.pattern = route.path.pathname;
+
+        return result;
       }
     }
 
