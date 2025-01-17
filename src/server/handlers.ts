@@ -1,5 +1,6 @@
 import type { BuildRoute } from "../dev/build.ts";
 import type { Context } from "./context.ts";
+import { HttpError } from "./error.ts";
 import type { MiddlewareFn } from "./middlewares.ts";
 import { type AppWrapperComponentClass, renderContent } from "./ssr.ts";
 
@@ -34,8 +35,13 @@ export function handlersForRoute(
 
           const content = await renderContent(AppWrapper, route, ctx);
 
+          let status = 200;
+          if (ctx.error instanceof HttpError) {
+            status = ctx.error.status ?? 200;
+          }
+
           return new Response(content, {
-            status: 200,
+            status: status,
             statusText: "OK",
             headers: new Headers({ "Content-Type": "text/html" }),
           });
@@ -53,8 +59,13 @@ export function handlersForRoute(
     const handler = async (ctx: Context) => {
       const content = await renderContent(AppWrapper, route, ctx);
 
+      let status = 200;
+      if (ctx.error instanceof HttpError) {
+        status = ctx.error.status ?? 200;
+      }
+
       return new Response(content, {
-        status: 200,
+        status: status,
         headers: {
           "Content-Type": "text/html",
         },
