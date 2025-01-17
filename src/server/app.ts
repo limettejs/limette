@@ -9,6 +9,8 @@ import type { TailwindPluginOptions } from "../plugins/tailwind.ts";
 import type { Builder } from "../dev/builder.ts";
 import { Context } from "./context.ts";
 
+// TODO: context on client side
+
 export interface AppConfig {
   basePath?: string;
   mode?: "development" | "production";

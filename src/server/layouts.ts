@@ -18,6 +18,5 @@ export interface LayoutComponentClass {
 }
 
 export interface LayoutComponent {
-  ctx: Context;
   render(component: TemplateResult): TemplateResult | Promise<TemplateResult>;
 }

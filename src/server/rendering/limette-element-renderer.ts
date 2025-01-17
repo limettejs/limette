@@ -33,10 +33,9 @@ export const LimetteElementRenderer = (route: BuildRoute, ctx: Context) =>
         __tailwind: boolean;
       };
 
-      // We check if the element is inside of an is-land element
+      // A component is an island if it's included in route.islands.
       const isIsland =
         route.islands?.includes(this.tagName) ||
-        renderInfo.customElementInstanceStack.at(-2)?.tagName === "is-land" ||
         this.element.hasAttribute("island");
 
       // Islands are CSR'ed, so we can't render them in light DOM
@@ -46,32 +45,35 @@ export const LimetteElementRenderer = (route: BuildRoute, ctx: Context) =>
         this.shadowRootOptions.mode = "open";
       }
 
+      // Partial SSR islands with only Tailwind style (if not skipped)
       if (isIsland && route.cssAssetPath && !this.element.hasAttribute("ssr")) {
         // @ts-expect-error: LitElementRenderer actually accepts undefined as a returned value
-        if (this.element.hasAttribute("no-tailwind")) return;
+        if (this.element.hasAttribute("skip-tailwind")) return;
 
         return `<style>@import url("${route.cssAssetPath}");</style>`;
       }
 
-      // Inject component context
-      if (this.tagName.startsWith("lmt-route-")) {
-        (this.element as LimetteElement).__ctx = ctx;
+      // Inject context for SSR'ed components that use the ContextMixin
+      if (
+        (!isIsland || (isIsland && this.element.hasAttribute("ssr"))) &&
+        Object.hasOwn(ctor, "contextMixin")
+      ) {
+        this.element.ctx = ctx;
       }
 
       /**
-       * Don't inject Tailwind CSS for
-       *    - <is-land>,
-       *    - no-tailwind attribute
-       *    - there is no CSS
-       *    - <lmt-route-...> + light DOM
+       * Inject Tailwind CSS for
+       *    - is island
+       *    - is ssr'ed
+       *    - no skip-tailwind attribute
+       *    - route has css
        */
       if (
-        (this.tagName !== "is-land" &&
-          !this.element.hasAttribute("no-tailwind") &&
-          ctor.__tailwind !== true &&
-          route.cssAssetPath &&
-          !this.tagName.startsWith("lmt-route-")) ||
-        this.tagName.startsWith("lmt-route-")
+        isIsland &&
+        route.cssAssetPath &&
+        this.element.hasAttribute("ssr") &&
+        !this.element.hasAttribute("skip-tailwind") &&
+        ctor.__tailwind !== true
       ) {
         // Inject Tailwind CSS import
         ctor.elementStyles?.unshift?.(

@@ -4,16 +4,14 @@ import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { collectResult } from "@lit-labs/ssr/lib/render-result.js";
 import { DOMParser } from "@b-fuze/deno-dom";
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
-import type { LitElement, TemplateResult } from "lit";
+import type { TemplateResult } from "lit";
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { DirectiveResult } from "lit/directives/unsafe-html.js";
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { UnsafeHTMLDirective } from "lit/directives/unsafe-html.js";
-import type { Context, ComponentContext } from "./context.ts";
+import type { Context } from "./context.ts";
 import type { BuildRoute } from "../dev/build.ts";
 import { LimetteElementRenderer } from "./rendering/limette-element-renderer.ts";
-
-import "../runtime/is-land.ts"; // should use limette?
 
 import { installWindowOnGlobal } from "@lit-labs/ssr/lib/dom-shim.js";
 import type { LayoutModule } from "./layouts.ts";
@@ -32,11 +30,6 @@ export type AppWrapperOptions = {
   js: string[] | TemplateResult[] | DirectiveResult<UnsafeHTMLDirective>[];
   component: DirectiveResult<UnsafeHTMLDirective>;
 };
-
-// Define the interface for the mixin
-export declare class ComponentContextMixinInterface {
-  get ctx(): string;
-}
 
 export interface AppWrapperComponentClass {
   new (): AppWrapperComponent;
@@ -156,18 +149,6 @@ function processHeadAndShadowRoots(htmlString: string) {
   return doc.documentElement.outerHTML;
 }
 
-const ComponentContextMixin = (base: typeof LitElement, ctx: Context) => {
-  class ContextClass extends base {
-    __ctx: Context = ctx;
-
-    get ctx() {
-      return this.__ctx;
-    }
-  }
-
-  return ContextClass;
-};
-
 export async function bootstrapContent(
   AppWrapper: AppWrapperComponentClass,
   route: BuildRoute,
@@ -176,10 +157,7 @@ export async function bootstrapContent(
   const routeModule = route.routeModule;
   const routeConfig = routeModule?.config;
 
-  const ComponentClass = ComponentContextMixin(
-    routeModule?.default as unknown as typeof LitElement,
-    ctx
-  );
+  const ComponentClass = routeModule?.default;
   let component = unsafeHTML(
     registerRouteComponent(
       ComponentClass as unknown as CustomElementConstructor,
@@ -225,7 +203,10 @@ export async function bootstrapContent(
   };
 
   const appWrapper = new AppWrapper();
-  appWrapper.ctx = ctx;
+  // Inject context if it uses ContextMixin
+  if (Object.hasOwn(Object.getPrototypeOf(AppWrapper), "contextMixin")) {
+    appWrapper.ctx = ctx;
+  }
   return await appWrapper.render(appWrapperOptions);
 }
 
@@ -246,7 +227,10 @@ async function renderLayout({
   for await (const LayoutModule of layoutsReversed) {
     const LayoutComponent = LayoutModule.default;
     const layout = new LayoutComponent();
-    layout.ctx = ctx;
+    // Inject context if it uses ContextMixin
+    if (Object.hasOwn(Object.getPrototypeOf(LayoutComponent), "contextMixin")) {
+      layout.ctx = ctx;
+    }
     result = await layout.render(result);
   }
 

@@ -27,8 +27,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - BREAKING: Use Tailwind as a plugin
 - BREAKING: Change Middleware's signature
 - BREAKING: Change Context's signature
-- BREAKING: Rename `AppRoot` to `AppWrapper`
 - BREAKING: Remove `disableLightDom` option to disable light DOM for server components
+- BREAKING: Remove `<is-land>` wrapper
+- BREAKING: Rename `AppRoot` to `AppWrapper`
+- BREAKING: Rename `no-tailwind` to `skip-tailwind`
 - Replace Oak router with a custom router
 - Disable Tailwind logs
 

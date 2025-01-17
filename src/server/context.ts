@@ -1,3 +1,5 @@
+// @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
+import type { LitElement } from "lit";
 import type { AppConfig } from "./app.ts";
 
 export interface ContextInit {
@@ -55,3 +57,21 @@ export class Context implements Context {
     });
   }
 }
+
+export const ContextMixin = (base: LitElement) => {
+  return class ContextClass extends base {
+    #ctx!: Context;
+
+    static contextMixin = true;
+
+    get ctx() {
+      return this.#ctx;
+    }
+    set ctx(value) {
+      console.log("set context", value, this.#ctx);
+      // Allow setting ctx only once?
+      if (this.#ctx instanceof Context) return;
+      this.#ctx = value;
+    }
+  };
+};

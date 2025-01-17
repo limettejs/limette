@@ -69,11 +69,10 @@ async function buildJS(path: string, options: BuildRoutesOptions) {
   // For devMode, we create a bundle for the refresh snippet
   if (!imports.length && !devMode) return result;
 
+  // `import "https://esm.sh/@lit-labs/ssr-client@1.1.7/lit-element-hydrate-support.js";`,
   const entryPoint = [
-    // `import "https://esm.sh/@lit-labs/ssr-client@1.1.7/lit-element-hydrate-support.js";`,
     `import "@limette/core/runtime/ssr-client/lit-element-hydrate-support.ts";`,
     `import "@limette/core/runtime/ssr-client/lit-element-hydrate-support-patch.ts";`,
-    `import "@limette/core/runtime/is-land.ts";`,
     devMode ? `import "@limette/core/runtime/refresh.ts";` : ``,
     ...imports,
   ].join("\n");
