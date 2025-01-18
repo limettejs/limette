@@ -1,29 +1,17 @@
-// Import the WASM build on platforms where running subprocesses is not
-// permitted, such as Deno Deploy, or when running without `--allow-run`.
-// import * as esbuild from "https://deno.land/x/esbuild@0.20.2/wasm.js";
-
-import {
-  esbuild,
-  denoPlugins,
-  walk,
-  parse,
-  encodeHex,
-  parseImports,
-  emptyDir,
-  ensureFile,
-  join,
-  SEPARATOR,
-  toFileUrl,
-} from "../deps.ts";
-import { fileExists } from "../server/utils.ts";
-import type { GetRouterOptions, Handlers } from "../server/router.ts";
-import type { AppTemplateInterface } from "../server/ssr.ts";
-import type { Middleware } from "../deps.ts";
+import * as esbuild from "esbuild";
+import { denoPlugins } from "@luca/esbuild-deno-loader";
+import { parseImports } from "parse-imports";
+import { parse, join, toFileUrl, SEPARATOR } from "@std/path";
+import { walk, emptyDir, ensureFile, exists } from "@std/fs";
+import { encodeHex } from "@std/encoding";
 import { getIslandsRegistered } from "./extract-islands.ts";
 import { resolvePath, getTailwind } from "./path.ts";
-// @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
-import type { LitElement } from "lit";
-import type { RouteModule, LayoutModule, MiddlewareModule } from "../types.ts";
+import type { App } from "../server/app.ts";
+import type { BuildRoutesOptions } from "../server/fs.ts";
+import type { AppWrapperComponentClass } from "../server/ssr.ts";
+import type { LayoutModule } from "../server/layouts.ts";
+import type { MiddlewareModule } from "../server/middlewares.ts";
+import type { RouteModule } from "../server/router.ts";
 
 const TEST_FILE_PATTERN = /[._]test\.(?:[tj]sx?|[mc][tj]s)$/;
 
@@ -68,7 +56,9 @@ async function getIslandsImports(file: string) {
   return imports;
 }
 
-async function buildJS(path: string, { devMode }: { devMode?: boolean }) {
+async function buildJS(path: string, options: BuildRoutesOptions) {
+  const { devMode, target } = options;
+
   const imports = await getIslandsImports(path);
   let result: { jsAssetContent?: esbuild.OutputFile; islands?: string[] } = {
     jsAssetContent: undefined,
@@ -76,13 +66,13 @@ async function buildJS(path: string, { devMode }: { devMode?: boolean }) {
   };
 
   // Without islands imported, we don't create any bundle for this route
-  if (!imports.length) return result;
+  // For devMode, we create a bundle for the refresh snippet
+  if (!imports.length && !devMode) return result;
 
+  // `import "https://esm.sh/@lit-labs/ssr-client@1.1.7/lit-element-hydrate-support.js";`,
   const entryPoint = [
-    // `import "https://esm.sh/@lit-labs/ssr-client@1.1.7/lit-element-hydrate-support.js";`,
     `import "@limette/core/runtime/ssr-client/lit-element-hydrate-support.ts";`,
     `import "@limette/core/runtime/ssr-client/lit-element-hydrate-support-patch.ts";`,
-    `import "@limette/core/runtime/is-land.ts";`,
     devMode ? `import "@limette/core/runtime/refresh.ts";` : ``,
     ...imports,
   ].join("\n");
@@ -103,6 +93,7 @@ async function buildJS(path: string, { devMode }: { devMode?: boolean }) {
     minify: !devMode,
     bundle: true,
     format: "esm",
+    target: target,
     write: false,
   });
 
@@ -178,13 +169,15 @@ function convertToWebComponentTagName(str: string) {
 async function buildCSS(
   absoluteFilePath: string,
   jsAssetContent: esbuild.OutputFile | undefined,
-  { devMode }: { devMode?: boolean }
+  options: BuildRoutesOptions
 ) {
+  const { devMode } = options;
+
   const tailwindcss = await getTailwind();
 
   if (!tailwindcss) throw new Error("Tailwind is missing from deno.json!");
 
-  const appTemplatePath = await getAppTemplatePath();
+  const appWrapperPath = await getAppWrapperPath();
   let tempDirPath = "";
   let contentFlag = absoluteFilePath;
 
@@ -193,7 +186,7 @@ async function buildCSS(
     const bundlePathTemp = `${tempDirPath}/bundle.js`;
     await Deno.writeTextFile(bundlePathTemp, jsAssetContent.text, {});
 
-    contentFlag = `${appTemplatePath},${contentFlag},${bundlePathTemp}`;
+    contentFlag = `${appWrapperPath},${contentFlag},${bundlePathTemp}`;
   }
 
   const command = new Deno.Command(`${Deno.execPath()}`, {
@@ -222,14 +215,12 @@ async function buildCSS(
   return css;
 }
 
-export async function getRoutes({
-  buildAssets,
-  devMode,
-  loadFs,
-}: GetRouterOptions) {
+export async function getRoutes(options: BuildRoutesOptions) {
+  const { buildAssets, devMode, tailwind, loadFile } = options;
+
   if (!devMode && !buildAssets) {
     return (
-      (await loadFs?.("_limette/routes.js")) as {
+      (await loadFile?.("_limette/routes.js")) as {
         routes: BuildRoute[];
       }
     ).routes;
@@ -237,8 +228,10 @@ export async function getRoutes({
 
   const ignoreFilePattern = TEST_FILE_PATTERN;
   const routes: BuildRoute[] = [];
-  const allMiddlewareFiles = await getMiddlewareFiles();
-  const allLayoutFiles = await getLayoutFiles();
+  const [allMiddlewareFiles, allLayoutFiles] = await Promise.all([
+    getMiddlewareFiles(),
+    getLayoutFiles(),
+  ]);
 
   for await (const entry of walk("./routes", {
     includeDirs: false,
@@ -274,7 +267,7 @@ export async function getRoutes({
 
     // Generate JS assets
     const { jsAssetContent, islands } = buildAssets
-      ? await buildJS(absoluteFilePath, { devMode })
+      ? await buildJS(absoluteFilePath, options)
       : {};
     const jsAssetPath =
       jsAssetContent || buildAssets === false
@@ -282,9 +275,10 @@ export async function getRoutes({
         : undefined;
 
     // Generate CSS assets
-    const cssAssetContent = buildAssets
-      ? await buildCSS(absoluteFilePath, jsAssetContent, { devMode })
-      : undefined;
+    const cssAssetContent =
+      buildAssets && tailwind
+        ? await buildCSS(absoluteFilePath, jsAssetContent, { devMode })
+        : undefined;
     const cssAssetPath =
       cssAssetContent || buildAssets === false
         ? `/_limette/css/tailwind-${id}.css`
@@ -295,7 +289,7 @@ export async function getRoutes({
       ? ((await getMiddlewaresForRoute({
           filePath: entry.path,
           allMiddlewareFiles: allMiddlewareFiles,
-          loadFs: loadFs,
+          loadFile: loadFile,
           valueType: "module",
         })) as MiddlewareModule[])
       : [];
@@ -305,7 +299,7 @@ export async function getRoutes({
         ? ((await getMiddlewaresForRoute({
             filePath: entry.path,
             allMiddlewareFiles: allMiddlewareFiles,
-            loadFs: loadFs,
+            loadFile: loadFile,
             valueType: "absolutePath",
           })) as string[])
         : [];
@@ -313,14 +307,14 @@ export async function getRoutes({
     const layouts = (await getLayoutsForRoute({
       filePath: entry.path,
       allLayoutFiles: allLayoutFiles,
-      loadFs: loadFs,
+      loadFile: loadFile,
       valueType: "module",
     })) as LayoutModule[];
 
     const layoutPaths = (await getLayoutsForRoute({
       filePath: entry.path,
       allLayoutFiles: allLayoutFiles,
-      loadFs: loadFs,
+      loadFile: loadFile,
       valueType: "absolutePath",
     })) as string[];
 
@@ -329,7 +323,7 @@ export async function getRoutes({
       path,
       relativeFilePath: `.${SEPARATOR}${entry.path}`,
       absoluteFilePath,
-      routeModule: (await loadFs?.(entry.path)) as RouteModule,
+      routeModule: (await loadFile?.(entry.path)) as RouteModule,
       tagName,
       jsAssetContent,
       jsAssetPath,
@@ -366,12 +360,12 @@ async function getMiddlewareFiles(): Promise<Map<string, string>> {
 async function getMiddlewaresForRoute({
   filePath,
   allMiddlewareFiles,
-  loadFs,
+  loadFile,
   valueType,
 }: {
   filePath: string;
   allMiddlewareFiles: Map<string, string>;
-  loadFs?: (path: string) => Promise<unknown>;
+  loadFile?: (path: string) => Promise<unknown>;
   valueType: "module" | "relativePath" | "absolutePath";
 }): Promise<MiddlewareModule[] | string[] | []> {
   if (allMiddlewareFiles.size === 0) return [];
@@ -405,7 +399,7 @@ async function getMiddlewaresForRoute({
 
   return await Promise.all(
     middlewareFilesForRoute.map(
-      (file) => loadFs?.(file) as unknown as MiddlewareModule
+      (file) => loadFile?.(file) as unknown as MiddlewareModule
     )
   );
 }
@@ -429,12 +423,12 @@ async function getLayoutFiles(): Promise<Map<string, string>> {
 async function getLayoutsForRoute({
   filePath,
   allLayoutFiles,
-  loadFs,
+  loadFile,
   valueType,
 }: {
   filePath: string;
   allLayoutFiles: Map<string, string>;
-  loadFs?: (path: string) => Promise<unknown>;
+  loadFile?: (path: string) => Promise<unknown>;
   valueType: "module" | "relativePath" | "absolutePath";
 }): Promise<LayoutModule[] | string[] | []> {
   if (allLayoutFiles.size === 0) return [];
@@ -467,14 +461,18 @@ async function getLayoutsForRoute({
   }
 
   return await Promise.all(
-    layoutFilesForRoute.map((file) => loadFs?.(file) as unknown as LayoutModule)
+    layoutFilesForRoute.map(
+      (file) => loadFile?.(file) as unknown as LayoutModule
+    )
   );
 }
 
-export async function getAppTemplate({ loadFs }: GetRouterOptions) {
+export async function getAppWrapper({
+  loadFile,
+}: BuildRoutesOptions): Promise<AppWrapperComponentClass> {
   const [checkTs, checkJs] = await Promise.allSettled([
-    fileExists("./routes/_app.ts"),
-    fileExists("./routes/_app.js"),
+    exists("./routes/_app.ts", { isFile: true }),
+    exists("./routes/_app.js", { isFile: true }),
   ]);
 
   const hasAppTs = checkTs.status === "fulfilled" && checkTs.value === true;
@@ -491,20 +489,18 @@ export async function getAppTemplate({ loadFs }: GetRouterOptions) {
   }
 
   if (hasAppTs) {
-    return ((await loadFs?.("./routes/_app.ts")) as { default: unknown })
-      .default as AppTemplateInterface;
+    return ((await loadFile?.("./routes/_app.ts")) as { default: unknown })
+      .default as AppWrapperComponentClass;
   }
 
-  if (hasAppJs) {
-    return ((await loadFs?.("./routes/_app.js")) as { default: unknown })
-      .default as AppTemplateInterface;
-  }
+  return ((await loadFile?.("./routes/_app.js")) as { default: unknown })
+    .default as AppWrapperComponentClass;
 }
 
-async function getAppTemplatePath() {
+async function getAppWrapperPath() {
   const [checkTs, checkJs] = await Promise.allSettled([
-    fileExists("./routes/_app.ts"),
-    fileExists("./routes/_app.js"),
+    exists("./routes/_app.ts", { isFile: true }),
+    exists("./routes/_app.js", { isFile: true }),
   ]);
 
   const hasAppTs = checkTs.status === "fulfilled" && checkTs.value === true;
@@ -529,8 +525,15 @@ async function getAppTemplatePath() {
   }
 }
 
-export async function build() {
-  const routes = await getRoutes({ buildAssets: true });
+export async function build(app: App, options?: BuildRoutesOptions) {
+  const { target } = options ?? {};
+
+  const t0 = performance.now();
+  const routes = await getRoutes({
+    buildAssets: true,
+    target: target,
+    tailwind: app?.builtinPluginOptions?.tailwind?.enabled,
+  });
 
   await emptyDir("./_limette");
 
@@ -615,4 +618,7 @@ export async function build() {
       layoutImportsString +
       routesArrayString
   );
+
+  const t1 = performance.now();
+  console.log(`✅ Build done. (${((t1 - t0) / 1000).toFixed(2)}s)`);
 }

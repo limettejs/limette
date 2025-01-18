@@ -1,9 +1,9 @@
 {
   "name": "@limette/core",
-  "version": "0.0.19",
+  "version": "0.1.0",
   "exports": {
     ".": "./src/mod.ts",
-    "./runtime/is-land.ts": "./src/runtime/is-land.ts",
+    "./runtime": "./src/runtime/mod.ts",
     "./runtime/ssr-client/lit-element-hydrate-support.ts": "./src/runtime/ssr-client/lit-element-hydrate-support.ts",
     "./runtime/ssr-client/lit-element-hydrate-support-patch.ts": "./src/runtime/ssr-client/lit-element-hydrate-support-patch.ts",
     "./runtime/refresh.ts": "./src/runtime/refresh.ts"
@@ -15,13 +15,34 @@
     "include": ["src/**", "deno.json", "README.md", "LICENSE"]
   },
   "imports": {
-    "@b-fuze/deno-dom": "jsr:@b-fuze/deno-dom@^0.1.48",
+    "@b-fuze/deno-dom": "jsr:@b-fuze/deno-dom@0.1.49",
     "@limette/core": "./src/mod.ts",
-    "@std/path": "jsr:@std/path@^1.0.2",
-    "@std/semver": "jsr:@std/semver@^1.0.1",
-    "/lit": "npm:/lit@^3.2.1/",
-    "lit": "npm:lit@^3.2.1",
+    "@lit-labs/ssr": "npm:@lit-labs/ssr@3.3.0",
+    "@lit-labs/ssr/": "npm:/@lit-labs/ssr@3.3.0/",
+    "@luca/esbuild-deno-loader": "jsr:@luca/esbuild-deno-loader@0.11.1",
+    "@std/encoding": "jsr:@std/encoding@1.0.6",
+    "@std/fmt": "jsr:@std/fmt@1.0.4",
+    "@std/fs": "jsr:@std/fs@1.0.9",
+    "@std/http": "jsr:@std/http@1.0.12",
+    "@std/path": "jsr:@std/path@1.0.8",
+    "@std/semver": "jsr:@std/semver@1.0.3",
+    "esbuild": "npm:esbuild@0.24.2",
+    "lit": "npm:lit@3.2.1",
+    "lit/": "npm:/lit@3.2.1/",
+    "parse-imports": "npm:parse-imports@2.2.1",
     "tailwindcss": "npm:tailwindcss@^3.4.17"
+  },
+  "compilerOptions": {
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "dom.asynciterable",
+      "deno.ns",
+      "deno.unstable"
+    ]
+  },
+  "lint": {
+    "tags": ["jsr"]
   },
   "fmt": {
     "singleQuote": true

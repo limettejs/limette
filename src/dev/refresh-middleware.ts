@@ -1,4 +1,4 @@
-import type { Context } from "../deps.ts";
+import type { Context } from "../server/context.ts";
 
 /**
  * In-memory store of open WebSockets for
@@ -10,27 +10,23 @@ export const socketsArr: Array<WebSocket> = [];
 /**
  * Upgrade a request connection to a WebSocket if the url ends with "/ws-refresh"
  */
-export const refreshMiddleware = async (
-  ctx: Context,
-  next: () => Promise<unknown>
-) => {
-  if (!ctx.request.url.pathname.endsWith("/ws-refresh")) {
-    await next();
-    return;
+export async function refreshMiddleware(ctx: Context) {
+  if (!ctx.url.pathname.endsWith("/ws-refresh")) {
+    return await ctx.next();
   }
 
-  const searchParams = ctx.request.url.searchParams;
+  const searchParams = ctx.url.searchParams;
 
   if (searchParams.get("type") === "http") {
-    console.log("send refresh");
+    console.log("Reload the app");
     sockets.forEach((socket) => {
       socket.send("refresh");
     });
-    return ctx.response;
+    return new Response(null, { status: 204 });
   }
 
   // Websocket endpoint
-  const socket = ctx.upgrade();
+  const { socket, response } = Deno.upgradeWebSocket(ctx.request);
 
   // Add the new socket to our in-memory store of WebSockets.
   sockets.add(socket);
@@ -40,4 +36,6 @@ export const refreshMiddleware = async (
   socket.onclose = () => {
     sockets.delete(socket);
   };
-};
+
+  return response;
+}

@@ -1,44 +1,41 @@
-import { html, unsafeHTML, render, collectResult, DOMParser } from "../deps.ts";
-import type { RouterContext } from "../deps.ts";
+import { html, render } from "@lit-labs/ssr";
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
-import type { LitElement, TemplateResult } from "lit";
+import { unsafeHTML } from "lit/directives/unsafe-html.js";
+import { collectResult } from "@lit-labs/ssr/lib/render-result.js";
+import { DOMParser } from "@b-fuze/deno-dom";
+// @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
+import type { TemplateResult } from "lit";
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { DirectiveResult } from "lit/directives/unsafe-html.js";
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { UnsafeHTMLDirective } from "lit/directives/unsafe-html.js";
+import type { Context } from "./context.ts";
 import type { BuildRoute } from "../dev/build.ts";
 import { LimetteElementRenderer } from "./rendering/limette-element-renderer.ts";
-import type { ComponentContext } from "./router.ts";
 
-import "../runtime/is-land.ts"; // should use limette?
-
-import { installWindowOnGlobal } from "../deps.ts";
-import { LayoutModule } from "../types.ts";
+import { installWindowOnGlobal } from "@lit-labs/ssr/lib/dom-shim.js";
+import type { LayoutModule } from "./layouts.ts";
 
 installWindowOnGlobal();
 // Set window object, because the shim doesn't do it
 // @ts-ignore some components use the `window` reference for registration process
 globalThis.window = globalThis;
 
-type Params = {
-  [key: string]: string;
-};
-
-export type AppRootOptions = {
+export type AppWrapperOptions = {
   css: DirectiveResult<UnsafeHTMLDirective> | string;
   js: string[] | TemplateResult[] | DirectiveResult<UnsafeHTMLDirective>[];
   component: DirectiveResult<UnsafeHTMLDirective>;
 };
 
-// Define the interface for the mixin
-export declare class ComponentCtxMixinInterface {
-  get ctx(): string;
+export interface AppWrapperComponentClass {
+  new (): AppWrapperComponent;
+  ctx: Context;
+  render(app: AppWrapperOptions): TemplateResult | Promise<TemplateResult>;
 }
 
-export declare class AppTemplateInterface {
-  prototype: {
-    render(app: AppRootOptions): TemplateResult;
-  };
+export interface AppWrapperComponent {
+  ctx: Context;
+  render(app: AppWrapperOptions): TemplateResult | Promise<TemplateResult>;
 }
 
 function registerRouteComponent(
@@ -148,29 +145,15 @@ function processHeadAndShadowRoots(htmlString: string) {
   return doc.documentElement.outerHTML;
 }
 
-const ComponentCtxMixin = (base: typeof LitElement) => {
-  class ComponentCtxClass extends base {
-    __ctx: ComponentContext = { params: {}, data: undefined };
-
-    get ctx() {
-      return this.__ctx;
-    }
-  }
-  // return ComponentCtxClass as Constructor<ComponentCtxMixinInterface> & T;
-  return ComponentCtxClass;
-};
-
 export async function bootstrapContent(
-  AppRoot: AppTemplateInterface,
+  AppWrapper: AppWrapperComponentClass,
   route: BuildRoute,
-  componentContext: ComponentContext
+  ctx: Context
 ) {
   const routeModule = route.routeModule;
   const routeConfig = routeModule?.config;
 
-  const ComponentClass = ComponentCtxMixin(
-    routeModule?.default as unknown as typeof LitElement
-  );
+  const ComponentClass = routeModule?.default;
   let component = unsafeHTML(
     registerRouteComponent(
       ComponentClass as unknown as CustomElementConstructor,
@@ -194,15 +177,15 @@ export async function bootstrapContent(
       layouts: !skipInheritedLayouts
         ? (route.layouts as LayoutModule[])
         : ([route.layouts.at(-1)] as LayoutModule[]),
-      componentContext: componentContext,
+      ctx: ctx,
     });
   }
 
   const ctxStr = `<script type="text/json" id="_lmt_ctx">${JSON.stringify(
-    componentContext
+    ctx
   )}</script>`;
 
-  const appTemplateOptions: AppRootOptions = {
+  const appWrapperOptions: AppWrapperOptions = {
     css: route.cssAssetPath
       ? unsafeHTML(`<link rel="stylesheet" href="${route.cssAssetPath}" />`)
       : ``,
@@ -215,51 +198,52 @@ export async function bootstrapContent(
     component: component,
   };
 
-  return AppRoot.prototype.render(appTemplateOptions);
+  const appWrapper = new AppWrapper();
+  // Inject context if it uses ContextMixin
+  if (Object.hasOwn(Object.getPrototypeOf(AppWrapper), "__requiresContext")) {
+    appWrapper.ctx = ctx;
+  }
+  return await appWrapper.render(appWrapperOptions);
 }
 
 async function renderLayout({
   component,
   layouts,
-  componentContext,
+  ctx,
 }: {
   component: DirectiveResult<UnsafeHTMLDirective>;
   layouts: LayoutModule[];
-  componentContext: ComponentContext;
+  ctx: Context;
 }) {
   if (layouts.length === 0) return;
 
   const layoutsReversed = [...layouts].reverse();
 
   let result = component;
-  for await (const Layout of layoutsReversed) {
-    // @ts-ignore this should be fixed in the future
-    result = await Layout.default.prototype.render.call(
-      // @ts-ignore this should be fixed in the future
-      Object.assign(Layout.default.prototype, { ctx: componentContext }),
-      result
-    );
+  for await (const LayoutModule of layoutsReversed) {
+    const LayoutComponent = LayoutModule.default;
+    const layout = new LayoutComponent();
+    // Inject context if it uses ContextMixin
+    if (
+      Object.hasOwn(Object.getPrototypeOf(LayoutComponent), "__requiresContext")
+    ) {
+      layout.ctx = ctx;
+    }
+    result = await layout.render(result);
   }
 
   return result;
 }
 
 export async function renderContent(
-  AppRoot: AppTemplateInterface,
+  AppWrapper: AppWrapperComponentClass,
   route: BuildRoute,
-  routerContext: RouterContext<typeof route.path>,
-  data?: ComponentContext["data"]
+  ctx: Context
 ) {
-  const componentContext = { params: routerContext.params, data };
-
   const result = render(
-    await bootstrapContent(
-      AppRoot as AppTemplateInterface,
-      route,
-      componentContext
-    ),
+    await bootstrapContent(AppWrapper as AppWrapperComponentClass, route, ctx),
     {
-      elementRenderers: [LimetteElementRenderer(route, componentContext)],
+      elementRenderers: [LimetteElementRenderer(route, ctx)],
     }
   );
 

@@ -1,167 +1,146 @@
-import { Router } from "../deps.ts";
-import type {
-  RouterContext,
-  OakResponse,
-  OakRequest,
-  Middleware,
-} from "../deps.ts";
+import "./ssr.ts";
+// @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
+import type { LitElement } from "lit";
+import type { MiddlewareFn } from "./middlewares.ts";
+import type { Handlers } from "./handlers.ts";
 
-import { renderContent } from "./ssr.ts";
-import { getRoutes, getAppTemplate } from "../dev/build.ts";
+export type Method = "HEAD" | "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 
-export type GetRouterOptions = {
-  buildAssets?: boolean;
-  devMode?: boolean;
-  staticRoutes?: boolean;
-  loadFs?: (path: string) => Promise<unknown>;
-};
+export interface RouteConfig {
+  skipInheritedLayouts: boolean; // Skip already inherited layouts
+}
 
-export type Handlers = {
-  GET?(
-    ctx: LimetteContext
-  ): Response | OakResponse | Promise<Response | OakResponse>;
-  POST?(
-    ctx: LimetteContext
-  ): Response | OakResponse | Promise<Response | OakResponse>;
-  PUT?(
-    ctx: LimetteContext
-  ): Response | OakResponse | Promise<Response | OakResponse>;
-  DELETE?(
-    ctx: LimetteContext
-  ): Response | OakResponse | Promise<Response | OakResponse>;
-  PATCH?(
-    ctx: LimetteContext
-  ): Response | OakResponse | Promise<Response | OakResponse>;
-  OPTIONS?(
-    ctx: LimetteContext
-  ): Response | OakResponse | Promise<Response | OakResponse>;
-  HEAD?(
-    ctx: LimetteContext
-  ): Response | OakResponse | Promise<Response | OakResponse>;
-};
-export type LimetteContext = {
-  readonly request: Request | OakRequest;
-  readonly response: Response | OakResponse;
-  readonly cookies: RouterContext<string>["cookies"];
-  readonly params: RouterContext<string>["params"];
-  render(data?: unknown): Promise<Response> | Promise<OakResponse>;
-};
+export interface RouteModule {
+  config: RouteConfig;
+  handler: Handlers;
+  default: LitElement;
+}
 
-export type ComponentContext = {
-  params: RouterContext<string>["params"];
-  data: unknown;
-};
+interface RouteResult {
+  params: Record<string, string>;
+  handlers: MiddlewareFn[][];
+  methodMatch: boolean;
+  patternMatch: boolean;
+  pattern: string | null;
+}
 
-export async function getRouter(options: GetRouterOptions) {
-  const router = new Router();
+export interface Route {
+  path: URLPattern;
+  method: Method | "ALL";
+  handlers: MiddlewareFn[];
+}
 
-  const [routes, AppRoot] = await Promise.all([
-    getRoutes(options),
-    getAppTemplate(options),
-  ]);
+interface ErrorRoute {
+  path: URLPattern;
+  handler: MiddlewareFn;
+}
 
-  if (!AppRoot) {
-    throw new Error(
-      "You need to create an AppRoot (_app.ts/js) to render a page."
-    );
+interface ErrorRouteResult {
+  params: Record<string, string>;
+  handler: MiddlewareFn | undefined;
+  methodMatch: boolean;
+  patternMatch: boolean;
+  pattern: string | null;
+}
+
+export class UrlPatternRouter {
+  #routes: Route[] = [];
+  #middlewares: MiddlewareFn[] = [];
+  #errors: ErrorRoute[] = [];
+
+  addMiddleware(fn: MiddlewareFn) {
+    this.#middlewares.push(fn);
   }
 
-  // Serve static files from memory on dev mode
-  if (options?.devMode) {
-    router.get("/_limette/js/chunk-:id.js", (ctx) => {
-      const { id } = ctx.params;
-      const route = routes.find((r) => r.id === id);
-      ctx.response.type = "application/javascript; charset=UTF-8";
-      ctx.response.body = route?.jsAssetContent?.contents;
-    });
+  addError(pathname: string | URLPattern, fn: MiddlewareFn) {
+    let path = pathname;
 
-    router.get("/_limette/css/tailwind-:id.css", (ctx) => {
-      const { id } = ctx.params;
-      const route = routes.find((r) => r.id === id);
-      ctx.response.type = "text/css; charset=UTF-8";
-      ctx.response.body = route?.cssAssetContent;
+    if (typeof pathname === "string" && pathname.endsWith("/_error")) {
+      path = pathname.substring(0, pathname.length - 7) + "/*";
+    }
+
+    this.#errors.push({
+      path:
+        typeof path === "string" ? new URLPattern({ pathname: path }) : path,
+      handler: fn,
     });
   }
 
-  routes.map((route) => {
-    const middlewares = route.middlewares
-      .map((module) => module?.handler)
-      .flat()
-      .filter(Boolean) as Middleware[];
+  add(
+    method: Method | "ALL",
+    pathname: string | URLPattern,
+    handlers: MiddlewareFn[]
+  ) {
+    this.#routes.push({
+      path:
+        typeof pathname === "string" ? new URLPattern({ pathname }) : pathname,
+      handlers,
+      method,
+    });
+  }
 
-    // Register custom handlers
-    if (route.routeModule?.handler) {
-      for (const [handlerName, handlerFn] of Object.entries(
-        route.routeModule.handler
-      )) {
-        const routeHandler = async (
-          routerContext: RouterContext<typeof route.path>
-        ) => {
-          const ctx: LimetteContext = {
-            request: routerContext.request,
-            response: routerContext.response,
-            cookies: routerContext.cookies,
-            params: routerContext.params,
-            render: async (data: ComponentContext["data"]) => {
-              if (!route.routeModule?.default) {
-                throw new Error(
-                  "No component was provided. Make sure you export a component as default to be redered."
-                );
-              }
+  match(method: Method, url: URL): RouteResult {
+    const result: RouteResult = {
+      params: {},
+      handlers: [],
+      methodMatch: false,
+      patternMatch: false,
+      pattern: null,
+    };
 
-              const content = await renderContent(
-                AppRoot,
-                route,
-                routerContext,
-                data
-              );
+    if (this.#middlewares.length > 0) {
+      result.handlers.push(this.#middlewares);
+    }
 
-              return new Response(content, {
-                status: 200,
-                statusText: "OK",
-                headers: new Headers({ "Content-Type": "text/html" }),
-              });
-            },
-          };
-          const response = await handlerFn(ctx);
+    for (const route of this.#routes) {
+      const match = route.path.exec(url);
 
-          routerContext.response.status = response.status;
-          routerContext.response.type = response.headers.get(
-            "Content-Type"
-          ) as string;
-          routerContext.response.headers = response.headers;
-          routerContext.response.body = response.body;
-        };
+      if (match !== null) {
+        if (route.method !== "ALL") result.patternMatch = true;
+        result.pattern = route.path.pathname;
 
-        // Register route
-        router[handlerName.toLocaleLowerCase() as Lowercase<keyof Handlers>](
-          route.path,
-          // @ts-ignore middlewares is always a tuple
-          ...middlewares,
-          routeHandler
-        );
+        if (route.method === "ALL" || route.method === method) {
+          result.handlers.push(route.handlers);
+
+          // Decode matched params
+          for (const [key, value] of Object.entries(match.pathname.groups)) {
+            result.params[key] = value === undefined ? "" : decodeURI(value);
+          }
+
+          if (route.method === "ALL") {
+            continue;
+          }
+
+          result.methodMatch = true;
+          return result;
+        }
       }
     }
 
-    // Default behaviour if no GET handler is provided
-    if (route.routeModule?.default && !route.routeModule?.handler?.GET) {
-      const routeHandler = async (
-        routerContext: RouterContext<typeof route.path>
-      ) => {
-        const content = await renderContent(AppRoot, route, routerContext);
+    return result;
+  }
 
-        routerContext.response.type = "text/html";
-        routerContext.response.body = content;
-      };
+  matchError(url: URL): ErrorRouteResult {
+    const result: ErrorRouteResult = {
+      params: {},
+      handler: undefined,
+      methodMatch: false,
+      patternMatch: false,
+      pattern: null,
+    };
 
-      router.get(
-        route.path,
-        // @ts-ignore middlewares is always a tuple
-        ...middlewares,
-        routeHandler
-      );
+    for (const route of this.#errors) {
+      const match = route.path.exec(url);
+      if (match !== null) {
+        result.handler = route.handler;
+        result.methodMatch = true;
+        result.patternMatch = true;
+        result.pattern = route.path.pathname;
+
+        return result;
+      }
     }
-  });
 
-  return router;
+    return result;
+  }
 }

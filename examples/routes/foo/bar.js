@@ -6,7 +6,7 @@ export default class Home extends LitElement {
     return html`
       <h1>Foo/Bar</h1>
       <p>SSR content</p>
-      <is-land><island-bar></island-bar></is-land>
+      <island-bar></island-bar>
       <a href="/">To home</a>
     `;
   }

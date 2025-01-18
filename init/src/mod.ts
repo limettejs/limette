@@ -1,7 +1,10 @@
 import { ensureDir } from "@std/fs/ensure-dir";
 
 // This value is changed in the release pipeline
-const LIMETTE_VERSION = "0.0.19";
+const LIMETTE_VERSION = "0.1.0";
+
+const LIT_VERSION = "3.2.1";
+const TAILWIND_VERSION = "3.4.17";
 
 const projectName = prompt("Your project name?");
 
@@ -36,9 +39,18 @@ const denoJson = `
   },
   "imports": {
     "@limette/core": "jsr:@limette/core@${LIMETTE_VERSION}",
-    "/lit": "npm:/lit@^3.2.1/",
-    "lit": "npm:lit@^3.2.1",
-    "tailwindcss": "npm:tailwindcss@^3.4.17"
+    "/lit": "npm:/lit@^${LIT_VERSION}/",
+    "lit": "npm:lit@^${LIT_VERSION}",
+    "tailwindcss": "npm:tailwindcss@^${TAILWIND_VERSION}"
+  },
+  "compilerOptions": {
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "dom.asynciterable",
+      "deno.ns",
+      "deno.unstable"
+    ]
   },
   "fmt": {
     "singleQuote": true
@@ -48,21 +60,31 @@ const denoJson = `
 `;
 
 const devTs = `
-import { dev } from "@limette/core";
+import { Builder, tailwind } from "@limette/core";
 import { app } from "./main.ts";
 
-await dev(app);
+const builder = new Builder();
+tailwind(app);
+if (Deno.args.includes("build")) {
+  await builder.build(app);
+} else {
+  await builder.listen(app);
+}
 `;
 
 const mainTs = `
-import { LimetteApp } from "@limette/core";
+import { App, staticFiles, fsRoutes } from "@limette/core";
 
-export const app = new LimetteApp();
+export const app = new App();
 
-app.setLoadFs((path: string) => import(\`./\${path}\`));
+app.use(staticFiles);
+
+fsRoutes(app, {
+  loadFile: (path: string) => import(\`./\${path}\`),
+});
 
 if (import.meta.main) {
-  app.listen({ port: 8000 });
+  app.listen();
 }
 `;
 
@@ -122,10 +144,10 @@ customElements.define("island-counter", Counter);
 
 const _appRouteTs = `
 import { LitElement, html } from "lit";
-import type { AppRootOptions } from "@limette/core";
+import type { AppWrapperOptions } from "@limette/core";
 
 export default class App extends LitElement {
-  render(app: AppRootOptions) {
+  render(app: AppWrapperOptions) {
     return html\`<html>
       <head>
         <meta charset="utf-8" />

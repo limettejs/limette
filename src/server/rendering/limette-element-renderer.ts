@@ -2,21 +2,17 @@
 import { unsafeCSS } from "lit";
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { LitElement } from "lit";
-import { LitElementRenderer } from "../../deps.ts";
-import type { RenderInfo, RenderResult } from "../../deps.ts";
+import { LitElementRenderer } from "@lit-labs/ssr/lib/lit-element-renderer.js";
+import type { RenderInfo, RenderResult } from "@lit-labs/ssr";
 import type { BuildRoute } from "../../dev/build.ts";
-import type { ComponentContext } from "../router.ts";
-
-interface LimetteElement extends LitElement {
-  __ctx?: ComponentContext; // Define the custom property here }
-}
+import type { Context } from "../context.ts";
 
 type LmtShadowRootMode = "open" | "closed" | "disabled";
+interface ContextLitElement extends LitElement {
+  ctx: Context;
+}
 
-export const LimetteElementRenderer = (
-  route: BuildRoute,
-  componentContext: ComponentContext
-) =>
+export const LimetteElementRenderer = (route: BuildRoute, ctx: Context) =>
   class LimetteElementRenderer extends LitElementRenderer {
     override connectedCallback(): void {
       if (!this.element.hasAttribute("ssr")) {
@@ -33,50 +29,50 @@ export const LimetteElementRenderer = (
      */
     override renderShadow(renderInfo: RenderInfo): RenderResult {
       const ctor = this.element.constructor as typeof LitElement & {
-        __tailwind: boolean;
-        disableLightDom: boolean;
+        __requiresTailwind: boolean;
       };
 
-      // We check if the element is inside of an is-land element
+      // A component is an island if it's included in route.islands.
       const isIsland =
         route.islands?.includes(this.tagName) ||
-        renderInfo.customElementInstanceStack.at(-2)?.tagName === "is-land" ||
         this.element.hasAttribute("island");
 
       // Islands are CSR'ed, so we can't render them in light DOM
-      if (ctor?.disableLightDom !== true && !isIsland) {
+      if (!isIsland) {
         (this.shadowRootOptions.mode as LmtShadowRootMode) = "disabled";
       } else {
         this.shadowRootOptions.mode = "open";
       }
 
-      if (isIsland && !this.element.hasAttribute("ssr")) {
+      // Partial SSR islands with only Tailwind style (if not skipped)
+      if (isIsland && route.cssAssetPath && !this.element.hasAttribute("ssr")) {
         // @ts-expect-error: LitElementRenderer actually accepts undefined as a returned value
-        if (this.element.hasAttribute("no-tailwind")) return;
+        if (this.element.hasAttribute("skip-tailwind")) return;
 
         return `<style>@import url("${route.cssAssetPath}");</style>`;
       }
 
-      // Inject component context
-      if (this.tagName.startsWith("lmt-route-")) {
-        (this.element as LimetteElement).__ctx = componentContext;
+      // Inject context for SSR'ed components that use the ContextMixin
+      if (
+        (!isIsland || (isIsland && this.element.hasAttribute("ssr"))) &&
+        Object.hasOwn(Object.getPrototypeOf(ctor), "__requiresContext")
+      ) {
+        (this.element as ContextLitElement).ctx = ctx;
       }
 
       /**
-       * Don't inject Tailwind CSS for
-       *    - <is-land>,
-       *    - no-tailwind attribute
-       *    - there is no CSS
-       *    - <lmt-route-...> + light DOM
+       * Inject Tailwind CSS for
+       *    - is island
+       *    - is ssr'ed
+       *    - no skip-tailwind attribute
+       *    - route has css
        */
       if (
-        (this.tagName !== "is-land" &&
-          !this.element.hasAttribute("no-tailwind") &&
-          ctor.__tailwind !== true &&
-          route.cssAssetPath &&
-          !this.tagName.startsWith("lmt-route-")) ||
-        (this.tagName.startsWith("lmt-route-") &&
-          ctor?.disableLightDom === true)
+        isIsland &&
+        route.cssAssetPath &&
+        this.element.hasAttribute("ssr") &&
+        !this.element.hasAttribute("skip-tailwind") &&
+        ctor.__requiresTailwind !== true
       ) {
         // Inject Tailwind CSS import
         ctor.elementStyles?.unshift?.(
@@ -84,7 +80,7 @@ export const LimetteElementRenderer = (
         );
 
         // Mark component that was already injected
-        ctor.__tailwind = true;
+        ctor.__requiresTailwind = true;
       }
 
       return super.renderShadow(renderInfo);
