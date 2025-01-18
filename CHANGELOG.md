@@ -13,20 +13,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-## [0.1.0] - 2025-01-13
+## [0.1.0] - 2025-01-18
 
 ### Added
 
 - Added support for `port` and other Deno.serve() options
 - Added support for `target` for JS assets
+- Added `ContextMixin` to access the Context
 - Added time duration for starting or building the app in the console
 
 ### Changed
 
 - BREAKING: Use FS Routes as a plugin
 - BREAKING: Use Tailwind as a plugin
-- BREAKING: Change Middleware's signature
-- BREAKING: Change Context's signature
+- BREAKING: Change `Middleware`'s signature
+- BREAKING: Change `Context`'s shape
 - BREAKING: Remove `disableLightDom` option to disable light DOM for server components
 - BREAKING: Remove `<is-land>` wrapper
 - BREAKING: Rename `AppRoot` to `AppWrapper`
