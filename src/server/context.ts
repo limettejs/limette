@@ -62,13 +62,12 @@ export const ContextMixin = (base: LitElement) => {
   return class ContextClass extends base {
     #ctx!: Context;
 
-    static contextMixin = true;
+    static __requiresContext = true;
 
     get ctx() {
       return this.#ctx;
     }
     set ctx(value) {
-      console.log("set context", value, this.#ctx);
       // Allow setting ctx only once?
       if (this.#ctx instanceof Context) return;
       this.#ctx = value;

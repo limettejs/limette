@@ -175,6 +175,7 @@ export class App {
             ctx.error = err;
           }
           try {
+            console.error(err);
             return await runMiddlewares([[errorRoute.handler]], ctx);
           } catch (e) {
             console.error(e);

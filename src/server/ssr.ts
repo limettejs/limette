@@ -21,10 +21,6 @@ installWindowOnGlobal();
 // @ts-ignore some components use the `window` reference for registration process
 globalThis.window = globalThis;
 
-type Params = {
-  [key: string]: string;
-};
-
 export type AppWrapperOptions = {
   css: DirectiveResult<UnsafeHTMLDirective> | string;
   js: string[] | TemplateResult[] | DirectiveResult<UnsafeHTMLDirective>[];
@@ -204,7 +200,7 @@ export async function bootstrapContent(
 
   const appWrapper = new AppWrapper();
   // Inject context if it uses ContextMixin
-  if (Object.hasOwn(Object.getPrototypeOf(AppWrapper), "contextMixin")) {
+  if (Object.hasOwn(Object.getPrototypeOf(AppWrapper), "__requiresContext")) {
     appWrapper.ctx = ctx;
   }
   return await appWrapper.render(appWrapperOptions);
@@ -228,7 +224,9 @@ async function renderLayout({
     const LayoutComponent = LayoutModule.default;
     const layout = new LayoutComponent();
     // Inject context if it uses ContextMixin
-    if (Object.hasOwn(Object.getPrototypeOf(LayoutComponent), "contextMixin")) {
+    if (
+      Object.hasOwn(Object.getPrototypeOf(LayoutComponent), "__requiresContext")
+    ) {
       layout.ctx = ctx;
     }
     result = await layout.render(result);

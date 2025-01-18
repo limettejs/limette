@@ -7,10 +7,6 @@ import type { RenderInfo, RenderResult } from "@lit-labs/ssr";
 import type { BuildRoute } from "../../dev/build.ts";
 import type { Context } from "../context.ts";
 
-interface LimetteElement extends LitElement {
-  __ctx?: Context; // Define the custom property here }
-}
-
 type LmtShadowRootMode = "open" | "closed" | "disabled";
 
 export const LimetteElementRenderer = (route: BuildRoute, ctx: Context) =>
@@ -56,7 +52,7 @@ export const LimetteElementRenderer = (route: BuildRoute, ctx: Context) =>
       // Inject context for SSR'ed components that use the ContextMixin
       if (
         (!isIsland || (isIsland && this.element.hasAttribute("ssr"))) &&
-        Object.hasOwn(ctor, "contextMixin")
+        Object.hasOwn(Object.getPrototypeOf(ctor), "__requiresContext")
       ) {
         this.element.ctx = ctx;
       }

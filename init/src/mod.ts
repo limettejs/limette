@@ -3,6 +3,9 @@ import { ensureDir } from "@std/fs/ensure-dir";
 // This value is changed in the release pipeline
 const LIMETTE_VERSION = "0.1.0";
 
+const LIT_VERSION = "3.2.1";
+const TAILWIND_VERSION = "3.4.17";
+
 const projectName = prompt("Your project name?");
 
 const projectPath = `${Deno.cwd()}/${projectName}`;
@@ -36,9 +39,18 @@ const denoJson = `
   },
   "imports": {
     "@limette/core": "jsr:@limette/core@${LIMETTE_VERSION}",
-    "/lit": "npm:/lit@^3.2.1/",
-    "lit": "npm:lit@^3.2.1",
-    "tailwindcss": "npm:tailwindcss@^3.4.17"
+    "/lit": "npm:/lit@^${LIT_VERSION}/",
+    "lit": "npm:lit@^${LIT_VERSION}",
+    "tailwindcss": "npm:tailwindcss@^${TAILWIND_VERSION}"
+  },
+  "compilerOptions": {
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "dom.asynciterable",
+      "deno.ns",
+      "deno.unstable"
+    ]
   },
   "fmt": {
     "singleQuote": true
