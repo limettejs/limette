@@ -1,4 +1,10 @@
-import { dev } from "@limette/core";
+import { Builder, tailwind } from "@limette/core";
 import { app } from "./main.ts";
 
-await dev(app);
+const builder = new Builder();
+tailwind(app);
+if (Deno.args.includes("build")) {
+  await builder.build(app);
+} else {
+  await builder.listen(app);
+}

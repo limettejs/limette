@@ -2,15 +2,22 @@
   "tasks": {
     "dev": "deno run -A --watch=static/,routes/ dev.ts",
     "build": "deno run -A dev.ts build",
-    "start": "deno run -A --watch main.ts"
+    "start": "deno run -A main.ts"
   },
   "imports": {
-    "@limette/core": "jsr:@limette/core@0.0.7",
-    "/lit": "npm:/lit@^3.1.2/",
-    "lit": "npm:lit@^3.1.2",
-    "tailwindcss": "npm:tailwindcss@^3.4.7",
-    "@std/path": "jsr:@std/path@^1.0.2",
-    "@std/semver": "jsr:@std/semver@^1.0.1"
+    "@limette/core": "jsr:@limette/core@0.1.0",
+    "/lit": "npm:/lit@^3.2.1/",
+    "lit": "npm:lit@^3.2.1",
+    "tailwindcss": "npm:tailwindcss@^3.4.17"
+  },
+  "compilerOptions": {
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "dom.asynciterable",
+      "deno.ns",
+      "deno.unstable"
+    ]
   },
   "fmt": {
     "singleQuote": true

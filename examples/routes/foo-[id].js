@@ -1,5 +1,4 @@
 import { LitElement, html } from "lit";
-// import { html } from "@lit-labs/ssr";
 import "../islands/bar.js";
 
 export default class Params extends LitElement {
