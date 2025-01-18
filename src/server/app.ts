@@ -76,7 +76,7 @@ export class App {
   middlewares: MiddlewareFn[] = [];
   #router = new UrlPatternRouter();
 
-  get builtinPluginOptions() {
+  get builtinPluginOptions(): BuiltinPluginOptions {
     return this.#builtinPluginOptions;
   }
 

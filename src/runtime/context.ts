@@ -18,8 +18,11 @@ export class ClientContext implements ClientContext {
     this.params = params;
   }
 }
-export const ContextMixin = (base: LitElement) => {
-  return class ContextClass extends base {
+
+export function ContextMixin(
+  Base: CustomElementConstructor
+): CustomElementConstructor & { ctx?: ClientContext } {
+  return class ContextClass extends Base {
     #ctx!: ClientContext;
 
     static __requiresContext = true;
@@ -42,4 +45,4 @@ export const ContextMixin = (base: LitElement) => {
       this.#ctx = value;
     }
   };
-};
+}

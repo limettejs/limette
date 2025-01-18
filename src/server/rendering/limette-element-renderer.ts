@@ -8,6 +8,9 @@ import type { BuildRoute } from "../../dev/build.ts";
 import type { Context } from "../context.ts";
 
 type LmtShadowRootMode = "open" | "closed" | "disabled";
+interface ContextLitElement extends LitElement {
+  ctx: Context;
+}
 
 export const LimetteElementRenderer = (route: BuildRoute, ctx: Context) =>
   class LimetteElementRenderer extends LitElementRenderer {
@@ -26,7 +29,7 @@ export const LimetteElementRenderer = (route: BuildRoute, ctx: Context) =>
      */
     override renderShadow(renderInfo: RenderInfo): RenderResult {
       const ctor = this.element.constructor as typeof LitElement & {
-        __tailwind: boolean;
+        __requiresTailwind: boolean;
       };
 
       // A component is an island if it's included in route.islands.
@@ -54,7 +57,7 @@ export const LimetteElementRenderer = (route: BuildRoute, ctx: Context) =>
         (!isIsland || (isIsland && this.element.hasAttribute("ssr"))) &&
         Object.hasOwn(Object.getPrototypeOf(ctor), "__requiresContext")
       ) {
-        this.element.ctx = ctx;
+        (this.element as ContextLitElement).ctx = ctx;
       }
 
       /**
@@ -69,7 +72,7 @@ export const LimetteElementRenderer = (route: BuildRoute, ctx: Context) =>
         route.cssAssetPath &&
         this.element.hasAttribute("ssr") &&
         !this.element.hasAttribute("skip-tailwind") &&
-        ctor.__tailwind !== true
+        ctor.__requiresTailwind !== true
       ) {
         // Inject Tailwind CSS import
         ctor.elementStyles?.unshift?.(
@@ -77,7 +80,7 @@ export const LimetteElementRenderer = (route: BuildRoute, ctx: Context) =>
         );
 
         // Mark component that was already injected
-        ctor.__tailwind = true;
+        ctor.__requiresTailwind = true;
       }
 
       return super.renderShadow(renderInfo);
