@@ -19,9 +19,11 @@ export class ClientContext implements ClientContext {
   }
 }
 
+type Constructor<T = Record<string, never>> = new (...args: unknown[]) => T;
+
 export function ContextMixin(
   Base: CustomElementConstructor
-): CustomElementConstructor & { ctx?: ClientContext } {
+): CustomElementConstructor & Constructor<{ ctx: ClientContext }> {
   return class ContextClass extends Base {
     #ctx!: ClientContext;
 

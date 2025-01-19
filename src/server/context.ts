@@ -15,11 +15,6 @@ export interface Context extends ContextInit {
   redirect(path: string, status?: number): Response;
 }
 
-export interface ComponentContext {
-  params: Context["params"];
-  data: unknown;
-}
-
 export class Context implements Context {
   constructor({ request, url, info, params, config, next }: ContextInit) {
     this.request = request;
@@ -55,9 +50,12 @@ export class Context implements Context {
     });
   }
 }
+
+type Constructor<T = Record<string, never>> = new (...args: unknown[]) => T;
+
 export function ContextMixin(
   Base: CustomElementConstructor
-): CustomElementConstructor & { ctx?: Context } {
+): CustomElementConstructor & Constructor<{ ctx: Context }> {
   return class ContextClass extends Base {
     #ctx!: Context;
 
