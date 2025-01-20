@@ -60,7 +60,8 @@ const denoJson = `
 `;
 
 const devTs = `
-import { Builder, tailwind } from "@limette/core";
+import { tailwind } from "@limette/core";
+import { Builder } from "@limette/core/dev";
 import { app } from "./main.ts";
 
 const builder = new Builder();

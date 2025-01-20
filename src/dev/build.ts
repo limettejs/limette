@@ -35,7 +35,25 @@ export type BuildRoute = {
 
 const encoder = new TextEncoder();
 
-async function getIslandsImports(file: string) {
+/**
+ * Returns the imports from a file.
+ *
+ * Example
+ * File: /foo.js
+ * Result
+ *    ['import "a.js";', 'import "b.js";']
+ * or
+ *    ['a.js', 'b.js']
+ * @param file file path
+ * @param match Regex to match the imports
+ * @param options
+ * @returns
+ */
+async function getImports(
+  file: string,
+  match: RegExp,
+  options?: { as: "import" | "path" }
+) {
   const imports = [];
 
   const code = await Deno.readTextFile(file);
@@ -49,8 +67,12 @@ async function getIslandsImports(file: string) {
       );
     }
 
-    if (path?.includes?.("/islands/")) {
-      imports.push(`import "${await resolvePath(path, file)}";`);
+    if (match.test(path)) {
+      if (options?.as === "path") {
+        imports.push(await resolvePath(path, file));
+      } else {
+        imports.push(`import "${await resolvePath(path, file)}";`);
+      }
     }
   }
   return imports;
@@ -59,7 +81,7 @@ async function getIslandsImports(file: string) {
 async function buildJS(path: string, options: BuildRoutesOptions) {
   const { devMode, target } = options;
 
-  const imports = await getIslandsImports(path);
+  const imports = await getImports(path, new RegExp("/islands/"));
   let result: { jsAssetContent?: esbuild.OutputFile; islands?: string[] } = {
     jsAssetContent: undefined,
     islands: undefined,
@@ -79,7 +101,7 @@ async function buildJS(path: string, options: BuildRoutesOptions) {
 
   const tempDirPath = await Deno.makeTempDir();
   const entrypointPath = join(tempDirPath, "/entrypoint.js");
-  await Deno.writeTextFile(entrypointPath, entryPoint, {});
+  await Deno.writeTextFile(entrypointPath, entryPoint);
 
   const esbuildResult = await esbuild.build({
     plugins: [
@@ -94,6 +116,7 @@ async function buildJS(path: string, options: BuildRoutesOptions) {
     bundle: true,
     format: "esm",
     target: target,
+    platform: "browser",
     write: false,
   });
 
@@ -113,6 +136,48 @@ async function buildJS(path: string, options: BuildRoutesOptions) {
     await Deno.remove(tempDirPath, { recursive: true });
   }
 
+  return result;
+}
+
+async function bundleImports(paths: string[], contents: string[] = []) {
+  const entrypoint = paths.map((path) => `import "${path}";`).join("");
+  const tempDirPath = await Deno.makeTempDir();
+  const entrypointPath = join(tempDirPath, "/entrypoint.js");
+  await Deno.writeTextFile(entrypointPath, entrypoint, {});
+
+  const esbuildResult = await esbuild.build({
+    plugins: [
+      ...denoPlugins({
+        loader: "native",
+        configPath: join(Deno.cwd(), "deno.json"),
+      }),
+    ],
+    entryPoints: [toFileUrl(entrypointPath).href],
+    sourcemap: false,
+    minify: true,
+    bundle: true,
+    format: "esm",
+    write: false,
+    treeShaking: true,
+    platform: "neutral",
+    external: [
+      "@limette/core",
+      "@limette/core/*",
+      "lit",
+      "@lit-labs/ssr",
+      "node:*",
+    ],
+  });
+
+  esbuild.stop();
+
+  let result = esbuildResult.outputFiles?.[0]?.text;
+
+  if (contents.length) {
+    contents.forEach((content) => {
+      result += content;
+    });
+  }
   return result;
 }
 
@@ -166,9 +231,15 @@ function convertToWebComponentTagName(str: string) {
   return tagName.replace(/^-+|-+$/g, "").toLowerCase();
 }
 
+/**
+ * Returns the Tailwind CSS from a list of files and content.
+ * @param paths paths to scan for Tailwind
+ * @param contents content that was already bundled
+ * @param options build route options
+ */
 async function buildCSS(
-  absoluteFilePath: string,
-  jsAssetContent: esbuild.OutputFile | undefined,
+  paths: string[],
+  contents: string[],
   options: BuildRoutesOptions
 ) {
   const { devMode } = options;
@@ -177,17 +248,23 @@ async function buildCSS(
 
   if (!tailwindcss) throw new Error("Tailwind is missing from deno.json!");
 
-  const appWrapperPath = await getAppWrapperPath();
-  let tempDirPath = "";
-  let contentFlag = absoluteFilePath;
+  // Imports path for app wrapper and layout that include /components/
+  const importsPaths = (
+    await Promise.all(
+      paths.map((path) =>
+        getImports(path, new RegExp("(/components/)"), {
+          as: "path",
+        })
+      )
+    )
+  ).flat();
 
-  if (jsAssetContent?.text) {
-    tempDirPath = await Deno.makeTempDir();
-    const bundlePathTemp = `${tempDirPath}/bundle.js`;
-    await Deno.writeTextFile(bundlePathTemp, jsAssetContent.text, {});
+  const bundle = await bundleImports(importsPaths, contents);
 
-    contentFlag = `${appWrapperPath},${contentFlag},${bundlePathTemp}`;
-  }
+  const tempDirPath = await Deno.makeTempDir();
+  const bundlePathTemp = join(tempDirPath, "bundle.js");
+  await Deno.writeTextFile(bundlePathTemp, bundle);
+  const contentFlag = `${paths.join(",")},${bundlePathTemp}`;
 
   const command = new Deno.Command(`${Deno.execPath()}`, {
     args: [
@@ -208,9 +285,7 @@ async function buildCSS(
 
   process.unref();
 
-  if (jsAssetContent?.text) {
-    await Deno.remove(tempDirPath, { recursive: true });
-  }
+  await Deno.remove(tempDirPath, { recursive: true });
 
   return css;
 }
@@ -228,10 +303,12 @@ export async function getRoutes(options: BuildRoutesOptions) {
 
   const ignoreFilePattern = TEST_FILE_PATTERN;
   const routes: BuildRoute[] = [];
-  const [allMiddlewareFiles, allLayoutFiles] = await Promise.all([
-    getMiddlewareFiles(),
-    getLayoutFiles(),
-  ]);
+  const [allMiddlewareFiles, allLayoutFiles, appWrapperPath] =
+    await Promise.all([
+      getMiddlewareFiles(),
+      getLayoutFiles(),
+      getAppWrapperPath(),
+    ]);
 
   for await (const entry of walk("./routes", {
     includeDirs: false,
@@ -274,10 +351,39 @@ export async function getRoutes(options: BuildRoutesOptions) {
         ? `/_limette/js/chunk-${id}.js`
         : undefined;
 
-    // Generate CSS assets
+    // Get layouts
+    const layouts = (await getLayoutsForRoute({
+      filePath: entry.path,
+      allLayoutFiles: allLayoutFiles,
+      loadFile: loadFile,
+      as: "module",
+    })) as LayoutModule[];
+
+    const layoutPaths = (await getLayoutsForRoute({
+      filePath: entry.path,
+      allLayoutFiles: allLayoutFiles,
+      loadFile: loadFile,
+      as: "absolutePath",
+    })) as string[];
+
+    /**
+     * Generate Tailwind CSS asset
+     * We extract Tailwind CSS from:
+     *  - AppWrapper
+     *  - RouteComponent
+     *  - LayoutComponent(s)
+     *  - Islands
+     * We scan these files directly and the imports containing paths with /components/
+     */
     const cssAssetContent =
       buildAssets && tailwind
-        ? await buildCSS(absoluteFilePath, jsAssetContent, { devMode })
+        ? await buildCSS(
+            [appWrapperPath, absoluteFilePath, ...layoutPaths],
+            jsAssetContent?.text ? [jsAssetContent?.text] : [],
+            {
+              devMode,
+            }
+          )
         : undefined;
     const cssAssetPath =
       cssAssetContent || buildAssets === false
@@ -290,7 +396,7 @@ export async function getRoutes(options: BuildRoutesOptions) {
           filePath: entry.path,
           allMiddlewareFiles: allMiddlewareFiles,
           loadFile: loadFile,
-          valueType: "module",
+          as: "module",
         })) as MiddlewareModule[])
       : [];
 
@@ -300,23 +406,9 @@ export async function getRoutes(options: BuildRoutesOptions) {
             filePath: entry.path,
             allMiddlewareFiles: allMiddlewareFiles,
             loadFile: loadFile,
-            valueType: "absolutePath",
+            as: "absolutePath",
           })) as string[])
         : [];
-
-    const layouts = (await getLayoutsForRoute({
-      filePath: entry.path,
-      allLayoutFiles: allLayoutFiles,
-      loadFile: loadFile,
-      valueType: "module",
-    })) as LayoutModule[];
-
-    const layoutPaths = (await getLayoutsForRoute({
-      filePath: entry.path,
-      allLayoutFiles: allLayoutFiles,
-      loadFile: loadFile,
-      valueType: "absolutePath",
-    })) as string[];
 
     const route: BuildRoute = {
       id,
@@ -361,12 +453,12 @@ async function getMiddlewaresForRoute({
   filePath,
   allMiddlewareFiles,
   loadFile,
-  valueType,
+  as,
 }: {
   filePath: string;
   allMiddlewareFiles: Map<string, string>;
   loadFile?: (path: string) => Promise<unknown>;
-  valueType: "module" | "relativePath" | "absolutePath";
+  as: "module" | "relativePath" | "absolutePath";
 }): Promise<MiddlewareModule[] | string[] | []> {
   if (allMiddlewareFiles.size === 0) return [];
 
@@ -388,12 +480,12 @@ async function getMiddlewaresForRoute({
     .filter(Boolean);
 
   // Return array of relative paths
-  if (valueType === "relativePath") {
+  if (as === "relativePath") {
     return middlewareFilesForRoute;
   }
 
   // Return array of absolute paths
-  if (valueType === "absolutePath") {
+  if (as === "absolutePath") {
     return middlewareFilesForRoute.map((path) => join(Deno.cwd(), path));
   }
 
@@ -424,12 +516,12 @@ async function getLayoutsForRoute({
   filePath,
   allLayoutFiles,
   loadFile,
-  valueType,
+  as,
 }: {
   filePath: string;
   allLayoutFiles: Map<string, string>;
   loadFile?: (path: string) => Promise<unknown>;
-  valueType: "module" | "relativePath" | "absolutePath";
+  as: "module" | "relativePath" | "absolutePath";
 }): Promise<LayoutModule[] | string[] | []> {
   if (allLayoutFiles.size === 0) return [];
 
@@ -451,12 +543,12 @@ async function getLayoutsForRoute({
     .filter(Boolean);
 
   // Return array of relative paths
-  if (valueType === "relativePath") {
+  if (as === "relativePath") {
     return layoutFilesForRoute;
   }
 
   // Return array of absolute paths
-  if (valueType === "absolutePath") {
+  if (as === "absolutePath") {
     return layoutFilesForRoute.map((path) => join(Deno.cwd(), path));
   }
 
@@ -517,12 +609,10 @@ async function getAppWrapperPath() {
   }
 
   if (hasAppTs) {
-    return "./routes/_app.ts";
+    return join(Deno.cwd(), "/routes/_app.ts");
   }
 
-  if (hasAppJs) {
-    return "./routes/_app.js";
-  }
+  return join(Deno.cwd(), "/routes/_app.js");
 }
 
 export async function build(app: App, options?: BuildRoutesOptions) {

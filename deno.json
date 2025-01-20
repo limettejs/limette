@@ -4,6 +4,7 @@
   "exports": {
     ".": "./src/mod.ts",
     "./runtime": "./src/runtime/mod.ts",
+    "./dev": "./src/dev/mod.ts",
     "./runtime/ssr-client/lit-element-hydrate-support.ts": "./src/runtime/ssr-client/lit-element-hydrate-support.ts",
     "./runtime/ssr-client/lit-element-hydrate-support-patch.ts": "./src/runtime/ssr-client/lit-element-hydrate-support-patch.ts",
     "./runtime/refresh.ts": "./src/runtime/refresh.ts"
