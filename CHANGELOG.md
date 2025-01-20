@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Added support for `Error Pages`
 - Added support for `port` and other Deno.serve() options
 - Added support for `target` for JS assets
 - Added `ContextMixin` to access the Context
