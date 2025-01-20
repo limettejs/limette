@@ -19,7 +19,7 @@ Limette is a full-stack JavaScript framework for Web Components and Deno.
 Run this command:
 
 ```
-deno run -A -r jsr:@limette/init
+deno run -A jsr:@limette/init
 ```
 
 ## Start a project (dev mode)
