@@ -78,10 +78,16 @@ async function getImports(
   return imports;
 }
 
-async function buildJS(path: string, options: BuildRoutesOptions) {
+async function buildJS(paths: string[], options: BuildRoutesOptions) {
   const { devMode, target } = options;
 
-  const imports = await getImports(path, new RegExp("/islands/"));
+  const imports = (
+    await Promise.all(
+      paths.map((path) =>
+        getImports(path, new RegExp("/islands/"), { as: "import" })
+      )
+    )
+  ).flat();
   let result: { jsAssetContent?: esbuild.OutputFile; islands?: string[] } = {
     jsAssetContent: undefined,
     islands: undefined,
@@ -342,15 +348,6 @@ export async function getRoutes(options: BuildRoutesOptions) {
     ).substring(0, 6);
     const tagName = convertToWebComponentTagName(path);
 
-    // Generate JS assets
-    const { jsAssetContent, islands } = buildAssets
-      ? await buildJS(absoluteFilePath, options)
-      : {};
-    const jsAssetPath =
-      jsAssetContent || buildAssets === false
-        ? `/_limette/js/chunk-${id}.js`
-        : undefined;
-
     // Get layouts
     const layouts = (await getLayoutsForRoute({
       filePath: entry.path,
@@ -365,6 +362,18 @@ export async function getRoutes(options: BuildRoutesOptions) {
       loadFile: loadFile,
       as: "absolutePath",
     })) as string[];
+
+    // Generate JS assets
+    const { jsAssetContent, islands } = buildAssets
+      ? await buildJS(
+          [appWrapperPath, absoluteFilePath, ...layoutPaths],
+          options
+        )
+      : {};
+    const jsAssetPath =
+      jsAssetContent || buildAssets === false
+        ? `/_limette/js/chunk-${id}.js`
+        : undefined;
 
     /**
      * Generate Tailwind CSS asset

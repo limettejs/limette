@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+## [0.1.2] - 2025-01-21
+
+### Fixed
+
+- Tailwind plugin should also scan app wrapper and layouts for islands
+
 ## [0.1.1] - 2025-01-20
 
 ### Fixed
