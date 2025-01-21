@@ -1,7 +1,7 @@
 import { ensureDir } from "@std/fs/ensure-dir";
 
 // This value is changed in the release pipeline
-const LIMETTE_VERSION = "0.1.1";
+const LIMETTE_VERSION = "0.1.2";
 
 const LIT_VERSION = "3.2.1";
 const TAILWIND_VERSION = "3.4.17";
