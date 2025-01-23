@@ -9,7 +9,9 @@
     "include": ["src/**/*.ts", "deno.json", "README.md"]
   },
   "imports": {
-    "@std/fs": "jsr:@std/fs@^1.0.2"
+    "@std/fmt": "jsr:@std/fmt@^1.0.4",
+    "@std/path": "jsr:@std/path@1.0.8",
+    "@std/fs": "jsr:@std/fs@1.0.10"
   },
   "fmt": {
     "singleQuote": true

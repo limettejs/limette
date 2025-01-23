@@ -45,9 +45,11 @@ export const LimetteElementRenderer = (route: BuildRoute, ctx: Context) =>
       }
 
       // Partial SSR islands with only Tailwind style (if not skipped)
-      if (isIsland && route.cssAssetPath && !this.element.hasAttribute("ssr")) {
-        // @ts-expect-error: LitElementRenderer actually accepts undefined as a returned value
-        if (this.element.hasAttribute("skip-tailwind")) return;
+      if (isIsland && !this.element.hasAttribute("ssr")) {
+        if (this.element.hasAttribute("skip-tailwind") || !route.cssAssetPath) {
+          // @ts-expect-error: LitElementRenderer actually accepts undefined as a returned value
+          return;
+        }
 
         return `<style>@import url("${route.cssAssetPath}");</style>`;
       }
