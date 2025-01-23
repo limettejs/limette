@@ -1,3 +1,4 @@
+import { Spinner } from "@std/cli/unstable-spinner";
 import type { App, ListenOptions } from "../server/app.ts";
 import { build } from "./build.ts";
 import { refreshMiddleware } from "./refresh-middleware.ts";
@@ -16,7 +17,16 @@ export class Builder {
   }
 
   async build(app: App): Promise<void> {
-    return await build(app, { target: this.options.target });
+    const t0 = performance.now();
+    const spinner = new Spinner({ message: "Building...", color: "blue" });
+    spinner.start();
+
+    await build(app, { target: this.options.target });
+
+    const t1 = performance.now();
+    spinner.stop();
+    console.log(`✅ Build done. (${((t1 - t0) / 1000).toFixed(2)}s)`);
+    return;
   }
 
   listen(app: App, options?: ListenOptions) {

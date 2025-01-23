@@ -1,3 +1,4 @@
+import { Spinner } from "@std/cli/unstable-spinner";
 import { type Method, UrlPatternRouter } from "./router.ts";
 import { type MiddlewareFn, runMiddlewares } from "./middlewares.ts";
 import { staticBuildMiddleware } from "./static-files.ts";
@@ -200,6 +201,9 @@ export class App {
 
   async listen(options: ListenOptions = {}): Promise<void> {
     const t0 = performance.now();
+    const spinner = new Spinner({ message: "Starting...", color: "blue" });
+    spinner.start();
+
     if (!options.onListen) {
       options.onListen = (params) => {
         const pathname = this.config.basePath + "/";
@@ -235,6 +239,7 @@ export class App {
       Deno.serve(options, handler);
       const t1 = performance.now();
       const duration = ((t1 - t0) / 1000).toFixed(2);
+      spinner.stop();
       console.log(
         `🟢 ${bgGreen(" Limette ")} app started (${duration}s) \n\t ${blue(
           `http://localhost:${options.port}`
@@ -252,6 +257,7 @@ export class App {
           firstError = undefined;
           const t1 = performance.now();
           const duration = ((t1 - t0) / 1000).toFixed(2);
+          spinner.stop();
           console.log(
             `🟢 ${bgGreen(" Limette ")} app started (${duration}s) \n\t ${blue(
               `http://localhost:${port}`

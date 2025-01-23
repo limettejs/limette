@@ -627,7 +627,6 @@ async function getAppWrapperPath() {
 export async function build(app: App, options?: BuildRoutesOptions) {
   const { target } = options ?? {};
 
-  const t0 = performance.now();
   const routes = await getRoutes({
     buildAssets: true,
     target: target,
@@ -717,7 +716,4 @@ export async function build(app: App, options?: BuildRoutesOptions) {
       layoutImportsString +
       routesArrayString
   );
-
-  const t1 = performance.now();
-  console.log(`✅ Build done. (${((t1 - t0) / 1000).toFixed(2)}s)`);
 }
