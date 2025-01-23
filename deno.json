@@ -1,6 +1,6 @@
 {
   "name": "@limette/core",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "exports": {
     ".": "./src/mod.ts",
     "./runtime": "./src/runtime/mod.ts",

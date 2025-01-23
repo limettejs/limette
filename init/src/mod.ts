@@ -3,7 +3,7 @@ import { join } from "@std/path";
 import { green, red } from "@std/fmt/colors";
 
 // This value is changed in the release pipeline
-const LIMETTE_VERSION = "0.1.2";
+const LIMETTE_VERSION = "0.2.0";
 
 const LIT_VERSION = "3.2.1";
 const TAILWIND_VERSION = "4.0.0";
