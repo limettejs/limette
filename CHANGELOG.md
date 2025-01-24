@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-- BREAKING: Use Tailwind v4
+- BREAKING: Use Tailwind v4 by default
 
 ## [0.1.2] - 2025-01-21
 
