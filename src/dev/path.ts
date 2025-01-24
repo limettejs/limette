@@ -51,7 +51,7 @@ export async function getTailwind() {
 
   const imports: Record<string, string> = config.imports || {};
 
-  tailwindcss = imports.tailwindcss;
+  tailwindcss = imports["@tailwindcss/cli"] ?? imports["tailwindcss"]; // For version 3.x
 
   return tailwindcss;
 }

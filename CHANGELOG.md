@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+## [0.2.0] - 2025-01-24
+
+### Changed
+
+- BREAKING: Use Tailwind v4 by default
+
 ## [0.1.2] - 2025-01-21
 
 ### Fixed
