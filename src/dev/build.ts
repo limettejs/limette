@@ -349,19 +349,20 @@ export async function getRoutes(options: BuildRoutesOptions) {
     const tagName = convertToWebComponentTagName(path);
 
     // Get layouts
-    const layouts = (await getLayoutsForRoute({
-      filePath: entry.path,
-      allLayoutFiles: allLayoutFiles,
-      loadFile: loadFile,
-      as: "module",
-    })) as LayoutModule[];
-
-    const layoutPaths = (await getLayoutsForRoute({
-      filePath: entry.path,
-      allLayoutFiles: allLayoutFiles,
-      loadFile: loadFile,
-      as: "absolutePath",
-    })) as string[];
+    const [layouts, layoutPaths] = await Promise.all([
+      getLayoutsForRoute({
+        filePath: entry.path,
+        allLayoutFiles: allLayoutFiles,
+        loadFile: loadFile,
+        as: "module",
+      }) as unknown as LayoutModule[],
+      getLayoutsForRoute({
+        filePath: entry.path,
+        allLayoutFiles: allLayoutFiles,
+        loadFile: loadFile,
+        as: "absolutePath",
+      }) as unknown as string[],
+    ]);
 
     // Generate JS assets
     const { jsAssetContent, islands } = buildAssets
