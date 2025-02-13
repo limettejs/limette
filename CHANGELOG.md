@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+## [0.2.2] - 2025-02-13
+
+### Fixed
+
+- File system routes should be order by specificity
+
 ## [0.2.1] - 2025-02-10
 
 ### Added

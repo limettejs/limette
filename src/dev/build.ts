@@ -6,6 +6,7 @@ import { walk, emptyDir, ensureFile, exists } from "@std/fs";
 import { encodeHex } from "@std/encoding";
 import { getIslandsRegistered } from "./extract-islands.ts";
 import { resolvePath, getTailwind } from "./path.ts";
+import { sortRoutesBySpecificity } from "./sort-routes.ts";
 import type { App } from "../server/app.ts";
 import type { BuildRoutesOptions } from "../server/fs.ts";
 import type { AppWrapperComponentClass } from "../server/ssr.ts";
@@ -440,7 +441,7 @@ export async function getRoutes(options: BuildRoutesOptions) {
     routes.push(route);
   }
 
-  return routes;
+  return sortRoutesBySpecificity(routes);
 }
 
 // Method to get all _middleware files
