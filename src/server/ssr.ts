@@ -16,7 +16,10 @@ import { LimetteElementRenderer } from "./rendering/limette-element-renderer.ts"
 import { installWindowOnGlobal } from "@lit-labs/ssr/lib/dom-shim.js";
 import type { LayoutModule } from "./layouts.ts";
 
+const originalFetch = globalThis.fetch;
 installWindowOnGlobal();
+// Restore the original fetch function shimmed by lit-labs/ssr which is not compatible with Deno
+globalThis.fetch = originalFetch;
 // Set window object, because the shim doesn't do it
 // @ts-ignore some components use the `window` reference for registration process
 globalThis.window = globalThis;

@@ -3,7 +3,7 @@ import { join } from "@std/path";
 import { green, red } from "@std/fmt/colors";
 
 // This value is changed in the release pipeline
-const LIMETTE_VERSION = "0.2.2";
+const LIMETTE_VERSION = "0.2.3";
 
 const LIT_VERSION = "3.2.1";
 const TAILWIND_VERSION = "4.0.0";
@@ -218,7 +218,8 @@ import type { AppWrapperOptions } from "@limette/core";
 
 export default class App extends LitElement {
   override render(app: AppWrapperOptions) {
-    return html\`<html>
+    return html\`<!DOCTYPE html>
+    <html>
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
