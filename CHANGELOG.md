@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+## [0.2.3] - 2025-06-28
+
+### Fixed
+
+- Don't patch fetch with node-fetch
+
 ## [0.2.2] - 2025-02-13
 
 ### Fixed
