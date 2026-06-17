@@ -6,3 +6,11 @@ declare module 'virtual:limette/routes' {
   export const manifest: LimetteRouteManifest;
   export default manifest;
 }
+
+declare module 'virtual:limette/client-entry/*' {
+  import type { IslandImport } from '@limette/core/vite';
+
+  export const routeId: string;
+  export const routePath: string;
+  export const islandImports: IslandImport[];
+}

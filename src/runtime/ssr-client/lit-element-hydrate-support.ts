@@ -10,11 +10,11 @@
  * @packageDocumentation
  */
 
-import type { PropertyValues, RenderOptions } from "lit";
-import { render } from "lit/html.js";
-import { hydrate } from "npm:@lit-labs/ssr-client@1.1.7";
+import type { PropertyValues, RenderOptions } from 'lit';
+import { render } from 'lit/html.js';
+import { hydrate } from '@lit-labs/ssr-client';
 // Keep consistent with `@lit-labs/ssr-dom-shim`
-const HYDRATE_INTERNALS_ATTR_PREFIX = "hydrate-internals-";
+const HYDRATE_INTERNALS_ATTR_PREFIX = 'hydrate-internals-';
 
 interface PatchableLitElement extends HTMLElement {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-new
@@ -35,13 +35,13 @@ globalThis.litElementHydrateSupport = ({
 }) => {
   const observedAttributes = Object.getOwnPropertyDescriptor(
     Object.getPrototypeOf(LitElement),
-    "observedAttributes"
+    'observedAttributes',
   )!.get!;
 
   // Add `defer-hydration` to observedAttributes
-  Object.defineProperty(LitElement, "observedAttributes", {
+  Object.defineProperty(LitElement, 'observedAttributes', {
     get() {
-      return [...observedAttributes.call(this), "defer-hydration"];
+      return [...observedAttributes.call(this), 'defer-hydration'];
     },
   });
 
@@ -52,9 +52,9 @@ globalThis.litElementHydrateSupport = ({
   LitElement.prototype.attributeChangedCallback = function (
     name: string,
     old: string | null,
-    value: string | null
+    value: string | null,
   ) {
-    if (name === "defer-hydration" && value === null) {
+    if (name === 'defer-hydration' && value === null) {
       connectedCallback.call(this);
     }
     attributeChangedCallback.call(this, name, old, value);
@@ -64,11 +64,11 @@ globalThis.litElementHydrateSupport = ({
   // defer `super.connectedCallback()` if the 'defer-hydration' attribute is set
   const connectedCallback = LitElement.prototype.connectedCallback;
   LitElement.prototype.connectedCallback = function (
-    this: PatchableLitElement
+    this: PatchableLitElement,
   ) {
     // If the outer scope of this element has not yet been hydrated, wait until
     // 'defer-hydration' attribute has been removed to enable
-    if (!this.hasAttribute("defer-hydration")) {
+    if (!this.hasAttribute('defer-hydration')) {
       connectedCallback.call(this);
     }
   };
@@ -80,8 +80,8 @@ globalThis.litElementHydrateSupport = ({
     // If we partial server-side render the shadow root, we use the `skip-hydration`
     // attribute to skip the hydration to client-side render the shadow root.
     // This is useful when combined with a custom ElementRenderer to inject data to the DSR.
-    const skipHydration = this.hasAttribute("skip-hydration");
-    this.removeAttribute("skip-hydration");
+    const skipHydration = this.hasAttribute('skip-hydration');
+    this.removeAttribute('skip-hydration');
 
     if (this.shadowRoot && !skipHydration) {
       this._$needsHydration = true;
@@ -95,7 +95,7 @@ globalThis.litElementHydrateSupport = ({
   const update = Object.getPrototypeOf(LitElement.prototype).update;
   LitElement.prototype.update = function (
     this: PatchableLitElement,
-    changedProperties: PropertyValues
+    changedProperties: PropertyValues,
   ) {
     const value = this.render();
     // Since this is a patch, we can't call super.update(), so we capture
@@ -108,7 +108,7 @@ globalThis.litElementHydrateSupport = ({
         const attr = this.attributes[i];
         if (attr.name.startsWith(HYDRATE_INTERNALS_ATTR_PREFIX)) {
           const ariaAttr = attr.name.slice(
-            HYDRATE_INTERNALS_ATTR_PREFIX.length
+            HYDRATE_INTERNALS_ATTR_PREFIX.length,
           );
           this.removeAttribute(ariaAttr);
           this.removeAttribute(attr.name);

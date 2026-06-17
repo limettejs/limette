@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { readdir, stat } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
+import { discoverIslandImportsForFiles } from './islands.ts';
+import type { IslandImport } from './islands.ts';
 
 const ROUTE_EXT_PATTERN = /\.(?:ts|js)$/;
 const TEST_FILE_PATTERN = /[._]test\.(?:[tj]sx?|[mc][tj]s)$/;
@@ -11,6 +13,7 @@ export type LimetteRouteManifestEntry = {
   routeFile: string;
   layouts: string[];
   middlewares: string[];
+  islandImports: IslandImport[];
 };
 
 export type LimetteRouteManifest = {
@@ -173,7 +176,7 @@ export async function discoverRoutes(
     }
   }
 
-  const routes = files
+  const routes: LimetteRouteManifestEntry[] = files
     .filter((file) => {
       const relativeFile = normalizePath(relative(routesPath, file));
       return !relativeFile.endsWith('_app.ts') &&
@@ -185,17 +188,19 @@ export async function discoverRoutes(
     })
     .map((file): LimetteRouteManifestEntry => {
       const path = routePathForFile(file, routesPath);
+      const layouts = findInheritedFiles(file, routesPath, layoutFiles).map((
+        file,
+      ) => normalizePath(relative(root, file)));
 
       return {
         id: routeId(path),
         path,
         routeFile: normalizePath(relative(root, file)),
-        layouts: findInheritedFiles(file, routesPath, layoutFiles).map((file) =>
-          normalizePath(relative(root, file))
-        ),
+        layouts,
         middlewares: findInheritedFiles(file, routesPath, middlewareFiles).map((
           file,
         ) => normalizePath(relative(root, file))),
+        islandImports: [],
       };
     })
     .sort((a, b) => a.path.localeCompare(b.path));
@@ -207,8 +212,17 @@ export async function discoverRoutes(
     throw new Error(`Route conflict for "${duplicate.path}".`);
   }
 
+  const appFile = normalizePath(relative(root, hasAppTs ? appTs : appJs));
+
+  for (const route of routes) {
+    route.islandImports = await discoverIslandImportsForFiles({
+      root,
+      files: [appFile, ...route.layouts, route.routeFile],
+    });
+  }
+
   return {
-    appFile: normalizePath(relative(root, hasAppTs ? appTs : appJs)),
+    appFile,
     routes,
   };
 }

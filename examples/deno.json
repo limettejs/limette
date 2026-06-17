@@ -16,6 +16,7 @@
     "@limette/core/runtime/ssr-client/lit-element-hydrate-support-patch.ts": "../src/runtime/ssr-client/lit-element-hydrate-support-patch.ts",
     "@lit-labs/ssr": "npm:@lit-labs/ssr@3.3.0",
     "@lit-labs/ssr/": "npm:/@lit-labs/ssr@3.3.0/",
+    "@lit-labs/ssr-client": "npm:@lit-labs/ssr-client@1.1.7",
     "@luca/esbuild-deno-loader": "jsr:@luca/esbuild-deno-loader@0.11.1",
     "@std/cli": "jsr:@std/cli@1.0.11",
     "@std/encoding": "jsr:@std/encoding@1.0.6",
