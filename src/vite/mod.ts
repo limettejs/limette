@@ -1,6 +1,13 @@
 export { discoverRoutes } from './manifest.ts';
 export { clientEntryInputs } from './client-entries.ts';
 export type { ClientEntryInputsOptions } from './client-entries.ts';
+export { readViteManifest, resolveClientAssets } from './assets.ts';
+export type {
+  ResolveClientAssetsOptions,
+  RouteClientAssets,
+  ViteManifest,
+  ViteManifestChunk,
+} from './assets.ts';
 export type {
   DiscoverRoutesOptions,
   LimetteRouteManifest,

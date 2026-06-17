@@ -1,4 +1,6 @@
 temp
 dist
 _limette
+.vite-limette-client
+.vite-limette-smoke
 .DS_Store
