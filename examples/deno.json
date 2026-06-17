@@ -2,13 +2,18 @@
   "tasks": {
     "dev": "deno run -A --watch=static/,routes/ dev.ts",
     "build": "deno run -A dev.ts build",
-    "start": "deno run -A main.ts"
+    "start": "deno run -A main.ts",
+    "vite:routes": "deno run -A npm:vite@^8.0.0 --config vite.config.ts build --ssr vite-routes-smoke.ts --outDir .vite-limette-smoke"
   },
   "imports": {
     "@b-fuze/deno-dom": "jsr:@b-fuze/deno-dom@0.1.49",
-    "@limette/core": "../src/mod.ts",
-    "@limette/core/": "../src/",
+    "@limette/core": "jsr:@limette/core@0.2.3",
     "@limette/core/dev": "../src/dev/mod.ts",
+    "@limette/core/vite": "../src/vite/mod.ts",
+    "@limette/core/runtime": "../src/runtime/mod.ts",
+    "@limette/core/runtime/refresh.ts": "../src/runtime/refresh.ts",
+    "@limette/core/runtime/ssr-client/lit-element-hydrate-support.ts": "../src/runtime/ssr-client/lit-element-hydrate-support.ts",
+    "@limette/core/runtime/ssr-client/lit-element-hydrate-support-patch.ts": "../src/runtime/ssr-client/lit-element-hydrate-support-patch.ts",
     "@lit-labs/ssr": "npm:@lit-labs/ssr@3.3.0",
     "@lit-labs/ssr/": "npm:/@lit-labs/ssr@3.3.0/",
     "@luca/esbuild-deno-loader": "jsr:@luca/esbuild-deno-loader@0.11.1",
@@ -22,7 +27,8 @@
     "esbuild": "npm:esbuild@0.24.2",
     "lit": "npm:lit@^3.2.1",
     "parse-imports": "npm:parse-imports@2.2.1",
-    "tailwindcss": "npm:tailwindcss@^3.4.17"
+    "tailwindcss": "npm:tailwindcss@4.3.1",
+    "vite": "npm:vite@^8.0.0"
   },
   "compilerOptions": {
     "lib": [
@@ -36,5 +42,6 @@
   "fmt": {
     "singleQuote": true
   },
-  "lock": false
+  "lock": false,
+  "links": ["../"]
 }

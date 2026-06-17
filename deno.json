@@ -5,6 +5,7 @@
     ".": "./src/mod.ts",
     "./runtime": "./src/runtime/mod.ts",
     "./dev": "./src/dev/mod.ts",
+    "./vite": "./src/vite/mod.ts",
     "./runtime/ssr-client/lit-element-hydrate-support.ts": "./src/runtime/ssr-client/lit-element-hydrate-support.ts",
     "./runtime/ssr-client/lit-element-hydrate-support-patch.ts": "./src/runtime/ssr-client/lit-element-hydrate-support-patch.ts",
     "./runtime/refresh.ts": "./src/runtime/refresh.ts"
@@ -28,12 +29,17 @@
     "@std/http": "jsr:@std/http@1.0.12",
     "@std/path": "jsr:@std/path@1.0.8",
     "@std/semver": "jsr:@std/semver@1.0.3",
-    "@limette/core/": "./src/",
+    "@limette/core/dev": "./src/dev/mod.ts",
+    "@limette/core/vite": "./src/vite/mod.ts",
+    "@limette/core/runtime": "./src/runtime/mod.ts",
+    "@limette/core/runtime/refresh.ts": "./src/runtime/refresh.ts",
+    "@limette/core/runtime/ssr-client/lit-element-hydrate-support.ts": "./src/runtime/ssr-client/lit-element-hydrate-support.ts",
+    "@limette/core/runtime/ssr-client/lit-element-hydrate-support-patch.ts": "./src/runtime/ssr-client/lit-element-hydrate-support-patch.ts",
     "esbuild": "npm:esbuild@0.24.2",
     "lit": "npm:lit@3.2.1",
     "lit/": "npm:/lit@3.2.1/",
     "parse-imports": "npm:parse-imports@2.2.1",
-    "tailwindcss": "npm:tailwindcss@^3.4.17"
+    "tailwindcss": "npm:tailwindcss@4.3.1"
   },
   "compilerOptions": {
     "lib": [
