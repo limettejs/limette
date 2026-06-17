@@ -1,15 +1,15 @@
-import { getRoutes, getAppWrapper, type BuildRoute } from "../dev/build.ts";
-import type { App } from "./app.ts";
-import type { Method } from "./router.ts";
-import type { BuilderOptions } from "../dev/builder.ts";
-import { handlersForRoute } from "./handlers.ts";
-import type { AppWrapperComponentClass } from "./ssr.ts";
+import { type BuildRoute, getAppWrapper, getRoutes } from '../dev/build.ts';
+import type { App } from './app.ts';
+import type { Method } from './router.ts';
+import type { BuilderOptions } from '../dev/builder.ts';
+import { handlersForRoute } from './handlers.ts';
+import type { AppWrapperComponentClass } from './ssr.ts';
 
 export interface BuildRoutesOptions {
   buildAssets?: boolean;
   devMode?: boolean;
   tailwind?: boolean;
-  target?: BuilderOptions["target"];
+  target?: BuilderOptions['target'];
   loadFile?: (path: string) => Promise<unknown>;
 }
 
@@ -18,8 +18,8 @@ export interface BuildRoutesOptions {
  */
 export async function setFsRoutes(app: App) {
   const options: BuildRoutesOptions = {
-    buildAssets: app.config.mode === "development",
-    devMode: app.config.mode === "development",
+    buildAssets: app.config.mode === 'development',
+    devMode: app.config.mode === 'development',
     tailwind: app.builtinPluginOptions.tailwind.enabled,
     target: app.builder?.options.target,
     loadFile: app.builtinPluginOptions.fsRoutes.loadFile,
@@ -30,30 +30,30 @@ export async function setFsRoutes(app: App) {
 
   if (!AppWrapper) {
     throw new Error(
-      "You need to create an AppWrapper (_app.ts/js) to render a page."
+      'You need to create an AppWrapper (_app.ts/js) to render a page.',
     );
   }
 
   // Serve static files from memory on dev mode
-  if (app.config.mode === "development") {
-    app.get("/_limette/js/chunk-:id.js", (ctx) => {
+  if (app.config.mode === 'development') {
+    app.get('/_limette/js/chunk-:id.js', (ctx) => {
       const { id } = ctx.params;
       const route = routes.find((r) => r.id === id);
 
-      return new Response(route?.jsAssetContent?.contents, {
+      return new Response(route?.jsAssetContent?.text ?? '', {
         headers: {
-          "Content-Type": "application/javascript; charset=UTF-8",
+          'Content-Type': 'application/javascript; charset=UTF-8',
         },
       });
     });
 
-    app.get("/_limette/css/tailwind-:id.css", (ctx) => {
+    app.get('/_limette/css/tailwind-:id.css', (ctx) => {
       const { id } = ctx.params;
       const route = routes.find((r) => r.id === id);
 
       return new Response(route?.cssAssetContent, {
         headers: {
-          "Content-Type": "text/css; charset=UTF-8",
+          'Content-Type': 'text/css; charset=UTF-8',
         },
       });
     });
@@ -63,7 +63,7 @@ export async function setFsRoutes(app: App) {
     const handlers = handlersForRoute(route, AppWrapper);
 
     // Register error pages
-    if (route.path.endsWith("/_error") && handlers?.GET) {
+    if (route.path.endsWith('/_error') && handlers?.GET) {
       app.error(route.path, handlers.GET);
       continue;
     }
@@ -77,7 +77,7 @@ export async function setFsRoutes(app: App) {
       app[method.toLocaleLowerCase() as Lowercase<Method>](
         route.path,
         ...middlewares,
-        handler
+        handler,
       );
     }
   }

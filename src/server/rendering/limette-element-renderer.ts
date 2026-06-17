@@ -1,13 +1,13 @@
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
-import { unsafeCSS } from "lit";
+import { unsafeCSS } from 'lit';
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
-import type { LitElement } from "lit";
-import { LitElementRenderer } from "@lit-labs/ssr/lib/lit-element-renderer.js";
-import type { RenderInfo, RenderResult } from "@lit-labs/ssr";
-import type { BuildRoute } from "../../dev/build.ts";
-import type { Context } from "../context.ts";
+import type { LitElement } from 'lit';
+import { LitElementRenderer } from '@lit-labs/ssr/lib/lit-element-renderer.js';
+import type { RenderInfo, RenderResult } from '@lit-labs/ssr';
+import type { BuildRoute } from '../../dev/build.ts';
+import type { Context } from '../context.ts';
 
-type LmtShadowRootMode = "open" | "closed" | "disabled";
+type LmtShadowRootMode = 'open' | 'closed' | 'disabled';
 interface ContextLitElement extends LitElement {
   ctx: Context;
 }
@@ -15,8 +15,8 @@ interface ContextLitElement extends LitElement {
 export const LimetteElementRenderer = (route: BuildRoute, ctx: Context) =>
   class LimetteElementRenderer extends LitElementRenderer {
     override connectedCallback(): void {
-      if (!this.element.hasAttribute("ssr")) {
-        this.element.setAttribute("skip-hydration", "");
+      if (!this.element.hasAttribute('ssr')) {
+        this.element.setAttribute('skip-hydration', '');
       }
 
       super.connectedCallback();
@@ -33,20 +33,19 @@ export const LimetteElementRenderer = (route: BuildRoute, ctx: Context) =>
       };
 
       // A component is an island if it's included in route.islands.
-      const isIsland =
-        route.islands?.includes(this.tagName) ||
-        this.element.hasAttribute("island");
+      const isIsland = route.islands?.includes(this.tagName) ||
+        this.element.hasAttribute('island');
 
       // Islands are CSR'ed, so we can't render them in light DOM
       if (!isIsland) {
-        (this.shadowRootOptions.mode as LmtShadowRootMode) = "disabled";
+        (this.shadowRootOptions.mode as LmtShadowRootMode) = 'disabled';
       } else {
-        this.shadowRootOptions.mode = "open";
+        this.shadowRootOptions.mode = 'open';
       }
 
       // Partial SSR islands with only Tailwind style (if not skipped)
-      if (isIsland && !this.element.hasAttribute("ssr")) {
-        if (this.element.hasAttribute("skip-tailwind") || !route.cssAssetPath) {
+      if (isIsland && !this.element.hasAttribute('ssr')) {
+        if (this.element.hasAttribute('skip-tailwind') || !route.cssAssetPath) {
           // @ts-expect-error: LitElementRenderer actually accepts undefined as a returned value
           return;
         }
@@ -54,11 +53,8 @@ export const LimetteElementRenderer = (route: BuildRoute, ctx: Context) =>
         return `<style>@import url("${route.cssAssetPath}");</style>`;
       }
 
-      // Inject context for SSR'ed components that use the ContextMixin
-      if (
-        (!isIsland || (isIsland && this.element.hasAttribute("ssr"))) &&
-        Object.hasOwn(Object.getPrototypeOf(ctor), "__requiresContext")
-      ) {
+      // Inject context for every server-rendered component instance.
+      if (!isIsland || (isIsland && this.element.hasAttribute('ssr'))) {
         (this.element as ContextLitElement).ctx = ctx;
       }
 
@@ -72,13 +68,13 @@ export const LimetteElementRenderer = (route: BuildRoute, ctx: Context) =>
       if (
         isIsland &&
         route.cssAssetPath &&
-        this.element.hasAttribute("ssr") &&
-        !this.element.hasAttribute("skip-tailwind") &&
+        this.element.hasAttribute('ssr') &&
+        !this.element.hasAttribute('skip-tailwind') &&
         ctor.__requiresTailwind !== true
       ) {
         // Inject Tailwind CSS import
         ctor.elementStyles?.unshift?.(
-          unsafeCSS(`@import url("${route.cssAssetPath}");`)
+          unsafeCSS(`@import url("${route.cssAssetPath}");`),
         );
 
         // Mark component that was already injected

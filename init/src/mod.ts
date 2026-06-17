@@ -1,24 +1,24 @@
-import { ensureDir } from "@std/fs";
-import { join } from "@std/path";
-import { green, red } from "@std/fmt/colors";
+import { ensureDir } from '@std/fs';
+import { join } from '@std/path';
+import { green, red } from '@std/fmt/colors';
 
 // This value is changed in the release pipeline
-const LIMETTE_VERSION = "0.2.3";
+const LIMETTE_VERSION = '0.2.3';
 
-const LIT_VERSION = "3.2.1";
-const TAILWIND_VERSION = "4.0.0";
+const LIT_VERSION = '3.2.1';
+const TAILWIND_VERSION = '4.0.0';
 
-const projectName = prompt("Your project name?");
-if (typeof projectName !== "string" || projectName?.length < 1) {
-  console.log(`${red("Error:")} Invalid project name!`);
+const projectName = prompt('Your project name?');
+if (typeof projectName !== 'string' || projectName?.length < 1) {
+  console.log(`${red('Error:')} Invalid project name!`);
   Deno.exit();
 }
-const enableTailwind = confirm("Do you want to use Tailwind?");
+const enableTailwind = confirm('Do you want to use Tailwind?');
 
 const projectPath = join(Deno.cwd(), projectName as string);
-const islandsPath = join(projectPath, "islands");
-const routesPath = join(projectPath, "routes");
-const staticPath = join(projectPath, "static");
+const islandsPath = join(projectPath, 'islands');
+const routesPath = join(projectPath, 'routes');
+const staticPath = join(projectPath, 'static');
 
 // root folder
 await ensureDir(projectPath);
@@ -49,10 +49,10 @@ const denoJson = `
   "imports": {
     "@limette/core": "jsr:@limette/core@${LIMETTE_VERSION}",
     ${
-      enableTailwind
-        ? `"@tailwindcss/cli": "npm:@tailwindcss/cli@^${TAILWIND_VERSION}",`
-        : ``
-    }
+  enableTailwind
+    ? `"@tailwindcss/cli": "npm:@tailwindcss/cli@^${TAILWIND_VERSION}",`
+    : ``
+}
     "/lit": "npm:/lit@^${LIT_VERSION}/",
     "lit": "npm:lit@^${LIT_VERSION}"${
   enableTailwind
@@ -213,23 +213,23 @@ customElements.define("island-counter", Counter);
 `;
 
 const _appRouteTs = `
-import { LitElement, html } from "lit";
-import type { AppWrapperOptions } from "@limette/core";
+import { AppComponent } from "@limette/core";
+import { html } from "lit";
 
-export default class App extends LitElement {
-  override render(app: AppWrapperOptions) {
+export default class App extends AppComponent {
+  override render() {
     return html\`<!DOCTYPE html>
     <html>
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Limette</title>
-        \${app.css}
+        \${this.assets.styles}
       </head>
       <body>
-        \${app.component}
+        \${this.page}
         <!-- -->
-        \${app.js}
+        \${this.assets.scripts}
       </body>
     </html>\`;
   }
@@ -237,10 +237,15 @@ export default class App extends LitElement {
 `;
 
 const indexRouteTs = `
-import { LitElement, html, css } from "lit";
-import "../islands/counter.ts";
+import { PageComponent } from "@limette/core";
+import { html, css } from "lit";
+import { Counter } from "../islands/counter.ts";
 
-export default class Home extends LitElement {
+export default class Home extends PageComponent {
+  static islands = {
+    "island-counter": Counter,
+  };
+
   static override styles = css\`
     .container {
       display: flex;
@@ -273,10 +278,15 @@ export default class Home extends LitElement {
 `;
 
 const indexRouteTsTailwind = `
-import { LitElement, html } from "lit";
-import "../islands/counter.ts";
+import { PageComponent } from "@limette/core";
+import { html } from "lit";
+import { Counter } from "../islands/counter.ts";
 
-export default class Home extends LitElement {
+export default class Home extends PageComponent {
+  static islands = {
+    "island-counter": Counter,
+  };
+
   override render() {
     return html\`
       <section class="flex items-center flex-col text-center pt-8">
@@ -296,8 +306,8 @@ export default class Home extends LitElement {
 `;
 
 const fooRouteTs = `
-import { LitElement, html, css } from "lit";
-import type { Handlers } from "@limette/core";
+import { PageComponent, type Handlers } from "@limette/core";
+import { html, css } from "lit";
 
 export const handler: Handlers = {
   POST(_ctx) {
@@ -305,7 +315,7 @@ export const handler: Handlers = {
   },
 };
 
-export default class Foo extends LitElement {
+export default class Foo extends PageComponent {
   static override styles = css\`
     .container {
       font-family: sans-serif;
@@ -339,8 +349,8 @@ export default class Foo extends LitElement {
 `;
 
 const fooRouteTsTailwind = `
-import { LitElement, html } from "lit";
-import type { Handlers } from "@limette/core";
+import { PageComponent, type Handlers } from "@limette/core";
+import { html } from "lit";
 
 export const handler: Handlers = {
   POST(_ctx) {
@@ -348,7 +358,7 @@ export const handler: Handlers = {
   },
 };
 
-export default class Foo extends LitElement {
+export default class Foo extends PageComponent {
   override render() {
     return html\`
       <lmt-head>
@@ -372,49 +382,49 @@ const tailwindStyleCSS = `@import "tailwindcss";`;
 
 function removeEmptyLines(content: string) {
   return content
-    .split("\n")
-    .filter((line: string) => line.trim() !== "")
-    .join("\n");
+    .split('\n')
+    .filter((line: string) => line.trim() !== '')
+    .join('\n');
 }
 
-Deno.writeTextFileSync(join(projectPath, ".gitignore"), gitignore);
+Deno.writeTextFileSync(join(projectPath, '.gitignore'), gitignore);
 Deno.writeTextFileSync(
-  join(projectPath, "deno.json"),
-  removeEmptyLines(denoJson)
+  join(projectPath, 'deno.json'),
+  removeEmptyLines(denoJson),
 );
-Deno.writeTextFileSync(join(projectPath, "dev.ts"), devTs);
-Deno.writeTextFileSync(join(projectPath, "main.ts"), mainTs);
+Deno.writeTextFileSync(join(projectPath, 'dev.ts'), devTs);
+Deno.writeTextFileSync(join(projectPath, 'main.ts'), mainTs);
 Deno.writeTextFileSync(
-  join(projectPath, "islands/counter.ts"),
-  enableTailwind ? counterIslandTsTailwind : counterIslandTs
+  join(projectPath, 'islands/counter.ts'),
+  enableTailwind ? counterIslandTsTailwind : counterIslandTs,
 );
-Deno.writeTextFileSync(join(projectPath, "routes/_app.ts"), _appRouteTs);
+Deno.writeTextFileSync(join(projectPath, 'routes/_app.ts'), _appRouteTs);
 Deno.writeTextFileSync(
-  join(projectPath, "routes/index.ts"),
-  enableTailwind ? indexRouteTsTailwind : indexRouteTs
+  join(projectPath, 'routes/index.ts'),
+  enableTailwind ? indexRouteTsTailwind : indexRouteTs,
 );
 Deno.writeTextFileSync(
-  join(projectPath, "routes/foo.ts"),
-  enableTailwind ? fooRouteTsTailwind : fooRouteTs
+  join(projectPath, 'routes/foo.ts'),
+  enableTailwind ? fooRouteTsTailwind : fooRouteTs,
 );
 enableTailwind &&
   Deno.writeTextFileSync(
-    projectPath + "/static/tailwind.css",
-    tailwindStyleCSS
+    projectPath + '/static/tailwind.css',
+    tailwindStyleCSS,
   );
 
 // Install dependencies
-const command = new Deno.Command("deno", {
+const command = new Deno.Command('deno', {
   args: [
-    "install",
-    "--allow-scripts",
-    "--config",
-    join(projectName as string, "deno.json"),
+    'install',
+    '--allow-scripts',
+    '--config',
+    join(projectName as string, 'deno.json'),
   ],
-  stdout: "piped",
-  stderr: "piped",
+  stdout: 'piped',
+  stderr: 'piped',
 });
 
 await command.output();
 
-console.log(`${green("Your project is ready!")} 🎉`);
+console.log(`${green('Your project is ready!')} 🎉`);

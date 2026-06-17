@@ -1,6 +1,7 @@
-import { LitElement, html } from "lit";
+import { PageComponent } from '@limette/core';
+import { html } from 'lit';
 
-export default class NoJS extends LitElement {
+export default class NoJS extends PageComponent {
   render() {
     return html`
       <h1>No JS</h1>

@@ -28,6 +28,7 @@
     "@std/http": "jsr:@std/http@1.0.12",
     "@std/path": "jsr:@std/path@1.0.8",
     "@std/semver": "jsr:@std/semver@1.0.3",
+    "@limette/core/": "./src/",
     "esbuild": "npm:esbuild@0.24.2",
     "lit": "npm:lit@3.2.1",
     "lit/": "npm:/lit@3.2.1/",

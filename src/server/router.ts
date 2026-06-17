@@ -1,10 +1,11 @@
-import "./ssr.ts";
+import './ssr.ts';
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
-import type { LitElement } from "lit";
-import type { MiddlewareFn } from "./middlewares.ts";
-import type { Handlers } from "./handlers.ts";
+import type { LitElement } from 'lit';
+import type { MiddlewareFn } from './middlewares.ts';
+import type { Handlers } from './handlers.ts';
+import type { ServerComponentClass } from './components.ts';
 
-export type Method = "HEAD" | "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+export type Method = 'HEAD' | 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
 export interface RouteConfig {
   skipInheritedLayouts: boolean; // Skip already inherited layouts
@@ -13,7 +14,7 @@ export interface RouteConfig {
 export interface RouteModule {
   config: RouteConfig;
   handler: Handlers;
-  default: LitElement;
+  default: ServerComponentClass | typeof LitElement;
 }
 
 interface RouteResult {
@@ -26,7 +27,7 @@ interface RouteResult {
 
 export interface Route {
   path: URLPattern;
-  method: Method | "ALL";
+  method: Method | 'ALL';
   handlers: MiddlewareFn[];
 }
 
@@ -55,25 +56,27 @@ export class UrlPatternRouter {
   addError(pathname: string | URLPattern, fn: MiddlewareFn) {
     let path = pathname;
 
-    if (typeof pathname === "string" && pathname.endsWith("/_error")) {
-      path = pathname.substring(0, pathname.length - 7) + "/*";
+    if (typeof pathname === 'string' && pathname.endsWith('/_error')) {
+      path = pathname.substring(0, pathname.length - 7) + '/*';
     }
 
     this.#errors.push({
-      path:
-        typeof path === "string" ? new URLPattern({ pathname: path }) : path,
+      path: typeof path === 'string'
+        ? new URLPattern({ pathname: path })
+        : path,
       handler: fn,
     });
   }
 
   add(
-    method: Method | "ALL",
+    method: Method | 'ALL',
     pathname: string | URLPattern,
-    handlers: MiddlewareFn[]
+    handlers: MiddlewareFn[],
   ) {
     this.#routes.push({
-      path:
-        typeof pathname === "string" ? new URLPattern({ pathname }) : pathname,
+      path: typeof pathname === 'string'
+        ? new URLPattern({ pathname })
+        : pathname,
       handlers,
       method,
     });
@@ -96,18 +99,18 @@ export class UrlPatternRouter {
       const match = route.path.exec(url);
 
       if (match !== null) {
-        if (route.method !== "ALL") result.patternMatch = true;
+        if (route.method !== 'ALL') result.patternMatch = true;
         result.pattern = route.path.pathname;
 
-        if (route.method === "ALL" || route.method === method) {
+        if (route.method === 'ALL' || route.method === method) {
           result.handlers.push(route.handlers);
 
           // Decode matched params
           for (const [key, value] of Object.entries(match.pathname.groups)) {
-            result.params[key] = value === undefined ? "" : decodeURI(value);
+            result.params[key] = value === undefined ? '' : decodeURI(value);
           }
 
-          if (route.method === "ALL") {
+          if (route.method === 'ALL') {
             continue;
           }
 

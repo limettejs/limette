@@ -1,7 +1,12 @@
-import { LitElement, html } from "lit";
-import "../../islands/bar.js";
+import { PageComponent } from '@limette/core';
+import { html } from 'lit';
+import { IslandBar } from '../../islands/bar.js';
 
-export default class Home extends LitElement {
+export default class Home extends PageComponent {
+  static islands = {
+    'island-bar': IslandBar,
+  };
+
   render() {
     return html`
       <h1>Foo/Bar</h1>

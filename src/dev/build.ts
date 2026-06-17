@@ -1,18 +1,18 @@
-import * as esbuild from "esbuild";
-import { denoPlugins } from "@luca/esbuild-deno-loader";
-import { parseImports } from "parse-imports";
-import { parse, join, toFileUrl, SEPARATOR } from "@std/path";
-import { walk, emptyDir, ensureFile, exists } from "@std/fs";
-import { encodeHex } from "@std/encoding";
-import { getIslandsRegistered } from "./extract-islands.ts";
-import { resolvePath, getTailwind } from "./path.ts";
-import { sortRoutesBySpecificity } from "./sort-routes.ts";
-import type { App } from "../server/app.ts";
-import type { BuildRoutesOptions } from "../server/fs.ts";
-import type { AppWrapperComponentClass } from "../server/ssr.ts";
-import type { LayoutModule } from "../server/layouts.ts";
-import type { MiddlewareModule } from "../server/middlewares.ts";
-import type { RouteModule } from "../server/router.ts";
+import * as esbuild from 'esbuild';
+import { denoPlugins } from '@luca/esbuild-deno-loader';
+import { parseImports } from 'parse-imports';
+import { join, parse, SEPARATOR, toFileUrl } from '@std/path';
+import { emptyDir, ensureFile, exists, walk } from '@std/fs';
+import { encodeHex } from '@std/encoding';
+import { getIslandsRegistered } from './extract-islands.ts';
+import { getTailwind, resolvePath } from './path.ts';
+import { sortRoutesBySpecificity } from './sort-routes.ts';
+import type { App } from '../server/app.ts';
+import type { BuildRoutesOptions } from '../server/fs.ts';
+import type { AppWrapperComponentClass } from '../server/ssr.ts';
+import type { LayoutModule } from '../server/layouts.ts';
+import type { MiddlewareModule } from '../server/middlewares.ts';
+import type { RouteModule } from '../server/router.ts';
 
 const TEST_FILE_PATTERN = /[._]test\.(?:[tj]sx?|[mc][tj]s)$/;
 
@@ -53,7 +53,7 @@ const encoder = new TextEncoder();
 async function getImports(
   file: string,
   match: RegExp,
-  options?: { as: "import" | "path" }
+  options?: { as: 'import' | 'path' },
 ) {
   const imports = [];
 
@@ -64,12 +64,12 @@ async function getImports(
 
     if (!path) {
       throw new Error(
-        `We can't process this import: ${$import.moduleSpecifier.code}`
+        `We can't process this import: ${$import.moduleSpecifier.code}`,
       );
     }
 
     if (match.test(path)) {
-      if (options?.as === "path") {
+      if (options?.as === 'path') {
         imports.push(await resolvePath(path, file));
       } else {
         imports.push(`import "${await resolvePath(path, file)}";`);
@@ -79,15 +79,176 @@ async function getImports(
   return imports;
 }
 
+type ImportBinding = {
+  local: string;
+  moduleSpecifier: string;
+};
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function getImportBindings(code: string): ImportBinding[] {
+  const bindings: ImportBinding[] = [];
+  const importPattern =
+    /import\s+(?:(type)\s+)?(?:(.*?)\s+from\s*)?["']([^"']+)["'];?/gs;
+
+  for (const match of code.matchAll(importPattern)) {
+    const [, typeOnly, rawClause, moduleSpecifier] = match;
+    if (typeOnly || !rawClause) continue;
+
+    const clause = rawClause.trim();
+    if (!clause || clause.startsWith('type ')) continue;
+
+    const namespaceMatch = clause.match(/^\*\s+as\s+([A-Za-z_$][\w$]*)$/);
+    if (namespaceMatch) {
+      bindings.push({ local: namespaceMatch[1], moduleSpecifier });
+      continue;
+    }
+
+    const namedStart = clause.indexOf('{');
+    if (namedStart > -1) {
+      const defaultImport = clause.slice(0, namedStart).replace(',', '').trim();
+      if (defaultImport) {
+        bindings.push({ local: defaultImport, moduleSpecifier });
+      }
+
+      const namedEnd = clause.lastIndexOf('}');
+      const namedImports = clause.slice(namedStart + 1, namedEnd);
+      for (const rawNamedImport of namedImports.split(',')) {
+        const namedImport = rawNamedImport.trim();
+        if (!namedImport || namedImport.startsWith('type ')) continue;
+
+        const parts = namedImport.split(/\s+as\s+/);
+        const local = (parts[1] ?? parts[0]).trim();
+        if (local) bindings.push({ local, moduleSpecifier });
+      }
+      continue;
+    }
+
+    const defaultImport = clause.split(',')[0]?.trim();
+    if (defaultImport) {
+      bindings.push({ local: defaultImport, moduleSpecifier });
+    }
+  }
+
+  return bindings;
+}
+
+function readBalancedBlock(code: string, start: number) {
+  let depth = 0;
+  let quote: string | undefined;
+  let escaped = false;
+  let lineComment = false;
+  let blockComment = false;
+
+  for (let i = start; i < code.length; i++) {
+    const char = code[i];
+    const next = code[i + 1];
+
+    if (lineComment) {
+      if (char === '\n') lineComment = false;
+      continue;
+    }
+
+    if (blockComment) {
+      if (char === '*' && next === '/') {
+        blockComment = false;
+        i++;
+      }
+      continue;
+    }
+
+    if (quote) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (char === '\\') {
+        escaped = true;
+        continue;
+      }
+      if (char === quote) {
+        quote = undefined;
+      }
+      continue;
+    }
+
+    if (char === '/' && next === '/') {
+      lineComment = true;
+      i++;
+      continue;
+    }
+
+    if (char === '/' && next === '*') {
+      blockComment = true;
+      i++;
+      continue;
+    }
+
+    if (char === '"' || char === "'" || char === '`') {
+      quote = char;
+      continue;
+    }
+
+    if (char === '{') {
+      depth++;
+    } else if (char === '}') {
+      depth--;
+      if (depth === 0) {
+        return code.slice(start, i + 1);
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function getStaticIslandsBlocks(code: string) {
+  const blocks: string[] = [];
+  const staticIslandsPattern = /static\s+(?:override\s+)?islands\s*=/g;
+
+  for (const match of code.matchAll(staticIslandsPattern)) {
+    let index = match.index + match[0].length;
+    while (/\s/.test(code[index])) index++;
+    if (code[index] !== '{') continue;
+
+    const block = readBalancedBlock(code, index);
+    if (block) blocks.push(block);
+  }
+
+  return blocks;
+}
+
+async function getStaticIslandImports(file: string) {
+  const code = await Deno.readTextFile(file);
+  const islandsBlocks = getStaticIslandsBlocks(code);
+  if (!islandsBlocks.length) return [];
+
+  const importBindings = getImportBindings(code);
+  const imports = new Set<string>();
+
+  for (const binding of importBindings) {
+    const identifierPattern = new RegExp(
+      `\\b${escapeRegExp(binding.local)}\\b`,
+    );
+    if (!islandsBlocks.some((block) => identifierPattern.test(block))) {
+      continue;
+    }
+
+    imports.add(
+      `import "${await resolvePath(binding.moduleSpecifier, file)}";`,
+    );
+  }
+
+  return Array.from(imports);
+}
+
 async function buildJS(paths: string[], options: BuildRoutesOptions) {
   const { devMode, target } = options;
 
   const imports = (
-    await Promise.all(
-      paths.map((path) =>
-        getImports(path, new RegExp("/islands/"), { as: "import" })
-      )
-    )
+    await Promise.all(paths.map((path) => getStaticIslandImports(path)))
   ).flat();
   let result: { jsAssetContent?: esbuild.OutputFile; islands?: string[] } = {
     jsAssetContent: undefined,
@@ -104,26 +265,26 @@ async function buildJS(paths: string[], options: BuildRoutesOptions) {
     `import "@limette/core/runtime/ssr-client/lit-element-hydrate-support-patch.ts";`,
     devMode ? `import "@limette/core/runtime/refresh.ts";` : ``,
     ...imports,
-  ].join("\n");
+  ].join('\n');
 
   const tempDirPath = await Deno.makeTempDir();
-  const entrypointPath = join(tempDirPath, "/entrypoint.js");
+  const entrypointPath = join(tempDirPath, '/entrypoint.js');
   await Deno.writeTextFile(entrypointPath, entryPoint);
 
   const esbuildResult = await esbuild.build({
     plugins: [
       ...denoPlugins({
-        loader: "native",
-        configPath: join(Deno.cwd(), "deno.json"),
+        loader: 'native',
+        configPath: join(Deno.cwd(), 'deno.json'),
       }),
     ],
     entryPoints: [toFileUrl(entrypointPath).href],
     sourcemap: devMode,
     minify: !devMode,
     bundle: true,
-    format: "esm",
+    format: 'esm',
     target: target,
-    platform: "browser",
+    platform: 'browser',
     write: false,
   });
 
@@ -134,11 +295,11 @@ async function buildJS(paths: string[], options: BuildRoutesOptions) {
   try {
     const islands = await getIslandsRegistered(
       jsAssetContent.text,
-      entrypointPath
+      entrypointPath,
     );
     result = { jsAssetContent, islands };
   } catch {
-    console.error("ERROR: There was an error while processing the islands.");
+    console.error('ERROR: There was an error while processing the islands.');
   } finally {
     await Deno.remove(tempDirPath, { recursive: true });
   }
@@ -147,32 +308,32 @@ async function buildJS(paths: string[], options: BuildRoutesOptions) {
 }
 
 async function bundleImports(paths: string[], contents: string[] = []) {
-  const entrypoint = paths.map((path) => `import "${path}";`).join("");
+  const entrypoint = paths.map((path) => `import "${path}";`).join('');
   const tempDirPath = await Deno.makeTempDir();
-  const entrypointPath = join(tempDirPath, "/entrypoint.js");
+  const entrypointPath = join(tempDirPath, '/entrypoint.js');
   await Deno.writeTextFile(entrypointPath, entrypoint, {});
 
   const esbuildResult = await esbuild.build({
     plugins: [
       ...denoPlugins({
-        loader: "native",
-        configPath: join(Deno.cwd(), "deno.json"),
+        loader: 'native',
+        configPath: join(Deno.cwd(), 'deno.json'),
       }),
     ],
     entryPoints: [toFileUrl(entrypointPath).href],
     sourcemap: false,
     minify: true,
     bundle: true,
-    format: "esm",
+    format: 'esm',
     write: false,
     treeShaking: true,
-    platform: "neutral",
+    platform: 'neutral',
     external: [
-      "@limette/core",
-      "@limette/core/*",
-      "lit",
-      "@lit-labs/ssr",
-      "node:*",
+      '@limette/core',
+      '@limette/core/*',
+      'lit',
+      '@lit-labs/ssr',
+      'node:*',
     ],
   });
 
@@ -193,49 +354,48 @@ function convertFilenameToPattern(filename: string) {
   let outputString = filename.replace(
     /\[([^\]]+\])\]/g,
     (_match, dynamicPart: string) => {
-      if (dynamicPart.startsWith("[") && dynamicPart.endsWith("]")) {
+      if (dynamicPart.startsWith('[') && dynamicPart.endsWith(']')) {
         // Handle "[[version]]" format
         return `{/:${dynamicPart.slice(1, -1)}}?`;
       }
 
       return _match;
-    }
+    },
   );
 
   // Replace all dynamic parts (e.g., "[slug]", "[...params]") with their corresponding placeholders
   outputString = outputString.replace(
     /\[([^\[\]]+)\]/g,
     (_match, dynamicPart: string) => {
-      if (dynamicPart.startsWith("...")) {
+      if (dynamicPart.startsWith('...')) {
         // Handle "[...params]" format
         return `:${dynamicPart.slice(3)}*`;
       } else {
         // Handle regular dynamic parts
         return `:${dynamicPart}`;
       }
-    }
+    },
   );
 
-  outputString = outputString.replaceAll("/{/", "{/");
+  outputString = outputString.replaceAll('/{/', '{/');
 
   // Add a leading slash if not already present
-  return outputString.startsWith("/") ? outputString : `/${outputString}`;
+  return outputString.startsWith('/') ? outputString : `/${outputString}`;
 }
 
 function convertToWebComponentTagName(str: string) {
-  const stringWithId =
-    (str === "/" ? "index" : str) +
-    "-" +
+  const stringWithId = (str === '/' ? 'index' : str) +
+    '-' +
     globalThis.crypto.randomUUID().substring(0, 5);
 
   // Replace non-alphanumeric characters with hyphens
-  const cleanedString = stringWithId.replace(/[^a-zA-Z0-9]+/g, "-");
+  const cleanedString = stringWithId.replace(/[^a-zA-Z0-9]+/g, '-');
 
   // Remove consecutive hyphens
-  const tagName = cleanedString.replace(/-+/g, "-");
+  const tagName = cleanedString.replace(/-+/g, '-');
 
   // Remove hyphens from the start and end
-  return tagName.replace(/^-+|-+$/g, "").toLowerCase();
+  return tagName.replace(/^-+|-+$/g, '').toLowerCase();
 }
 
 /**
@@ -247,43 +407,43 @@ function convertToWebComponentTagName(str: string) {
 async function buildCSS(
   paths: string[],
   contents: string[],
-  options: BuildRoutesOptions
+  options: BuildRoutesOptions,
 ) {
   const { devMode } = options;
 
   const tailwindcss = await getTailwind();
 
-  if (!tailwindcss) throw new Error("Tailwind is missing from deno.json!");
+  if (!tailwindcss) throw new Error('Tailwind is missing from deno.json!');
 
   // Imports path for app wrapper and layout that include /components/
   const importsPaths = (
     await Promise.all(
       paths.map((path) =>
-        getImports(path, new RegExp("(/components/)"), {
-          as: "path",
+        getImports(path, new RegExp('(/components/)'), {
+          as: 'path',
         })
-      )
+      ),
     )
   ).flat();
 
   const bundle = await bundleImports(importsPaths, contents);
 
   const tempDirPath = await Deno.makeTempDir();
-  const bundlePathTemp = join(tempDirPath, "bundle.js");
+  const bundlePathTemp = join(tempDirPath, 'bundle.js');
   await Deno.writeTextFile(bundlePathTemp, bundle);
-  const contentFlag = `${paths.join(",")},${bundlePathTemp}`;
+  const contentFlag = `${paths.join(',')},${bundlePathTemp}`;
 
   const command = new Deno.Command(`${Deno.execPath()}`, {
     args: [
       `run`,
       `--allow-all`,
       tailwindcss,
-      `--input=${join(Deno.cwd(), "/static/tailwind.css")}`,
+      `--input=${join(Deno.cwd(), '/static/tailwind.css')}`,
       `--content=${contentFlag}`,
       !devMode ? `--minify` : ``,
     ],
-    stdout: "piped",
-    stderr: "null",
+    stdout: 'piped',
+    stderr: 'null',
     cwd: Deno.cwd(),
   });
   const process = command.spawn();
@@ -302,7 +462,7 @@ export async function getRoutes(options: BuildRoutesOptions) {
 
   if (!devMode && !buildAssets) {
     return (
-      (await loadFile?.("_limette/routes.js")) as {
+      (await loadFile?.('_limette/routes.js')) as {
         routes: BuildRoute[];
       }
     ).routes;
@@ -310,34 +470,37 @@ export async function getRoutes(options: BuildRoutesOptions) {
 
   const ignoreFilePattern = TEST_FILE_PATTERN;
   const routes: BuildRoute[] = [];
-  const [allMiddlewareFiles, allLayoutFiles, appWrapperPath] =
-    await Promise.all([
+  const [allMiddlewareFiles, allLayoutFiles, appWrapperPath] = await Promise
+    .all([
       getMiddlewareFiles(),
       getLayoutFiles(),
       getAppWrapperPath(),
     ]);
 
-  for await (const entry of walk("./routes", {
-    includeDirs: false,
-    includeSymlinks: false,
-    exts: ["ts", "js"],
-    skip: [
-      ignoreFilePattern,
-      new RegExp("/_app.(js|ts)$"),
-      new RegExp("/_middleware.(js|ts)$"),
-      new RegExp("/_layout.(js|ts)$"),
-    ],
-  })) {
+  for await (
+    const entry of walk('./routes', {
+      includeDirs: false,
+      includeSymlinks: false,
+      exts: ['ts', 'js'],
+      skip: [
+        ignoreFilePattern,
+        new RegExp('/_app.(js|ts)$'),
+        new RegExp('/_middleware.(js|ts)$'),
+        new RegExp('/_layout.(js|ts)$'),
+      ],
+    })
+  ) {
     const parsed = parse(entry.path);
-    let path = parsed.dir.replace("routes", "") + "/" + parsed.name;
-    path = path.endsWith("/index") ? path.slice(0, -6) : path;
-    path = path === "" ? "/" : path;
+    let path = parsed.dir.replace('routes', '') + '/' + parsed.name;
+    path = path.endsWith('/index') ? path.slice(0, -6) : path;
+    path = path === '' ? '/' : path;
     path = convertFilenameToPattern(path);
 
     // Check if route exists
     const exists = routes.find((r) => r.path === path);
     if (exists) {
-      const error = `Route conflict for "${path}" (${entry.path}"). Another file is resolved to the same route: "${exists.path}" (${exists.absoluteFilePath}).`;
+      const error =
+        `Route conflict for "${path}" (${entry.path}"). Another file is resolved to the same route: "${exists.path}" (${exists.absoluteFilePath}).`;
       throw new Error(error);
     }
 
@@ -345,7 +508,7 @@ export async function getRoutes(options: BuildRoutesOptions) {
 
     // Generate tag name
     const id = encodeHex(
-      await globalThis.crypto.subtle.digest("SHA-1", encoder.encode(path))
+      await globalThis.crypto.subtle.digest('SHA-1', encoder.encode(path)),
     ).substring(0, 6);
     const tagName = convertToWebComponentTagName(path);
 
@@ -355,27 +518,26 @@ export async function getRoutes(options: BuildRoutesOptions) {
         filePath: entry.path,
         allLayoutFiles: allLayoutFiles,
         loadFile: loadFile,
-        as: "module",
+        as: 'module',
       }) as unknown as LayoutModule[],
       getLayoutsForRoute({
         filePath: entry.path,
         allLayoutFiles: allLayoutFiles,
         loadFile: loadFile,
-        as: "absolutePath",
+        as: 'absolutePath',
       }) as unknown as string[],
     ]);
 
     // Generate JS assets
     const { jsAssetContent, islands } = buildAssets
       ? await buildJS(
-          [appWrapperPath, absoluteFilePath, ...layoutPaths],
-          options
-        )
+        [appWrapperPath, absoluteFilePath, ...layoutPaths],
+        options,
+      )
       : {};
-    const jsAssetPath =
-      jsAssetContent || buildAssets === false
-        ? `/_limette/js/chunk-${id}.js`
-        : undefined;
+    const jsAssetPath = jsAssetContent || buildAssets === false
+      ? `/_limette/js/chunk-${id}.js`
+      : undefined;
 
     /**
      * Generate Tailwind CSS asset
@@ -386,40 +548,37 @@ export async function getRoutes(options: BuildRoutesOptions) {
      *  - Islands
      * We scan these files directly and the imports containing paths with /components/
      */
-    const cssAssetContent =
-      buildAssets && tailwind
-        ? await buildCSS(
-            [appWrapperPath, absoluteFilePath, ...layoutPaths],
-            jsAssetContent?.text ? [jsAssetContent?.text] : [],
-            {
-              devMode,
-            }
-          )
-        : undefined;
-    const cssAssetPath =
-      cssAssetContent || buildAssets === false
-        ? `/_limette/css/tailwind-${id}.css`
-        : undefined;
+    const cssAssetContent = buildAssets && tailwind
+      ? await buildCSS(
+        [appWrapperPath, absoluteFilePath, ...layoutPaths],
+        jsAssetContent?.text ? [jsAssetContent?.text] : [],
+        {
+          devMode,
+        },
+      )
+      : undefined;
+    const cssAssetPath = cssAssetContent || buildAssets === false
+      ? `/_limette/css/tailwind-${id}.css`
+      : undefined;
 
     // For buildAssets, we set the middlewares as an array of paths, otherwise an array of modules
     const middlewares = devMode
       ? ((await getMiddlewaresForRoute({
-          filePath: entry.path,
-          allMiddlewareFiles: allMiddlewareFiles,
-          loadFile: loadFile,
-          as: "module",
-        })) as MiddlewareModule[])
+        filePath: entry.path,
+        allMiddlewareFiles: allMiddlewareFiles,
+        loadFile: loadFile,
+        as: 'module',
+      })) as MiddlewareModule[])
       : [];
 
-    const middlewarePaths =
-      !devMode && buildAssets
-        ? ((await getMiddlewaresForRoute({
-            filePath: entry.path,
-            allMiddlewareFiles: allMiddlewareFiles,
-            loadFile: loadFile,
-            as: "absolutePath",
-          })) as string[])
-        : [];
+    const middlewarePaths = !devMode && buildAssets
+      ? ((await getMiddlewaresForRoute({
+        filePath: entry.path,
+        allMiddlewareFiles: allMiddlewareFiles,
+        loadFile: loadFile,
+        as: 'absolutePath',
+      })) as string[])
+      : [];
 
     const route: BuildRoute = {
       id,
@@ -447,12 +606,14 @@ export async function getRoutes(options: BuildRoutesOptions) {
 // Method to get all _middleware files
 async function getMiddlewareFiles(): Promise<Map<string, string>> {
   const middlewareFiles = new Map();
-  for await (const entry of walk("./routes", {
-    includeDirs: false,
-    includeSymlinks: false,
-    exts: ["ts", "js"],
-    match: [new RegExp("/_middleware.(ts|js)$")],
-  })) {
+  for await (
+    const entry of walk('./routes', {
+      includeDirs: false,
+      includeSymlinks: false,
+      exts: ['ts', 'js'],
+      match: [new RegExp('/_middleware.(ts|js)$')],
+    })
+  ) {
     const parsed = parse(entry.path);
     middlewareFiles.set(parsed.dir, entry.path);
   }
@@ -469,16 +630,16 @@ async function getMiddlewaresForRoute({
   filePath: string;
   allMiddlewareFiles: Map<string, string>;
   loadFile?: (path: string) => Promise<unknown>;
-  as: "module" | "relativePath" | "absolutePath";
+  as: 'module' | 'relativePath' | 'absolutePath';
 }): Promise<MiddlewareModule[] | string[] | []> {
   if (allMiddlewareFiles.size === 0) return [];
 
   // Remove file name from path
-  const pathSegments = filePath.split("/").slice(0, -1); // ["foo", "bar"]
+  const pathSegments = filePath.split('/').slice(0, -1); // ["foo", "bar"]
 
   // Build directory paths from root to the file's directory using a for...of loop
   const directoriesToCheck: string[] = [];
-  let currentDir = "";
+  let currentDir = '';
 
   for (const segment of pathSegments) {
     currentDir = join(currentDir, segment);
@@ -487,35 +648,37 @@ async function getMiddlewaresForRoute({
 
   const middlewareFilesForRoute = directoriesToCheck
     .filter((dir) => allMiddlewareFiles.has(dir))
-    .map((dir) => allMiddlewareFiles.get(dir) ?? "")
+    .map((dir) => allMiddlewareFiles.get(dir) ?? '')
     .filter(Boolean);
 
   // Return array of relative paths
-  if (as === "relativePath") {
+  if (as === 'relativePath') {
     return middlewareFilesForRoute;
   }
 
   // Return array of absolute paths
-  if (as === "absolutePath") {
+  if (as === 'absolutePath') {
     return middlewareFilesForRoute.map((path) => join(Deno.cwd(), path));
   }
 
   return await Promise.all(
     middlewareFilesForRoute.map(
-      (file) => loadFile?.(file) as unknown as MiddlewareModule
-    )
+      (file) => loadFile?.(file) as unknown as MiddlewareModule,
+    ),
   );
 }
 
 // Method to get all _layout files
 async function getLayoutFiles(): Promise<Map<string, string>> {
   const layoutFiles = new Map();
-  for await (const entry of walk("./routes", {
-    includeDirs: false,
-    includeSymlinks: false,
-    exts: ["ts", "js"],
-    match: [new RegExp("/_layout.(ts|js)$")],
-  })) {
+  for await (
+    const entry of walk('./routes', {
+      includeDirs: false,
+      includeSymlinks: false,
+      exts: ['ts', 'js'],
+      match: [new RegExp('/_layout.(ts|js)$')],
+    })
+  ) {
     const parsed = parse(entry.path);
     layoutFiles.set(parsed.dir, entry.path);
   }
@@ -532,16 +695,16 @@ async function getLayoutsForRoute({
   filePath: string;
   allLayoutFiles: Map<string, string>;
   loadFile?: (path: string) => Promise<unknown>;
-  as: "module" | "relativePath" | "absolutePath";
+  as: 'module' | 'relativePath' | 'absolutePath';
 }): Promise<LayoutModule[] | string[] | []> {
   if (allLayoutFiles.size === 0) return [];
 
   // Remove file name from path
-  const pathSegments = filePath.split("/").slice(0, -1); // ["foo", "bar"]
+  const pathSegments = filePath.split('/').slice(0, -1); // ["foo", "bar"]
 
   // Build directory paths from root to the file's directory using a for...of loop
   const directoriesToCheck: string[] = [];
-  let currentDir = "";
+  let currentDir = '';
 
   for (const segment of pathSegments) {
     currentDir = join(currentDir, segment);
@@ -550,23 +713,23 @@ async function getLayoutsForRoute({
 
   const layoutFilesForRoute = directoriesToCheck
     .filter((dir) => allLayoutFiles.has(dir))
-    .map((dir) => allLayoutFiles.get(dir) ?? "")
+    .map((dir) => allLayoutFiles.get(dir) ?? '')
     .filter(Boolean);
 
   // Return array of relative paths
-  if (as === "relativePath") {
+  if (as === 'relativePath') {
     return layoutFilesForRoute;
   }
 
   // Return array of absolute paths
-  if (as === "absolutePath") {
+  if (as === 'absolutePath') {
     return layoutFilesForRoute.map((path) => join(Deno.cwd(), path));
   }
 
   return await Promise.all(
     layoutFilesForRoute.map(
-      (file) => loadFile?.(file) as unknown as LayoutModule
-    )
+      (file) => loadFile?.(file) as unknown as LayoutModule,
+    ),
   );
 }
 
@@ -574,16 +737,16 @@ export async function getAppWrapper({
   loadFile,
 }: BuildRoutesOptions): Promise<AppWrapperComponentClass> {
   const [checkTs, checkJs] = await Promise.allSettled([
-    exists("./routes/_app.ts", { isFile: true }),
-    exists("./routes/_app.js", { isFile: true }),
+    exists('./routes/_app.ts', { isFile: true }),
+    exists('./routes/_app.js', { isFile: true }),
   ]);
 
-  const hasAppTs = checkTs.status === "fulfilled" && checkTs.value === true;
-  const hasAppJs = checkJs.status === "fulfilled" && checkJs.value === true;
+  const hasAppTs = checkTs.status === 'fulfilled' && checkTs.value === true;
+  const hasAppJs = checkJs.status === 'fulfilled' && checkJs.value === true;
 
   if (hasAppTs && hasAppJs) {
     throw new Error(
-      "You have two app templates defined: _app.ts and _app.js. Use only one."
+      'You have two app templates defined: _app.ts and _app.js. Use only one.',
     );
   }
 
@@ -592,26 +755,26 @@ export async function getAppWrapper({
   }
 
   if (hasAppTs) {
-    return ((await loadFile?.("./routes/_app.ts")) as { default: unknown })
+    return ((await loadFile?.('./routes/_app.ts')) as { default: unknown })
       .default as AppWrapperComponentClass;
   }
 
-  return ((await loadFile?.("./routes/_app.js")) as { default: unknown })
+  return ((await loadFile?.('./routes/_app.js')) as { default: unknown })
     .default as AppWrapperComponentClass;
 }
 
 async function getAppWrapperPath() {
   const [checkTs, checkJs] = await Promise.allSettled([
-    exists("./routes/_app.ts", { isFile: true }),
-    exists("./routes/_app.js", { isFile: true }),
+    exists('./routes/_app.ts', { isFile: true }),
+    exists('./routes/_app.js', { isFile: true }),
   ]);
 
-  const hasAppTs = checkTs.status === "fulfilled" && checkTs.value === true;
-  const hasAppJs = checkJs.status === "fulfilled" && checkJs.value === true;
+  const hasAppTs = checkTs.status === 'fulfilled' && checkTs.value === true;
+  const hasAppJs = checkJs.status === 'fulfilled' && checkJs.value === true;
 
   if (hasAppTs && hasAppJs) {
     throw new Error(
-      "You have two app templates defined: _app.ts and _app.js. Use only one."
+      'You have two app templates defined: _app.ts and _app.js. Use only one.',
     );
   }
 
@@ -620,10 +783,10 @@ async function getAppWrapperPath() {
   }
 
   if (hasAppTs) {
-    return join(Deno.cwd(), "/routes/_app.ts");
+    return join(Deno.cwd(), '/routes/_app.ts');
   }
 
-  return join(Deno.cwd(), "/routes/_app.js");
+  return join(Deno.cwd(), '/routes/_app.js');
 }
 
 export async function build(app: App, options?: BuildRoutesOptions) {
@@ -635,7 +798,7 @@ export async function build(app: App, options?: BuildRoutesOptions) {
     tailwind: app?.builtinPluginOptions?.tailwind?.enabled,
   });
 
-  await emptyDir("./_limette");
+  await emptyDir('./_limette');
 
   let routeIndex = 0;
   let routesImportsString = ``;
@@ -647,22 +810,24 @@ export async function build(app: App, options?: BuildRoutesOptions) {
 
   for (const route of routes) {
     if (route.jsAssetContent?.contents) {
-      await ensureFile("." + route.jsAssetPath);
+      await ensureFile('.' + route.jsAssetPath);
       await Deno.writeFile(
-        "." + route.jsAssetPath,
-        route.jsAssetContent.contents
+        '.' + route.jsAssetPath,
+        route.jsAssetContent.contents,
       );
     }
 
     if (route.cssAssetContent) {
-      await ensureFile("." + route.cssAssetPath);
-      await Deno.writeTextFile("." + route.cssAssetPath, route.cssAssetContent);
+      await ensureFile('.' + route.cssAssetPath);
+      await Deno.writeTextFile('.' + route.cssAssetPath, route.cssAssetContent);
     }
 
     // Generate static routes file
-    routesImportsString += `import * as route${routeIndex} from "${toFileUrl(
-      route.absoluteFilePath
-    )}";
+    routesImportsString += `import * as route${routeIndex} from "${
+      toFileUrl(
+        route.absoluteFilePath,
+      )
+    }";
 `;
 
     middlewareImportsString += route.middlewarePaths
@@ -670,11 +835,13 @@ export async function build(app: App, options?: BuildRoutesOptions) {
       .map((path) => {
         const middlewareModuleName = `middleware${importedMiddlewares.size}`;
         importedMiddlewares.set(path, middlewareModuleName);
-        return `\nimport * as ${middlewareModuleName} from "${toFileUrl(
-          path
-        )}";`;
+        return `\nimport * as ${middlewareModuleName} from "${
+          toFileUrl(
+            path,
+          )
+        }";`;
       })
-      .join("");
+      .join('');
 
     layoutImportsString += route.layoutPaths
       .filter((path) => !importedLayouts.has(path))
@@ -683,7 +850,7 @@ export async function build(app: App, options?: BuildRoutesOptions) {
         importedLayouts.set(path, layoutModuleName);
         return `\nimport * as ${layoutModuleName} from "${toFileUrl(path)}";`;
       })
-      .join("");
+      .join('');
 
     routesArrayString += `
   {
@@ -698,12 +865,16 @@ export async function build(app: App, options?: BuildRoutesOptions) {
       route.cssAssetPath ? `"${route.cssAssetPath}"` : `undefined`
     },
     islands: ${JSON.stringify(route.islands)},
-    middlewares: [${route.middlewarePaths
-      .map((path) => importedMiddlewares.get(path))
-      .join()}],
-    layouts: [${route.layoutPaths
-      .map((path) => importedLayouts.get(path))
-      .join()}]
+    middlewares: [${
+      route.middlewarePaths
+        .map((path) => importedMiddlewares.get(path))
+        .join()
+    }],
+    layouts: [${
+      route.layoutPaths
+        .map((path) => importedLayouts.get(path))
+        .join()
+    }]
   },
 `;
     routeIndex++;
@@ -712,10 +883,10 @@ export async function build(app: App, options?: BuildRoutesOptions) {
   routesArrayString = `\n\nexport const routes = [${routesArrayString}];`;
 
   await Deno.writeTextFile(
-    "./_limette/routes.js",
+    './_limette/routes.js',
     routesImportsString +
       middlewareImportsString +
       layoutImportsString +
-      routesArrayString
+      routesArrayString,
   );
 }

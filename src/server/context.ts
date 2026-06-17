@@ -1,22 +1,36 @@
-import type { AppConfig } from "./app.ts";
+import type { AppConfig } from './app.ts';
 
-export interface ContextInit {
+export interface ContextInit<
+  TParams extends Record<string, string> = Record<string, string>,
+> {
   request: Request;
   url: URL;
-  info: Deno.ServeHandlerInfo;
-  params: Record<string, string>;
+  info: unknown;
+  params: TParams;
   config: AppConfig;
   next: () => Promise<Response>;
 }
-export interface Context extends ContextInit {
-  data: unknown;
+export interface Context<
+  TData = unknown,
+  TParams extends Record<string, string> = Record<string, string>,
+> extends ContextInit<TParams> {
+  data: TData;
   error: unknown;
-  render: (data?: Context["data"]) => Promise<Response>;
+  render: (data?: TData) => Promise<Response>;
   redirect(path: string, status?: number): Response;
 }
 
-export class Context implements Context {
-  constructor({ request, url, info, params, config, next }: ContextInit) {
+export class Context<
+  TData = unknown,
+  TParams extends Record<string, string> = Record<string, string>,
+> implements Context<TData, TParams> {
+  declare data: TData;
+  declare error: unknown;
+  declare render: (data?: TData) => Promise<Response>;
+
+  constructor(
+    { request, url, info, params, config, next }: ContextInit<TParams>,
+  ) {
     this.request = request;
     this.url = url;
     this.info = info;
@@ -29,17 +43,17 @@ export class Context implements Context {
     let location = pathOrUrl;
 
     // Disallow protocol relative URLs
-    if (pathOrUrl !== "/" && pathOrUrl.startsWith("/")) {
-      let idx = pathOrUrl.indexOf("?");
+    if (pathOrUrl !== '/' && pathOrUrl.startsWith('/')) {
+      let idx = pathOrUrl.indexOf('?');
       if (idx === -1) {
-        idx = pathOrUrl.indexOf("#");
+        idx = pathOrUrl.indexOf('#');
       }
 
       const pathname = idx > -1 ? pathOrUrl.slice(0, idx) : pathOrUrl;
-      const search = idx > -1 ? pathOrUrl.slice(idx) : "";
+      const search = idx > -1 ? pathOrUrl.slice(idx) : '';
 
       // Remove double slashes to prevent open redirect vulnerability.
-      location = `${pathname.replaceAll(/\/+/g, "/")}${search}`;
+      location = `${pathname.replaceAll(/\/+/g, '/')}${search}`;
     }
 
     return new Response(null, {
@@ -54,7 +68,7 @@ export class Context implements Context {
 type Constructor<T = Record<string, never>> = new (...args: unknown[]) => T;
 
 export function ContextMixin(
-  Base: CustomElementConstructor
+  Base: CustomElementConstructor,
 ): CustomElementConstructor & Constructor<{ ctx: Context }> {
   return class ContextClass extends Base {
     #ctx!: Context;
