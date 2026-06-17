@@ -6,7 +6,8 @@
     "vite:routes": "deno run -A npm:vite@^8.0.0 --config vite.config.ts build --ssr vite-routes-smoke.ts --outDir .vite-limette-smoke",
     "vite:client": "deno run -A npm:vite@^8.0.0 --config vite.config.ts build --outDir .vite-limette-client",
     "vite:assets": "deno run -A vite-assets-smoke.ts",
-    "vite:ssr": "deno run -A vite-ssr-smoke.ts"
+    "vite:ssr": "deno run -A vite-ssr-smoke.ts",
+    "vite:server": "deno run -A vite-server-smoke.ts"
   },
   "imports": {
     "@b-fuze/deno-dom": "jsr:@b-fuze/deno-dom@0.1.49",

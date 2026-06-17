@@ -4,6 +4,8 @@ import type { Method } from './router.ts';
 import type { BuilderOptions } from '../dev/builder.ts';
 import { handlersForRoute } from './handlers.ts';
 import type { AppWrapperComponentClass } from './ssr.ts';
+import { staticViteBuildMiddleware } from './static-files.ts';
+import { join } from '@std/path';
 
 export interface BuildRoutesOptions {
   buildAssets?: boolean;
@@ -13,20 +15,78 @@ export interface BuildRoutesOptions {
   loadFile?: (path: string) => Promise<unknown>;
 }
 
+function normalizeViteOptions(
+  vite: App['builtinPluginOptions']['fsRoutes']['vite'],
+) {
+  return typeof vite === 'object' ? vite : {};
+}
+
+function viteAssetRoutePath(base = '/') {
+  const normalizedBase = !base || base === '/'
+    ? '/'
+    : `/${base.replace(/^\/+|\/+$/g, '')}/`;
+  return `${normalizedBase}assets/*`;
+}
+
 /**
  * This will load the fs routes in the app.listen() method , only if the `fsRoutes` was called.
  */
 export async function setFsRoutes(app: App) {
+  const fsRoutesOptions = app.builtinPluginOptions.fsRoutes;
+  const viteOptions = normalizeViteOptions(fsRoutesOptions.vite);
+  const useVite = fsRoutesOptions.vite === true || viteOptions.enabled === true;
   const options: BuildRoutesOptions = {
     buildAssets: app.config.mode === 'development',
     devMode: app.config.mode === 'development',
     tailwind: app.builtinPluginOptions.tailwind.enabled,
     target: app.builder?.options.target,
-    loadFile: app.builtinPluginOptions.fsRoutes.loadFile,
+    loadFile: fsRoutesOptions.loadFile,
   };
 
-  const [routes, AppWrapper]: [BuildRoute[], AppWrapperComponentClass] =
-    await Promise.all([getRoutes(options), getAppWrapper(options)]);
+  let routes: BuildRoute[];
+  let AppWrapper: AppWrapperComponentClass;
+
+  if (useVite) {
+    const { discoverRoutes, loadViteBuildRoutes } = await import(
+      '../vite/mod.ts'
+    );
+    const root = viteOptions.root ?? Deno.cwd();
+    const outDir = viteOptions.outDir ?? 'dist';
+    const fsOutDir = join(root, outDir);
+    const viteRouteOptions = {
+      root,
+      outDir,
+      base: viteOptions.base,
+      manifestPath: viteOptions.manifestPath,
+      loadFile: fsRoutesOptions.loadFile!,
+    };
+    const [routeManifest, viteRoutes] = await Promise.all([
+      discoverRoutes(viteRouteOptions),
+      loadViteBuildRoutes(viteRouteOptions),
+    ]);
+
+    routes = viteRoutes;
+    AppWrapper = (
+      (await fsRoutesOptions.loadFile!(routeManifest.appFile)) as {
+        default: AppWrapperComponentClass;
+      }
+    ).default;
+
+    if (viteOptions.serveAssets !== false) {
+      app.get(
+        viteAssetRoutePath(viteOptions.base),
+        staticViteBuildMiddleware({
+          outDir: fsOutDir,
+          base: viteOptions.base,
+        }),
+      );
+    }
+  } else {
+    [routes, AppWrapper] = await Promise.all([
+      getRoutes(options),
+      getAppWrapper(options),
+    ]);
+  }
 
   if (!AppWrapper) {
     throw new Error(
