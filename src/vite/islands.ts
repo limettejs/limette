@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 export type IslandImport = {
+  tagName: string;
   local: string;
   sourceFile: string;
   moduleSpecifier: string;
@@ -153,6 +154,24 @@ function getStaticIslandsBlocks(code: string) {
   return blocks;
 }
 
+function getStaticIslandEntries(blocks: string[]) {
+  const entries: Array<{ tagName: string; local: string }> = [];
+  const entryPattern =
+    /(?:['"`]([^'"`]+)['"`]|([A-Za-z_$][\w$]*))\s*:\s*([A-Za-z_$][\w$]*)/g;
+
+  for (const block of blocks) {
+    for (const match of block.matchAll(entryPattern)) {
+      const [, stringKey, identifierKey, local] = match;
+      entries.push({
+        tagName: stringKey ?? identifierKey,
+        local,
+      });
+    }
+  }
+
+  return entries;
+}
+
 function resolveIslandImport({
   root,
   sourceFile,
@@ -186,17 +205,19 @@ export async function discoverIslandImportsForFile({
   if (!islandsBlocks.length) return [];
 
   const imports: IslandImport[] = [];
+  const islandEntries = getStaticIslandEntries(islandsBlocks);
   const importBindings = getImportBindings(code);
 
   for (const binding of importBindings) {
-    const identifierPattern = new RegExp(
-      `\\b${escapeRegExp(binding.local)}\\b`,
+    const islandEntry = islandEntries.find((entry) =>
+      entry.local === binding.local
     );
-    if (!islandsBlocks.some((block) => identifierPattern.test(block))) {
+    if (!islandEntry) {
       continue;
     }
 
     imports.push({
+      tagName: islandEntry.tagName,
       local: binding.local,
       sourceFile: normalizePath(relative(root, sourceFile)),
       moduleSpecifier: binding.moduleSpecifier,

@@ -8,6 +8,8 @@ export type {
   ViteManifest,
   ViteManifestChunk,
 } from './assets.ts';
+export { loadViteBuildRoutes } from './routes.ts';
+export type { LoadViteBuildRoutesOptions } from './routes.ts';
 export type {
   DiscoverRoutesOptions,
   LimetteRouteManifest,

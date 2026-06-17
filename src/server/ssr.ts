@@ -197,15 +197,21 @@ export async function bootstrapContent(
     )
   }</script>`;
 
-  const styles = route.cssAssetPath
-    ? [unsafeHTML(`<link rel="stylesheet" href="${route.cssAssetPath}" />`)]
-    : [];
-  const scripts = route.jsAssetPath
+  const cssAssetPaths = route.cssAssetPaths ??
+    (route.cssAssetPath ? [route.cssAssetPath] : []);
+  const jsAssetPaths = route.jsAssetPaths ??
+    (route.jsAssetPath ? [route.jsAssetPath] : []);
+  const styles = cssAssetPaths.map((path) =>
+    unsafeHTML(`<link rel="stylesheet" href="${path}" />`)
+  );
+  const scripts = jsAssetPaths.length
     ? [
       unsafeHTML(ctxStr),
-      html`
-        <script type="module" src="${route.jsAssetPath}"></script>
-      `,
+      ...jsAssetPaths.map((path) =>
+        html`
+          <script type="module" src="${path}"></script>
+        `
+      ),
     ]
     : [];
   const assets = { styles, scripts };

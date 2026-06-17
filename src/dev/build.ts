@@ -25,8 +25,10 @@ export type BuildRoute = {
   tagName: string;
   jsAssetContent: esbuild.OutputFile | undefined;
   jsAssetPath: string | undefined;
+  jsAssetPaths?: string[];
   cssAssetContent: string | undefined;
   cssAssetPath: string | undefined;
+  cssAssetPaths?: string[];
   islands: string[] | undefined;
   middlewares: MiddlewareModule[] | [];
   middlewarePaths: string[] | [];
