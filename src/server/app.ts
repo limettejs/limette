@@ -1,34 +1,36 @@
-import { Spinner } from "@std/cli/unstable-spinner";
-import { type Method, UrlPatternRouter } from "./router.ts";
-import { type MiddlewareFn, runMiddlewares } from "./middlewares.ts";
-import { staticBuildMiddleware } from "./static-files.ts";
-import { HttpError } from "./error.ts";
-import { setFsRoutes } from "./fs.ts";
-import { bgGreen, blue } from "@std/fmt/colors";
-import type { FsRoutesPluginOptions } from "../plugins/fs-routes.ts";
-import type { TailwindPluginOptions } from "../plugins/tailwind.ts";
-import type { Builder } from "../dev/builder.ts";
-import { Context } from "./context.ts";
+import { Spinner } from '@std/cli/unstable-spinner';
+import { type Method, UrlPatternRouter } from './router.ts';
+import { type MiddlewareFn, runMiddlewares } from './middlewares.ts';
+import { staticBuildMiddleware } from './static-files.ts';
+import { HttpError } from './error.ts';
+import { setFsRoutes } from './fs.ts';
+import { bgGreen, blue } from '@std/fmt/colors';
+import type { FsRoutesPluginOptions } from '../plugins/fs-routes.ts';
+import type { TailwindPluginOptions } from '../plugins/tailwind.ts';
+import type { Builder } from '../dev/builder.ts';
+import { Context } from './context.ts';
 
 // TODO: context on client side
 
 export interface AppConfig {
   basePath?: string;
-  mode?: "development" | "production";
+  mode?: 'development' | 'production';
   builder?: Builder;
 }
 
 interface ResolvedAppConfig {
   basePath: string;
-  mode: "development" | "production";
+  mode: 'development' | 'production';
   builder?: Builder;
 }
 
-export type ListenOptions = Partial<
-  Deno.ServeTcpOptions & Deno.TlsCertifiedKeyPem
-> & {
-  remoteAddress?: string;
-};
+export type ListenOptions =
+  & Partial<
+    Deno.ServeTcpOptions & Deno.TlsCertifiedKeyPem
+  >
+  & {
+    remoteAddress?: string;
+  };
 
 interface BuiltinPluginOptions {
   fsRoutes: FsRoutesPluginOptions;
@@ -43,20 +45,20 @@ const DEFAULT_NOT_ALLOWED_METHOD = () => {
 };
 
 export function mergePaths(a: string, b: string) {
-  if (a === "" || a === "/" || a === "/*") return b;
-  if (b === "/") return a;
-  if (a.endsWith("/")) {
+  if (a === '' || a === '/' || a === '/*') return b;
+  if (b === '/') return a;
+  if (a.endsWith('/')) {
     return a.slice(0, -1) + b;
-  } else if (!b.startsWith("/")) {
-    return a + "/" + b;
+  } else if (!b.startsWith('/')) {
+    return a + '/' + b;
   }
   return a + b;
 }
 
 function normalizeConfig(options?: AppConfig): ResolvedAppConfig {
   return {
-    basePath: options?.basePath || "",
-    mode: options?.mode || "production",
+    basePath: options?.basePath || '',
+    mode: options?.mode || 'production',
     builder: options?.builder,
   };
 }
@@ -87,7 +89,7 @@ export class App {
 
   _setBuiltinPluginOptions<K extends keyof BuiltinPluginOptions>(
     pluginName: K,
-    options: BuiltinPluginOptions[K]
+    options: BuiltinPluginOptions[K],
   ): void {
     this.#builtinPluginOptions[pluginName] = options;
   }
@@ -103,36 +105,35 @@ export class App {
   }
 
   get(path: string, ...middlewares: MiddlewareFn[]): this {
-    return this.#addRoutes("GET", path, middlewares);
+    return this.#addRoutes('GET', path, middlewares);
   }
   post(path: string, ...middlewares: MiddlewareFn[]): this {
-    return this.#addRoutes("POST", path, middlewares);
+    return this.#addRoutes('POST', path, middlewares);
   }
   patch(path: string, ...middlewares: MiddlewareFn[]): this {
-    return this.#addRoutes("PATCH", path, middlewares);
+    return this.#addRoutes('PATCH', path, middlewares);
   }
   put(path: string, ...middlewares: MiddlewareFn[]): this {
-    return this.#addRoutes("PUT", path, middlewares);
+    return this.#addRoutes('PUT', path, middlewares);
   }
   delete(path: string, ...middlewares: MiddlewareFn[]): this {
-    return this.#addRoutes("DELETE", path, middlewares);
+    return this.#addRoutes('DELETE', path, middlewares);
   }
   head(path: string, ...middlewares: MiddlewareFn[]): this {
-    return this.#addRoutes("HEAD", path, middlewares);
+    return this.#addRoutes('HEAD', path, middlewares);
   }
   all(path: string, ...middlewares: MiddlewareFn[]): this {
-    return this.#addRoutes("ALL", path, middlewares);
+    return this.#addRoutes('ALL', path, middlewares);
   }
 
   #addRoutes(
-    method: Method | "ALL",
+    method: Method | 'ALL',
     pathname: string | URLPattern,
-    middlewares: MiddlewareFn[]
+    middlewares: MiddlewareFn[],
   ): this {
-    const merged =
-      typeof pathname === "string"
-        ? mergePaths(this.config.basePath, pathname)
-        : pathname;
+    const merged = typeof pathname === 'string'
+      ? mergePaths(this.config.basePath, pathname)
+      : pathname;
     this.#router.add(method, merged, middlewares);
     return this;
   }
@@ -141,15 +142,14 @@ export class App {
     return async (request: Request, conn: Deno.ServeHandlerInfo) => {
       const url = new URL(request.url);
       // Prevent open redirect attacks
-      url.pathname = url.pathname.replace(/\/+/g, "/");
+      url.pathname = url.pathname.replace(/\/+/g, '/');
       const method = request.method.toUpperCase() as Method;
 
       const matched = this.#router.match(method, url);
 
-      const next =
-        matched.patternMatch && !matched.methodMatch
-          ? DEFAULT_NOT_ALLOWED_METHOD
-          : DEFAULT_NOT_FOUND;
+      const next = matched.patternMatch && !matched.methodMatch
+        ? DEFAULT_NOT_ALLOWED_METHOD
+        : DEFAULT_NOT_FOUND;
 
       const { params, handlers } = matched;
 
@@ -164,7 +164,7 @@ export class App {
 
       try {
         if (handlers.length === 1 && handlers[0].length === 1) {
-          return handlers[0][0](ctx);
+          return await handlers[0][0](ctx);
         }
         return await runMiddlewares(handlers, ctx);
       } catch (err) {
@@ -180,7 +180,7 @@ export class App {
             return await runMiddlewares([[errorRoute.handler]], ctx);
           } catch (e) {
             console.error(e);
-            return new Response("Internal server error", { status: 500 });
+            return new Response('Internal server error', { status: 500 });
           }
         }
 
@@ -194,39 +194,40 @@ export class App {
 
         // deno-lint-ignore no-console
         console.error(err);
-        return new Response("Internal server error", { status: 500 });
+        return new Response('Internal server error', { status: 500 });
       }
     };
   }
 
   async listen(options: ListenOptions = {}): Promise<void> {
     const t0 = performance.now();
-    const spinner = new Spinner({ message: "Starting...", color: "blue" });
+    const spinner = new Spinner({ message: 'Starting...', color: 'blue' });
     spinner.start();
 
     if (!options.onListen) {
       options.onListen = (params) => {
-        const pathname = this.config.basePath + "/";
-        const protocol =
-          "key" in options && options.key && options.cert ? "https:" : "http:";
+        const pathname = this.config.basePath + '/';
+        const protocol = 'key' in options && options.key && options.cert
+          ? 'https:'
+          : 'http:';
 
         let hostname = params.hostname;
 
         if (
-          Deno.build.os === "windows" &&
-          (hostname === "0.0.0.0" || hostname === "::")
+          Deno.build.os === 'windows' &&
+          (hostname === '0.0.0.0' || hostname === '::')
         ) {
-          hostname = "localhost";
+          hostname = 'localhost';
         }
         // Work around https://github.com/denoland/deno/issues/23650
-        hostname = hostname.startsWith("::") ? `[${hostname}]` : hostname;
+        hostname = hostname.startsWith('::') ? `[${hostname}]` : hostname;
         const address = `${protocol}//${hostname}:${params.port}${pathname}`;
       };
     }
 
     // For production mode, use the static build middleware
-    if (this.config.mode === "production") {
-      this.get("/_limette/*", staticBuildMiddleware);
+    if (this.config.mode === 'production') {
+      this.get('/_limette/*', staticBuildMiddleware);
     }
 
     // Set routes
@@ -241,9 +242,11 @@ export class App {
       const duration = ((t1 - t0) / 1000).toFixed(2);
       spinner.stop();
       console.log(
-        `🟢 ${bgGreen(" Limette ")} app started (${duration}s) \n\t ${blue(
-          `http://localhost:${options.port}`
-        )}\n`
+        `🟢 ${bgGreen(' Limette ')} app started (${duration}s) \n\t ${
+          blue(
+            `http://localhost:${options.port}`,
+          )
+        }\n`,
       );
     } else {
       // No port specified, check for a free port. Instead of picking just
@@ -259,9 +262,11 @@ export class App {
           const duration = ((t1 - t0) / 1000).toFixed(2);
           spinner.stop();
           console.log(
-            `🟢 ${bgGreen(" Limette ")} app started (${duration}s) \n\t ${blue(
-              `http://localhost:${port}`
-            )}\n`
+            `🟢 ${bgGreen(' Limette ')} app started (${duration}s) \n\t ${
+              blue(
+                `http://localhost:${port}`,
+              )
+            }\n`,
           );
           break;
         } catch (err) {

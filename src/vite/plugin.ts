@@ -1,7 +1,20 @@
 import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { discoverRoutes } from './manifest.ts';
+import {
+  incomingMessageToRequest,
+  writeResponseToServerResponse,
+} from './node-adapter.ts';
 import type { DiscoverRoutesOptions } from './manifest.ts';
+import type { App } from '../server/app.ts';
+import type { IncomingMessage, ServerResponse } from 'node:http';
+
+type ViteDevServerLike = {
+  middlewares: {
+    use: (handler: (...args: unknown[]) => void | Promise<void>) => void;
+  };
+  transformRequest: (url: string) => Promise<{ code: string } | null>;
+};
 
 const ROUTES_MODULE_ID = 'virtual:limette/routes';
 const RESOLVED_ROUTES_MODULE_ID = `\0${ROUTES_MODULE_ID}`;
@@ -10,14 +23,78 @@ const RESOLVED_CLIENT_ENTRY_MODULE_PREFIX = `\0${CLIENT_ENTRY_MODULE_PREFIX}`;
 const CLIENT_ENTRY_DEV_PREFIX = '/@limette/client-entry/';
 const SOURCE_ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
-export type LimetteVitePluginOptions = DiscoverRoutesOptions;
+export type LimetteVitePluginOptions = DiscoverRoutesOptions & {
+  dev?: {
+    app?: App;
+    appModule?: string;
+    appExport?: string;
+    loadApp?: () => App | Promise<App>;
+  };
+};
 
 export function clientEntryDevPath(routeId: string) {
   return `${CLIENT_ENTRY_DEV_PREFIX}${routeId}.js`;
 }
 
+async function loadAppModule(
+  root: string,
+  appModule: string,
+  appExport = 'app',
+) {
+  const url = pathToFileURL(resolve(root, appModule)).href;
+  const module = await import(url) as Record<string, unknown>;
+  const app = module[appExport];
+
+  if (!app) {
+    throw new Error(
+      `Expected Limette app export "${appExport}" in ${appModule}.`,
+    );
+  }
+
+  return app as App;
+}
+
+async function loadSetFsRoutes() {
+  const url = pathToFileURL(resolve(SOURCE_ROOT, 'server/fs.ts')).href;
+  const module = await import(url) as {
+    setFsRoutes: (app: App) => Promise<void>;
+  };
+
+  return module.setFsRoutes;
+}
+
 export function limette(options: LimetteVitePluginOptions = {}) {
   let root = options.root ?? process.cwd();
+  let devHandler:
+    | Promise<
+      (request: Request, info: unknown) => Response | Promise<Response>
+    >
+    | undefined;
+
+  async function getDevHandler() {
+    if (!options.dev?.app && !options.dev?.appModule && !options.dev?.loadApp) {
+      return undefined;
+    }
+
+    devHandler ??= (async () => {
+      const app = options.dev!.app ?? await options.dev!.loadApp?.() ??
+        await loadAppModule(
+          root,
+          options.dev!.appModule!,
+          options.dev!.appExport,
+        );
+      const setFsRoutes = await loadSetFsRoutes();
+      app.config.mode = 'development';
+      await setFsRoutes(app);
+
+      return app.handler() as (
+        request: Request,
+        info: unknown,
+      ) => Response | Promise<Response>;
+    })();
+
+    return await devHandler;
+  }
 
   return {
     name: 'limette',
@@ -70,23 +147,17 @@ export function limette(options: LimetteVitePluginOptions = {}) {
     configResolved(config: { root: string }) {
       root = options.root ?? config.root;
     },
-    configureServer(server: {
-      middlewares: {
-        use: (
-          handler: (
-            req: { url?: string },
-            res: {
-              statusCode: number;
-              setHeader: (name: string, value: string) => void;
-              end: (body?: string) => void;
-            },
-            next: () => void,
-          ) => void | Promise<void>,
-        ) => void;
-      };
-      transformRequest: (url: string) => Promise<{ code: string } | null>;
-    }) {
-      server.middlewares.use(async (req, res, next) => {
+    configureServer(server: ViteDevServerLike) {
+      server.middlewares.use(async (...args) => {
+        const [req, res, next] = args as [
+          { url?: string },
+          {
+            statusCode: number;
+            setHeader: (name: string, value: string) => void;
+            end: (body?: string) => void;
+          },
+          () => void,
+        ];
         const url = new URL(req.url ?? '/', 'http://localhost');
 
         if (!url.pathname.startsWith(CLIENT_ENTRY_DEV_PREFIX)) {
@@ -112,6 +183,33 @@ export function limette(options: LimetteVitePluginOptions = {}) {
         res.setHeader('Content-Type', 'application/javascript');
         res.end(`import "/@vite/client";\n${result.code}`);
       });
+
+      if (
+        !options.dev?.app && !options.dev?.appModule && !options.dev?.loadApp
+      ) {
+        return;
+      }
+
+      return () => {
+        server.middlewares.use(
+          async (...args) => {
+            const [req, res, next] = args as [
+              IncomingMessage,
+              ServerResponse,
+              () => void,
+            ];
+            const handler = await getDevHandler();
+            if (!handler) {
+              next();
+              return;
+            }
+
+            const request = await incomingMessageToRequest(req);
+            const response = await handler(request, {});
+            await writeResponseToServerResponse(response, res);
+          },
+        );
+      };
     },
     resolveId(id: string) {
       if (id === ROUTES_MODULE_ID) {

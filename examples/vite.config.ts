@@ -8,5 +8,7 @@ export default async () => ({
       input: await clientEntryInputs(),
     },
   },
-  plugins: [limette()],
+  plugins: [
+    limette({ dev: { appModule: './main.ts' } }),
+  ],
 });

@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "dev": "deno run -A --watch=static/,routes/ dev.ts",
+    "dev": "deno run -A npm:vite@^8.0.0 --config vite.config.ts --host 127.0.0.1",
     "build": "deno run -A dev.ts build",
     "start": "deno run -A main.ts",
     "vite:routes": "deno run -A npm:vite@^8.0.0 --config vite.config.ts build --ssr vite-routes-smoke.ts --outDir .vite-limette-smoke",
@@ -9,7 +9,8 @@
     "vite:ssr": "deno run -A vite-ssr-smoke.ts",
     "vite:server": "deno run -A vite-server-smoke.ts",
     "vite:build": "deno run -A vite-build-smoke.ts",
-    "vite:dev-routes": "deno run -A vite-dev-routes-smoke.ts"
+    "vite:dev-routes": "deno run -A vite-dev-routes-smoke.ts",
+    "vite:dev-server": "deno run -A vite-dev-server-smoke.ts"
   },
   "imports": {
     "@b-fuze/deno-dom": "jsr:@b-fuze/deno-dom@0.1.49",
