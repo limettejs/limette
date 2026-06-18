@@ -5,8 +5,11 @@ export interface FsRoutesViteOptions {
   root?: string;
   outDir?: string;
   base?: string;
+  configFile?: string;
   manifestPath?: string;
+  mode?: string;
   serveAssets?: boolean;
+  viteSpecifier?: string;
 }
 
 export interface FsRoutesPluginOptions {
