@@ -1,4 +1,4 @@
-import { App, staticFiles, fsRoutes } from "@limette/core";
+import { App, fsRoutes, staticFiles } from '@limette/core';
 
 export const app = new App();
 

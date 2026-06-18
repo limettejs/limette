@@ -46,6 +46,7 @@
       "deno.unstable"
     ]
   },
+  "nodeModulesDir": "auto",
   "fmt": {
     "singleQuote": true
   },

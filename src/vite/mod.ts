@@ -10,6 +10,11 @@ export type {
 } from './assets.ts';
 export { buildViteClient } from './build.ts';
 export type { BuildViteClientOptions } from './build.ts';
+export { startViteDevServer } from './dev-server.ts';
+export type {
+  StartViteDevServerOptions,
+  ViteDevServerProcess,
+} from './dev-server.ts';
 export { loadViteBuildRoutes, loadViteDevRoutes } from './routes.ts';
 export type {
   LoadViteBuildRoutesOptions,

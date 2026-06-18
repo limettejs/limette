@@ -6,7 +6,6 @@ const app = new App();
 fsRoutes(app, {
   loadFile: (path: string) => import(`./${path}`),
   vite: {
-    enabled: true,
     outDir: '.vite-limette-client',
   },
 });

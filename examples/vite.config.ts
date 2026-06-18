@@ -5,7 +5,6 @@ export default async () => ({
   build: {
     manifest: true,
     rolldownOptions: {
-      external: [/^lit(?:\/.*)?$/, /^@lit-labs\/ssr-client(?:\/.*)?$/],
       input: await clientEntryInputs(),
     },
   },

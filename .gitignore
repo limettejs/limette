@@ -1,4 +1,6 @@
 temp
+node_modules
+.vite
 dist
 _limette
 .vite-limette-client

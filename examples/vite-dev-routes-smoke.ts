@@ -8,7 +8,6 @@ const app = new App({ mode: 'development' });
 fsRoutes(app, {
   loadFile: (path: string) => import(`./${path}`),
   vite: {
-    enabled: true,
     devServerOrigin: origin,
   },
 });

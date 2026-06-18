@@ -41,6 +41,28 @@ export function limette(options: LimetteVitePluginOptions = {}) {
                 'runtime/ssr-client/lit-element-hydrate-support-patch.ts',
               ),
             },
+            {
+              find: /^lit$/,
+              replacement: resolve(root, 'node_modules/lit/index.js'),
+            },
+            {
+              find: /^lit\/(.*)$/,
+              replacement: resolve(root, 'node_modules/lit/$1'),
+            },
+            {
+              find: /^@lit-labs\/ssr-client$/,
+              replacement: resolve(
+                root,
+                'node_modules/@lit-labs/ssr-client/index.js',
+              ),
+            },
+            {
+              find: /^@lit-labs\/ssr-client\/(.*)$/,
+              replacement: resolve(
+                root,
+                'node_modules/@lit-labs/ssr-client/$1',
+              ),
+            },
           ],
         },
       };
