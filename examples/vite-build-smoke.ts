@@ -18,7 +18,6 @@ await setFsRoutes(app);
 
 const response = await app.handler()(
   new Request('http://localhost/'),
-  {} as Deno.ServeHandlerInfo,
 );
 const html = await response.text();
 

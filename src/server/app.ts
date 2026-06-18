@@ -37,6 +37,11 @@ interface BuiltinPluginOptions {
   tailwind: TailwindPluginOptions;
 }
 
+export type AppHandler = (
+  request: Request,
+  info?: unknown,
+) => Response | Promise<Response>;
+
 const DEFAULT_NOT_FOUND = () => {
   throw new HttpError(404);
 };
@@ -138,8 +143,8 @@ export class App {
     return this;
   }
 
-  handler(): Deno.ServeHandler {
-    return async (request: Request, conn: Deno.ServeHandlerInfo) => {
+  handler(): AppHandler {
+    return async (request: Request, info: unknown = {}) => {
       const url = new URL(request.url);
       // Prevent open redirect attacks
       url.pathname = url.pathname.replace(/\/+/g, '/');
@@ -156,7 +161,7 @@ export class App {
       const ctx = new Context({
         request,
         url,
-        info: conn,
+        info,
         params,
         config: this.config,
         next,

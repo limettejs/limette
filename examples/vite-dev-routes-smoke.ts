@@ -16,7 +16,6 @@ await setFsRoutes(app);
 
 const response = await app.handler()(
   new Request('http://localhost/'),
-  {} as Deno.ServeHandlerInfo,
 );
 const html = await response.text();
 const scriptPath = html.match(/<script type="module" src="([^"]+)"/)?.[1];

@@ -87,10 +87,7 @@ export function limette(options: LimetteVitePluginOptions = {}) {
       app.config.mode = 'development';
       await setFsRoutes(app);
 
-      return app.handler() as (
-        request: Request,
-        info: unknown,
-      ) => Response | Promise<Response>;
+      return app.handler();
     })();
 
     return await devHandler;

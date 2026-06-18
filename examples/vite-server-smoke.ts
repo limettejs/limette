@@ -13,8 +13,7 @@ fsRoutes(app, {
 await setFsRoutes(app);
 
 const handler = app.handler();
-const info = {} as Deno.ServeHandlerInfo;
-const pageResponse = await handler(new Request('http://localhost/'), info);
+const pageResponse = await handler(new Request('http://localhost/'));
 const html = await pageResponse.text();
 
 if (pageResponse.status !== 200) {
@@ -29,7 +28,6 @@ if (!scriptPath?.startsWith('/assets/limette-route-')) {
 
 const assetResponse = await handler(
   new Request(`http://localhost${scriptPath}`),
-  info,
 );
 const assetContent = await assetResponse.text();
 
