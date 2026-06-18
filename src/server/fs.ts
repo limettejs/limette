@@ -28,7 +28,7 @@ function viteAssetRoutePath(base = '/') {
 }
 
 /**
- * This will load the fs routes in the app.listen() method , only if the `fsRoutes` was called.
+ * This will load the fs routes before the app is served, only if the `fsRoutes` was called.
  */
 export async function setFsRoutes(app: App) {
   const fsRoutesOptions = app.builtinPluginOptions.fsRoutes;

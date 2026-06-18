@@ -48,6 +48,7 @@ const denoJson = `
   },
   "imports": {
     "@limette/core": "jsr:@limette/core@${LIMETTE_VERSION}",
+    "@limette/core/deno": "jsr:@limette/core@${LIMETTE_VERSION}/deno",
     ${
   enableTailwind
     ? `"@tailwindcss/cli": "npm:@tailwindcss/cli@^${TAILWIND_VERSION}",`
@@ -104,7 +105,8 @@ fsRoutes(app, {
 });
 
 if (import.meta.main) {
-  app.listen();
+  const { serve } = await import("@limette/core/deno");
+  await serve(app);
 }
 `;
 

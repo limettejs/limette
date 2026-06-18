@@ -1,13 +1,8 @@
-import { Spinner } from '@std/cli/unstable-spinner';
 import { type Method, UrlPatternRouter } from './router.ts';
 import { type MiddlewareFn, runMiddlewares } from './middlewares.ts';
-import { staticBuildMiddleware } from './static-files.ts';
 import { HttpError } from './error.ts';
-import { setFsRoutes } from './fs.ts';
-import { bgGreen, blue } from '@std/fmt/colors';
 import type { FsRoutesPluginOptions } from '../plugins/fs-routes.ts';
 import type { TailwindPluginOptions } from '../plugins/tailwind.ts';
-import type { Builder } from '../dev/builder.ts';
 import { Context } from './context.ts';
 
 // TODO: context on client side
@@ -15,22 +10,14 @@ import { Context } from './context.ts';
 export interface AppConfig {
   basePath?: string;
   mode?: 'development' | 'production';
-  builder?: Builder;
+  builder?: unknown;
 }
 
 interface ResolvedAppConfig {
   basePath: string;
   mode: 'development' | 'production';
-  builder?: Builder;
+  builder?: unknown;
 }
-
-export type ListenOptions =
-  & Partial<
-    Deno.ServeTcpOptions & Deno.TlsCertifiedKeyPem
-  >
-  & {
-    remoteAddress?: string;
-  };
 
 interface BuiltinPluginOptions {
   fsRoutes: FsRoutesPluginOptions;
@@ -70,7 +57,7 @@ function normalizeConfig(options?: AppConfig): ResolvedAppConfig {
 
 export class App {
   config: ResolvedAppConfig;
-  builder?: Builder;
+  builder?: unknown;
   #builtinPluginOptions: BuiltinPluginOptions = {
     fsRoutes: {
       enabled: false,
@@ -202,95 +189,5 @@ export class App {
         return new Response('Internal server error', { status: 500 });
       }
     };
-  }
-
-  async listen(options: ListenOptions = {}): Promise<void> {
-    const t0 = performance.now();
-    const spinner = new Spinner({ message: 'Starting...', color: 'blue' });
-    spinner.start();
-
-    if (!options.onListen) {
-      options.onListen = (params) => {
-        const pathname = this.config.basePath + '/';
-        const protocol = 'key' in options && options.key && options.cert
-          ? 'https:'
-          : 'http:';
-
-        let hostname = params.hostname;
-
-        if (
-          Deno.build.os === 'windows' &&
-          (hostname === '0.0.0.0' || hostname === '::')
-        ) {
-          hostname = 'localhost';
-        }
-        // Work around https://github.com/denoland/deno/issues/23650
-        hostname = hostname.startsWith('::') ? `[${hostname}]` : hostname;
-        const address = `${protocol}//${hostname}:${params.port}${pathname}`;
-      };
-    }
-
-    // For production mode, use the static build middleware
-    if (this.config.mode === 'production') {
-      this.get('/_limette/*', staticBuildMiddleware);
-    }
-
-    // Set routes
-    if (this.#builtinPluginOptions.fsRoutes?.enabled === true) {
-      await setFsRoutes(this);
-    }
-
-    const handler = this.handler();
-    if (options.port) {
-      Deno.serve(options, handler);
-      const t1 = performance.now();
-      const duration = ((t1 - t0) / 1000).toFixed(2);
-      spinner.stop();
-      console.log(
-        `🟢 ${bgGreen(' Limette ')} app started (${duration}s) \n\t ${
-          blue(
-            `http://localhost:${options.port}`,
-          )
-        }\n`,
-      );
-    } else {
-      // No port specified, check for a free port. Instead of picking just
-      // any port we'll check if the next one is free for UX reasons.
-      // That way the user only needs to increment a number when running
-      // multiple apps vs having to remember completely different ports.
-      let firstError;
-      for (let port = 8000; port < 8020; port++) {
-        try {
-          Deno.serve({ ...options, port }, handler);
-          firstError = undefined;
-          const t1 = performance.now();
-          const duration = ((t1 - t0) / 1000).toFixed(2);
-          spinner.stop();
-          console.log(
-            `🟢 ${bgGreen(' Limette ')} app started (${duration}s) \n\t ${
-              blue(
-                `http://localhost:${port}`,
-              )
-            }\n`,
-          );
-          break;
-        } catch (err) {
-          if (err instanceof Deno.errors.AddrInUse) {
-            // Throw first EADDRINUSE error
-            // if no port is free
-            if (!firstError) {
-              firstError = err;
-            }
-            continue;
-          }
-
-          throw err;
-        }
-      }
-
-      if (firstError) {
-        throw firstError;
-      }
-    }
   }
 }

@@ -9,5 +9,6 @@ fsRoutes(app, {
 });
 
 if (import.meta.main) {
-  app.listen();
+  const { serve } = await import('@limette/core/deno');
+  await serve(app);
 }

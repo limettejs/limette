@@ -8,6 +8,7 @@
     "vite:assets": "deno run -A vite-assets-smoke.ts",
     "vite:ssr": "deno run -A vite-ssr-smoke.ts",
     "vite:server": "deno run -A vite-server-smoke.ts",
+    "node:server": "deno run -A node-server-smoke.ts",
     "vite:build": "deno run -A vite-build-smoke.ts",
     "vite:dev-routes": "deno run -A vite-dev-routes-smoke.ts",
     "vite:dev-server": "deno run -A vite-dev-server-smoke.ts"
@@ -16,6 +17,8 @@
     "@b-fuze/deno-dom": "jsr:@b-fuze/deno-dom@0.1.49",
     "@limette/core": "jsr:@limette/core@0.2.3",
     "@limette/core/dev": "../src/dev/mod.ts",
+    "@limette/core/deno": "../src/deno.ts",
+    "@limette/core/node": "../src/node.ts",
     "@limette/core/vite": "../src/vite/mod.ts",
     "@limette/core/runtime": "../src/runtime/mod.ts",
     "@limette/core/runtime/refresh.ts": "../src/runtime/refresh.ts",

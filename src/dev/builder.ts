@@ -1,5 +1,7 @@
 import { Spinner } from '@std/cli/unstable-spinner';
-import type { App, ListenOptions } from '../server/app.ts';
+import { serve } from '../deno.ts';
+import type { ServeOptions } from '../deno.ts';
+import type { App } from '../server/app.ts';
 import { build } from './build.ts';
 import { refreshMiddleware } from './refresh-middleware.ts';
 import { buildViteClient } from '../vite/build.ts';
@@ -56,7 +58,7 @@ export class Builder {
     return;
   }
 
-  async listen(app: App, options?: ListenOptions) {
+  async listen(app: App, options?: ServeOptions) {
     app.config.mode = 'development';
 
     app.builder = this;
@@ -112,6 +114,6 @@ export class Builder {
     // For dev mode, use the refresh middleware
     app.use(refreshMiddleware);
 
-    await app.listen(options);
+    await serve(app, options);
   }
 }
