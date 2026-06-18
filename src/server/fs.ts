@@ -47,9 +47,10 @@ export async function setFsRoutes(app: App) {
   let AppWrapper: AppWrapperComponentClass;
 
   if (useVite) {
-    const { discoverRoutes, loadViteBuildRoutes } = await import(
-      '../vite/mod.ts'
-    );
+    const { discoverRoutes, loadViteBuildRoutes, loadViteDevRoutes } =
+      await import(
+        '../vite/mod.ts'
+      );
     const root = viteOptions.root ?? Deno.cwd();
     const outDir = viteOptions.outDir ?? 'dist';
     const fsOutDir = join(root, outDir);
@@ -62,7 +63,14 @@ export async function setFsRoutes(app: App) {
     };
     const [routeManifest, viteRoutes] = await Promise.all([
       discoverRoutes(viteRouteOptions),
-      loadViteBuildRoutes(viteRouteOptions),
+      app.config.mode === 'development'
+        ? loadViteDevRoutes({
+          root,
+          loadFile: fsRoutesOptions.loadFile!,
+          devServerOrigin: viteOptions.devServerOrigin ??
+            'http://localhost:5173',
+        })
+        : loadViteBuildRoutes(viteRouteOptions),
     ]);
 
     routes = viteRoutes;
@@ -72,7 +80,10 @@ export async function setFsRoutes(app: App) {
       }
     ).default;
 
-    if (viteOptions.serveAssets !== false) {
+    if (
+      app.config.mode !== 'development' &&
+      viteOptions.serveAssets !== false
+    ) {
       app.get(
         viteAssetRoutePath(viteOptions.base),
         staticViteBuildMiddleware({

@@ -7,9 +7,14 @@ const ROUTES_MODULE_ID = 'virtual:limette/routes';
 const RESOLVED_ROUTES_MODULE_ID = `\0${ROUTES_MODULE_ID}`;
 const CLIENT_ENTRY_MODULE_PREFIX = 'virtual:limette/client-entry/';
 const RESOLVED_CLIENT_ENTRY_MODULE_PREFIX = `\0${CLIENT_ENTRY_MODULE_PREFIX}`;
+const CLIENT_ENTRY_DEV_PREFIX = '/@limette/client-entry/';
 const SOURCE_ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
 export type LimetteVitePluginOptions = DiscoverRoutesOptions;
+
+export function clientEntryDevPath(routeId: string) {
+  return `${CLIENT_ENTRY_DEV_PREFIX}${routeId}.js`;
+}
 
 export function limette(options: LimetteVitePluginOptions = {}) {
   let root = options.root ?? process.cwd();
@@ -42,6 +47,49 @@ export function limette(options: LimetteVitePluginOptions = {}) {
     },
     configResolved(config: { root: string }) {
       root = options.root ?? config.root;
+    },
+    configureServer(server: {
+      middlewares: {
+        use: (
+          handler: (
+            req: { url?: string },
+            res: {
+              statusCode: number;
+              setHeader: (name: string, value: string) => void;
+              end: (body?: string) => void;
+            },
+            next: () => void,
+          ) => void | Promise<void>,
+        ) => void;
+      };
+      transformRequest: (url: string) => Promise<{ code: string } | null>;
+    }) {
+      server.middlewares.use(async (req, res, next) => {
+        const url = new URL(req.url ?? '/', 'http://localhost');
+
+        if (!url.pathname.startsWith(CLIENT_ENTRY_DEV_PREFIX)) {
+          next();
+          return;
+        }
+
+        const routeId = decodeURIComponent(
+          url.pathname
+            .slice(CLIENT_ENTRY_DEV_PREFIX.length)
+            .replace(/\.js$/, ''),
+        );
+        const result = await server.transformRequest(
+          `${CLIENT_ENTRY_MODULE_PREFIX}${routeId}`,
+        );
+
+        if (!result) {
+          res.statusCode = 404;
+          res.end();
+          return;
+        }
+
+        res.setHeader('Content-Type', 'application/javascript');
+        res.end(`import "/@vite/client";\n${result.code}`);
+      });
     },
     resolveId(id: string) {
       if (id === ROUTES_MODULE_ID) {

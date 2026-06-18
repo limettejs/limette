@@ -6,6 +6,7 @@ export interface FsRoutesViteOptions {
   outDir?: string;
   base?: string;
   configFile?: string;
+  devServerOrigin?: string;
   manifestPath?: string;
   mode?: string;
   serveAssets?: boolean;
