@@ -4,7 +4,7 @@ import { unsafeCSS } from 'lit';
 import type { LitElement } from 'lit';
 import { LitElementRenderer } from '@lit-labs/ssr/lib/lit-element-renderer.js';
 import type { RenderInfo, RenderResult } from '@lit-labs/ssr';
-import type { BuildRoute } from '../../dev/build.ts';
+import type { BuildRoute } from '../route.ts';
 import type { Context } from '../context.ts';
 
 type LmtShadowRootMode = 'open' | 'closed' | 'disabled';

@@ -10,7 +10,8 @@ export {
   PageComponent,
   ServerComponent,
 } from './server/components.ts';
-export { deleteCookie, getCookies, setCookie } from '@std/http';
+export { deleteCookie, getCookies, setCookie } from './server/cookies.ts';
+export type { Cookie } from './server/cookies.ts';
 export { HttpError } from './server/error.ts';
 export type { Context } from './server/context.ts';
 export type { AppWrapperComponent, AppWrapperOptions } from './server/ssr.ts';

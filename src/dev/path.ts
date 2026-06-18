@@ -1,14 +1,17 @@
-import { join, isAbsolute, dirname, toFileUrl } from "@std/path";
+import { readFile } from 'node:fs/promises';
+import { dirname, isAbsolute, join } from 'node:path';
+import { cwd } from 'node:process';
+import { pathToFileURL } from 'node:url';
 
 let tailwindcss: string | undefined = undefined;
 
 export async function resolvePath(
   inputPath: string,
-  basePath: string
+  basePath: string,
 ): Promise<string> {
   // Step 1: Load `deno.json` and read the imports field
   const config = JSON.parse(
-    await Deno.readTextFile(join(Deno.cwd(), "deno.json"))
+    await readFile(join(cwd(), 'deno.json'), 'utf8'),
   );
   const imports: Record<string, string> = config.imports || {};
 
@@ -21,12 +24,12 @@ export async function resolvePath(
 
   // Step 3: Check for special specifiers and return early if matched
   const specialSpecifiers = [
-    "npm:",
-    "https:",
-    "http:",
-    "jsr:",
-    "file:",
-    "data:",
+    'npm:',
+    'https:',
+    'http:',
+    'jsr:',
+    'file:',
+    'data:',
   ];
   if (specialSpecifiers.some((specifier) => inputPath.startsWith(specifier))) {
     return inputPath; // Return the specifier as is
@@ -35,7 +38,7 @@ export async function resolvePath(
   // Step 4: If it's still a relative path, resolve it to an absolute path
   if (!isAbsolute(inputPath)) {
     const baseDir = dirname(basePath);
-    inputPath = toFileUrl(join(baseDir, inputPath)).href;
+    inputPath = pathToFileURL(join(baseDir, inputPath)).href;
   }
 
   // Step 5: Return the resolved absolute path
@@ -46,12 +49,12 @@ export async function getTailwind() {
   if (tailwindcss) return tailwindcss;
 
   const config = JSON.parse(
-    await Deno.readTextFile(join(Deno.cwd(), "deno.json"))
+    await readFile(join(cwd(), 'deno.json'), 'utf8'),
   );
 
   const imports: Record<string, string> = config.imports || {};
 
-  tailwindcss = imports["@tailwindcss/cli"] ?? imports["tailwindcss"]; // For version 3.x
+  tailwindcss = imports['@tailwindcss/cli'] ?? imports['tailwindcss']; // For version 3.x
 
   return tailwindcss;
 }

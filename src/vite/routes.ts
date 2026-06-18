@@ -4,7 +4,7 @@ import { resolveClientAssets } from './assets.ts';
 import { clientEntryDevPath } from './plugin.ts';
 import type { ResolveClientAssetsOptions } from './assets.ts';
 import type { DiscoverRoutesOptions } from './manifest.ts';
-import type { BuildRoute } from '../dev/build.ts';
+import type { BuildRoute } from '../server/route.ts';
 import type { LayoutModule } from '../server/layouts.ts';
 import type { MiddlewareModule } from '../server/middlewares.ts';
 import type { RouteModule } from '../server/router.ts';

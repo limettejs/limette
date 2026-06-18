@@ -1,8 +1,8 @@
-import type { BuildRoute } from "../dev/build.ts";
-import type { Context } from "./context.ts";
-import { HttpError } from "./error.ts";
-import type { MiddlewareFn } from "./middlewares.ts";
-import { type AppWrapperComponentClass, renderContent } from "./ssr.ts";
+import type { BuildRoute } from './route.ts';
+import type { Context } from './context.ts';
+import { HttpError } from './error.ts';
+import type { MiddlewareFn } from './middlewares.ts';
+import { type AppWrapperComponentClass, renderContent } from './ssr.ts';
 
 export interface Handlers {
   GET?: MiddlewareFn;
@@ -16,7 +16,7 @@ export interface Handlers {
 
 export function handlersForRoute(
   route: BuildRoute,
-  AppWrapper: AppWrapperComponentClass
+  AppWrapper: AppWrapperComponentClass,
 ) {
   const handlers: Handlers = {};
 
@@ -24,10 +24,10 @@ export function handlersForRoute(
   if (route.routeModule?.handler) {
     for (const [method, fn] of Object.entries(route.routeModule.handler)) {
       const handler = async (ctx: Context) => {
-        ctx.render = async (data: Context["data"]) => {
+        ctx.render = async (data: Context['data']) => {
           if (!route.routeModule?.default) {
             throw new Error(
-              "No component was provided. Make sure you export a component as default to be redered."
+              'No component was provided. Make sure you export a component as default to be redered.',
             );
           }
 
@@ -42,8 +42,8 @@ export function handlersForRoute(
 
           return new Response(content, {
             status: status,
-            statusText: "OK",
-            headers: new Headers({ "Content-Type": "text/html" }),
+            statusText: 'OK',
+            headers: new Headers({ 'Content-Type': 'text/html' }),
           });
         };
 
@@ -67,12 +67,12 @@ export function handlersForRoute(
       return new Response(content, {
         status: status,
         headers: {
-          "Content-Type": "text/html",
+          'Content-Type': 'text/html',
         },
       });
     };
 
-    handlers["GET"] = handler;
+    handlers['GET'] = handler;
   }
 
   return handlers;

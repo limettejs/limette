@@ -1,12 +1,10 @@
-import type { BuildRoute } from "./build.ts";
+import type { BuildRoute } from '../server/route.ts';
 
 /**
- *
  * Sorting Logic:
  *      Exact paths (e.g., /about, /blog) should come first.
  *      Paths with wildcards (e.g., /blog/:slug, /old/:path*) should come after exact paths.
  *      Paths with optional parameters (e.g., /docs{/:version}?) should be placed accordingly.
- *
  *
  * Wildcard Check:
  *      The function checks if the path contains wildcard characters (:, *, {).
@@ -21,10 +19,10 @@ import type { BuildRoute } from "./build.ts";
 export const sortRoutesBySpecificity = (routes: BuildRoute[]): BuildRoute[] => {
   return routes.sort((a, b) => {
     // Exact paths should come before wildcard paths
-    const aIsWildcard =
-      a.path.includes(":") || a.path.includes("*") || a.path.includes("{");
-    const bIsWildcard =
-      b.path.includes(":") || b.path.includes("*") || b.path.includes("{");
+    const aIsWildcard = a.path.includes(':') || a.path.includes('*') ||
+      a.path.includes('{');
+    const bIsWildcard = b.path.includes(':') || b.path.includes('*') ||
+      b.path.includes('{');
 
     if (aIsWildcard && !bIsWildcard) return 1;
     if (!aIsWildcard && bIsWildcard) return -1;

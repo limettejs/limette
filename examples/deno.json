@@ -14,7 +14,6 @@
     "vite:dev-server": "deno run -A vite-dev-server-smoke.ts"
   },
   "imports": {
-    "@b-fuze/deno-dom": "jsr:@b-fuze/deno-dom@0.1.49",
     "@limette/core": "jsr:@limette/core@0.2.3",
     "@limette/core/dev": "../src/dev/mod.ts",
     "@limette/core/deno": "../src/deno.ts",
@@ -37,6 +36,7 @@
     "/lit": "npm:/lit@^3.2.1/",
     "esbuild": "npm:esbuild@0.24.2",
     "lit": "npm:lit@^3.2.1",
+    "linkedom": "npm:linkedom@0.18.12",
     "parse-imports": "npm:parse-imports@2.2.1",
     "tailwindcss": "npm:tailwindcss@4.3.1",
     "vite": "npm:vite@^8.0.0"

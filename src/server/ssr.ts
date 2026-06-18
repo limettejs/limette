@@ -2,7 +2,7 @@ import { html, render } from '@lit-labs/ssr';
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { collectResult } from '@lit-labs/ssr/lib/render-result.js';
-import { DOMParser } from '@b-fuze/deno-dom';
+import { DOMParser } from 'linkedom';
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { TemplateResult } from 'lit';
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
@@ -10,7 +10,7 @@ import type { DirectiveResult } from 'lit/directives/unsafe-html.js';
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { UnsafeHTMLDirective } from 'lit/directives/unsafe-html.js';
 import type { Context } from './context.ts';
-import type { BuildRoute } from '../dev/build.ts';
+import type { BuildRoute } from './route.ts';
 import { LimetteElementRenderer } from './rendering/limette-element-renderer.ts';
 import type { AppAssets, AppRouteInfo } from './components.ts';
 

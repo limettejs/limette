@@ -1,10 +1,10 @@
-import type { BuildRoute } from '../dev/build.ts';
+import type { BuildRoute } from './route.ts';
 import type { App } from './app.ts';
 import type { Method } from './router.ts';
 import { handlersForRoute } from './handlers.ts';
 import type { AppWrapperComponentClass } from './ssr.ts';
 import { staticViteBuildMiddleware } from './static-files.ts';
-import { join } from '@std/path';
+import { join } from 'node:path';
 
 export interface BuildRoutesOptions {
   buildAssets?: boolean;

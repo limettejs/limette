@@ -1,8 +1,6 @@
-import { Spinner } from '@std/cli/unstable-spinner';
 import { serve } from '../deno.ts';
 import type { ServeOptions } from '../deno.ts';
 import type { App } from '../server/app.ts';
-import { build } from './build.ts';
 import { refreshMiddleware } from './refresh-middleware.ts';
 import { buildViteClient } from '../vite/build.ts';
 import {
@@ -34,27 +32,24 @@ export class Builder {
 
   async build(app: App): Promise<void> {
     const t0 = performance.now();
-    const spinner = new Spinner({ message: 'Building...', color: 'blue' });
-    spinner.start();
 
     const viteOptions = this.#viteOptions(app);
 
-    if (this.#usesVite(app)) {
-      await buildViteClient({
-        root: viteOptions.root,
-        outDir: viteOptions.outDir,
-        base: viteOptions.base,
-        configFile: viteOptions.configFile,
-        mode: viteOptions.mode,
-        viteSpecifier: viteOptions.viteSpecifier,
-      });
-    } else {
-      await build(app, { target: this.options.target });
+    if (!this.#usesVite(app)) {
+      throw new Error('Builder.build() requires fsRoutes() with Vite enabled.');
     }
 
+    await buildViteClient({
+      root: viteOptions.root,
+      outDir: viteOptions.outDir,
+      base: viteOptions.base,
+      configFile: viteOptions.configFile,
+      mode: viteOptions.mode,
+      viteSpecifier: viteOptions.viteSpecifier,
+    });
+
     const t1 = performance.now();
-    spinner.stop();
-    console.log(`✅ Build done. (${((t1 - t0) / 1000).toFixed(2)}s)`);
+    console.log(`Build done. (${((t1 - t0) / 1000).toFixed(2)}s)`);
     return;
   }
 

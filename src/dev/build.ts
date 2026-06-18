@@ -1,42 +1,69 @@
 import * as esbuild from 'esbuild';
 import { denoPlugins } from '@luca/esbuild-deno-loader';
 import { parseImports } from 'parse-imports';
-import { join, parse, SEPARATOR, toFileUrl } from '@std/path';
-import { emptyDir, ensureFile, exists, walk } from '@std/fs';
-import { encodeHex } from '@std/encoding';
+import { mkdir, open, readdir, rm, stat } from 'node:fs/promises';
+import { dirname, extname, join, parse, sep as SEPARATOR } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { getIslandsRegistered } from './extract-islands.ts';
 import { getTailwind, resolvePath } from './path.ts';
 import { sortRoutesBySpecificity } from './sort-routes.ts';
 import type { App } from '../server/app.ts';
 import type { BuildRoutesOptions } from '../server/fs.ts';
 import type { AppWrapperComponentClass } from '../server/ssr.ts';
-import type { LayoutModule } from '../server/layouts.ts';
-import type { MiddlewareModule } from '../server/middlewares.ts';
-import type { RouteModule } from '../server/router.ts';
+import type { BuildRoute } from '../server/route.ts';
 
 const TEST_FILE_PATTERN = /[._]test\.(?:[tj]sx?|[mc][tj]s)$/;
 
-export type BuildRoute = {
-  id: string;
-  path: string;
-  relativeFilePath: string;
-  absoluteFilePath: string;
-  routeModule?: RouteModule;
-  tagName: string;
-  jsAssetContent: esbuild.OutputFile | undefined;
-  jsAssetPath: string | undefined;
-  jsAssetPaths?: string[];
-  cssAssetContent: string | undefined;
-  cssAssetPath: string | undefined;
-  cssAssetPaths?: string[];
-  islands: string[] | undefined;
-  middlewares: MiddlewareModule[] | [];
-  middlewarePaths: string[] | [];
-  layouts: LayoutModule[] | [];
-  layoutPaths: string[] | [];
-};
-
 const encoder = new TextEncoder();
+
+function toFileUrl(path: string) {
+  return pathToFileURL(path);
+}
+
+function encodeHex(bytes: Uint8Array) {
+  return [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function exists(path: string, options?: { isFile?: boolean }) {
+  try {
+    const info = await stat(path);
+    return options?.isFile ? info.isFile() : true;
+  } catch {
+    return false;
+  }
+}
+
+async function emptyDir(path: string) {
+  await rm(path, { recursive: true, force: true });
+  await mkdir(path, { recursive: true });
+}
+
+async function ensureFile(path: string) {
+  await mkdir(dirname(path), { recursive: true });
+  const file = await open(path, 'a');
+  await file.close();
+}
+
+async function* walk(
+  root: string,
+  options: { exts?: string[]; skip?: RegExp[] } = {},
+): AsyncGenerator<{ path: string; isFile: boolean }> {
+  for (const entry of await readdir(root, { withFileTypes: true })) {
+    const path = join(root, entry.name);
+
+    if (options.skip?.some((pattern) => pattern.test(path))) continue;
+
+    if (entry.isDirectory()) {
+      yield* walk(path, options);
+      continue;
+    }
+
+    if (!entry.isFile()) continue;
+    if (options.exts && !options.exts.includes(extname(path))) continue;
+
+    yield { path, isFile: true };
+  }
+}
 
 /**
  * Returns the imports from a file.

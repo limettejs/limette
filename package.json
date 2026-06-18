@@ -1,0 +1,73 @@
+{
+  "name": "@limette/core",
+  "version": "0.2.3",
+  "description": "A full-stack framework for Lit Web Components.",
+  "type": "module",
+  "license": "MIT",
+  "homepage": "https://limette.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/limette-dev/limette.git"
+  },
+  "bugs": {
+    "url": "https://github.com/limette-dev/limette/issues"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/mod.ts",
+      "default": "./src/mod.ts"
+    },
+    "./deno": {
+      "types": "./src/deno.ts",
+      "default": "./src/deno.ts"
+    },
+    "./node": {
+      "types": "./src/node.ts",
+      "default": "./src/node.ts"
+    },
+    "./dev": {
+      "types": "./src/dev/mod.ts",
+      "default": "./src/dev/mod.ts"
+    },
+    "./vite": {
+      "types": "./src/vite/mod.ts",
+      "default": "./src/vite/mod.ts"
+    },
+    "./runtime": {
+      "types": "./src/runtime/mod.ts",
+      "default": "./src/runtime/mod.ts"
+    },
+    "./runtime/refresh.ts": {
+      "types": "./src/runtime/refresh.ts",
+      "default": "./src/runtime/refresh.ts"
+    },
+    "./runtime/ssr-client/lit-element-hydrate-support.ts": {
+      "types": "./src/runtime/ssr-client/lit-element-hydrate-support.ts",
+      "default": "./src/runtime/ssr-client/lit-element-hydrate-support.ts"
+    },
+    "./runtime/ssr-client/lit-element-hydrate-support-patch.ts": {
+      "types": "./src/runtime/ssr-client/lit-element-hydrate-support-patch.ts",
+      "default": "./src/runtime/ssr-client/lit-element-hydrate-support-patch.ts"
+    }
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "lit": "^3.2.1",
+    "vite": "^8.0.0"
+  },
+  "dependencies": {
+    "@lit-labs/ssr": "3.3.0",
+    "@lit-labs/ssr-client": "1.1.7",
+    "esbuild": "0.24.2",
+    "linkedom": "0.18.12",
+    "parse-imports": "2.2.1",
+    "tailwindcss": "4.3.1"
+  }
+}

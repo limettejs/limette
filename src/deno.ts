@@ -1,5 +1,3 @@
-import { Spinner } from '@std/cli/unstable-spinner';
-import { bgGreen, blue } from '@std/fmt/colors';
 import { prepareApp } from './server/serve.ts';
 import type { App } from './server/app.ts';
 
@@ -14,9 +12,7 @@ export type ServeOptions =
 function logStarted(t0: number, port: number) {
   const duration = ((performance.now() - t0) / 1000).toFixed(2);
   console.log(
-    `🟢 ${bgGreen(' Limette ')} app started (${duration}s) \n\t ${
-      blue(`http://localhost:${port}`)
-    }\n`,
+    `Limette app started (${duration}s)\n\t http://localhost:${port}\n`,
   );
 }
 
@@ -46,8 +42,6 @@ function normalizeOptions(options: ServeOptions): ServeOptions {
 
 export async function serve(app: App, options: ServeOptions = {}) {
   const t0 = performance.now();
-  const spinner = new Spinner({ message: 'Starting...', color: 'blue' });
-  spinner.start();
 
   await prepareApp(app);
 
@@ -56,7 +50,6 @@ export async function serve(app: App, options: ServeOptions = {}) {
 
   if (serveOptions.port) {
     Deno.serve(serveOptions, handler);
-    spinner.stop();
     logStarted(t0, serveOptions.port);
     return;
   }
@@ -66,7 +59,6 @@ export async function serve(app: App, options: ServeOptions = {}) {
     try {
       Deno.serve({ ...serveOptions, port }, handler);
       firstError = undefined;
-      spinner.stop();
       logStarted(t0, port);
       return;
     } catch (err) {
