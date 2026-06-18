@@ -6,14 +6,6 @@ import type { AppWrapperComponentClass } from './ssr.ts';
 import { staticViteBuildMiddleware } from './static-files.ts';
 import { join } from 'node:path';
 
-export interface BuildRoutesOptions {
-  buildAssets?: boolean;
-  devMode?: boolean;
-  tailwind?: boolean;
-  target?: string | string[];
-  loadFile?: (path: string) => Promise<unknown>;
-}
-
 function normalizeViteOptions(
   vite: App['builtinPluginOptions']['fsRoutes']['vite'],
 ) {
