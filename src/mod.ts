@@ -18,8 +18,6 @@ export type { AppWrapperComponent, AppWrapperOptions } from './server/ssr.ts';
 export type {
   RouteConfig,
   RouteModule,
-  URLPatternLike,
-  URLPatternMatchResult,
 } from './server/router.ts';
 export type { Handlers } from './server/handlers.ts';
 export type { MiddlewareFn } from './server/middlewares.ts';
