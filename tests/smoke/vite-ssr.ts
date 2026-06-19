@@ -1,14 +1,14 @@
-import { Context } from '../src/server/context.ts';
-import { renderContent } from '../src/server/ssr.ts';
-import { discoverRoutes, loadViteBuildRoutes } from '../src/vite/mod.ts';
-import type { AppWrapperComponentClass } from '../src/server/ssr.ts';
+import { Context } from '../../src/server/context.ts';
+import { renderContent } from '../../src/server/ssr.ts';
+import type { AppWrapperComponentClass } from '../../src/server/ssr.ts';
+import { discoverRoutes, loadViteBuildRoutes } from '../../src/vite/mod.ts';
+import { exampleRoot, loadExampleFile } from './_paths.ts';
 
-const loadFile = (path: string) => import(`./${path.replace(/^\.\//, '')}`);
-const manifest = await discoverRoutes({ root: '.' });
+const manifest = await discoverRoutes({ root: exampleRoot });
 const routes = await loadViteBuildRoutes({
-  root: '.',
+  root: exampleRoot,
   outDir: '.vite-limette-client',
-  loadFile,
+  loadFile: loadExampleFile,
 });
 const homeRoute = routes.find((route) => route.path === '/');
 
@@ -16,7 +16,7 @@ if (!homeRoute) {
   throw new Error('Missing home route.');
 }
 
-const AppWrapper = (await loadFile(manifest.appFile))
+const AppWrapper = (await loadExampleFile(manifest.appFile))
   .default as AppWrapperComponentClass;
 const request = new Request('http://localhost/');
 const url = new URL(request.url);

@@ -1,3 +1,5 @@
+import { exampleRoot } from './_paths.ts';
+
 const port = 5179;
 const origin = `http://127.0.0.1:${port}`;
 const command = new Deno.Command(Deno.execPath(), {
@@ -15,6 +17,7 @@ const command = new Deno.Command(Deno.execPath(), {
     '--logLevel',
     'error',
   ],
+  cwd: exampleRoot,
   stdout: 'null',
   stderr: 'null',
 });

@@ -1,5 +1,6 @@
-import { serve } from '../src/node.ts';
-import { app } from './app.js';
+import { serve } from '../../src/node.ts';
+import { app } from '../../examples/app.js';
+import { exampleRoot } from './_paths.ts';
 
 const port = 5180;
 
@@ -12,6 +13,7 @@ const command = new Deno.Command(Deno.execPath(), {
     'vite.config.ts',
     'build',
   ],
+  cwd: exampleRoot,
   stdout: 'null',
   stderr: 'piped',
 });

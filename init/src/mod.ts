@@ -82,11 +82,14 @@ const denoJson = `
 `;
 
 const appTs = `
+import { fileURLToPath } from "node:url";
 import { App, staticFiles } from "@limette/core";
+
+const root = fileURLToPath(new URL(".", import.meta.url));
 
 export const app = new App()
   .use(staticFiles)
-  .fsRoutes();
+  .fsRoutes({ vite: { root } });
 `;
 
 const mainTs = `
@@ -96,18 +99,22 @@ await app.listen();
 `;
 
 const viteConfigTs = `
+import { fileURLToPath } from "node:url";
 import { clientEntryInputs, limette } from "@limette/core/vite";
 
+const root = fileURLToPath(new URL(".", import.meta.url));
+
 export default async () => ({
+  root,
   appType: "custom",
   build: {
     manifest: true,
     rolldownOptions: {
-      input: await clientEntryInputs(),
+      input: await clientEntryInputs({ root }),
     },
   },
   plugins: [
-    limette({ dev: { appModule: "./app.ts" } }),
+    limette({ root, dev: { appModule: "./app.ts" } }),
   ],
 });
 `;

@@ -1,10 +1,12 @@
-import { App } from '../src/mod.ts';
-import { setFsRoutes } from '../src/server/fs.ts';
+import { App } from '../../src/mod.ts';
+import { setFsRoutes } from '../../src/server/fs.ts';
+import { exampleRoot } from './_paths.ts';
 
 const port = 5178;
 const origin = `http://127.0.0.1:${port}`;
 const app = new App({ mode: 'development' }).fsRoutes({
   vite: {
+    root: exampleRoot,
     devServerOrigin: origin,
   },
 });
@@ -38,6 +40,7 @@ const command = new Deno.Command(Deno.execPath(), {
     String(port),
     '--strictPort',
   ],
+  cwd: exampleRoot,
   stdout: 'null',
   stderr: 'null',
 });

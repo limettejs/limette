@@ -1,7 +1,8 @@
-import { resolveClientAssets } from '../src/vite/mod.ts';
+import { resolveClientAssets } from '../../src/vite/mod.ts';
+import { exampleRoot } from './_paths.ts';
 
 const routeAssets = await resolveClientAssets({
-  root: '.',
+  root: exampleRoot,
   outDir: '.vite-limette-client',
 });
 

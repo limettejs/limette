@@ -1,8 +1,10 @@
-import { App } from '../src/mod.ts';
-import { setFsRoutes } from '../src/server/fs.ts';
+import { App } from '../../src/mod.ts';
+import { setFsRoutes } from '../../src/server/fs.ts';
+import { exampleRoot } from './_paths.ts';
 
 const app = new App().fsRoutes({
   vite: {
+    root: exampleRoot,
     outDir: '.vite-limette-client',
   },
 });

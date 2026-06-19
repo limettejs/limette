@@ -1,4 +1,4 @@
-/// <reference path="../src/vite/client.d.ts" />
+/// <reference path="../../src/vite/client.d.ts" />
 
 import manifest from 'virtual:limette/routes';
 import {
