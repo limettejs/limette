@@ -1,5 +1,4 @@
 import { App, fsRoutes } from '../src/mod.ts';
-import { Builder } from '../src/dev/mod.ts';
 import { setFsRoutes } from '../src/server/fs.ts';
 
 const outDir = '.vite-limette-builder-client';
@@ -12,8 +11,26 @@ fsRoutes(app, {
   },
 });
 
-const builder = new Builder();
-await builder.build(app);
+const command = new Deno.Command(Deno.execPath(), {
+  args: [
+    'run',
+    '-A',
+    'npm:vite@^8.0.0',
+    '--config',
+    'vite.config.ts',
+    'build',
+    '--outDir',
+    outDir,
+  ],
+  stdout: 'null',
+  stderr: 'piped',
+});
+const output = await command.output();
+
+if (!output.success) {
+  throw new Error(new TextDecoder().decode(output.stderr));
+}
+
 await setFsRoutes(app);
 
 const response = await app.handler()(
@@ -26,5 +43,5 @@ if (response.status !== 200) {
 }
 
 if (!html.includes('/assets/limette-route-')) {
-  throw new Error('Expected Builder.build() to generate Vite client assets.');
+  throw new Error('Expected Vite build to generate client assets.');
 }

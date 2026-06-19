@@ -1,10 +1,25 @@
-import { Builder } from '../src/dev/mod.ts';
 import { serve } from '../src/node.ts';
 import { app } from './main.ts';
 
 const port = 5180;
 
-await new Builder().build(app);
+const command = new Deno.Command(Deno.execPath(), {
+  args: [
+    'run',
+    '-A',
+    'npm:vite@^8.0.0',
+    '--config',
+    'vite.config.ts',
+    'build',
+  ],
+  stdout: 'null',
+  stderr: 'piped',
+});
+const output = await command.output();
+
+if (!output.success) {
+  throw new Error(new TextDecoder().decode(output.stderr));
+}
 
 const server = await serve(app, { port, hostname: '127.0.0.1' });
 

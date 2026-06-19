@@ -6,13 +6,17 @@ import { DOMParser } from 'linkedom';
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { TemplateResult } from 'lit';
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
-import type { DirectiveResult } from 'lit/directives/unsafe-html.js';
+import type { DirectiveResult } from 'lit/directive.js';
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { UnsafeHTMLDirective } from 'lit/directives/unsafe-html.js';
 import type { Context } from './context.ts';
 import type { BuildRoute } from './route.ts';
 import { LimetteElementRenderer } from './rendering/limette-element-renderer.ts';
-import type { AppAssets, AppRouteInfo } from './components.ts';
+import type {
+  AppAssets,
+  AppRouteInfo,
+  ServerRenderResult,
+} from './components.ts';
 
 import { installWindowOnGlobal } from '@lit-labs/ssr/lib/dom-shim.js';
 import type { LayoutModule } from './layouts.ts';
@@ -26,10 +30,13 @@ globalThis.fetch = originalFetch;
 globalThis.window = globalThis;
 
 export type AppWrapperOptions = {
-  css: DirectiveResult<UnsafeHTMLDirective> | string;
-  js: string[] | TemplateResult[] | DirectiveResult<UnsafeHTMLDirective>[];
-  component: DirectiveResult<UnsafeHTMLDirective>;
-  page: DirectiveResult<UnsafeHTMLDirective>;
+  css: DirectiveResult<typeof UnsafeHTMLDirective> | string;
+  js:
+    | string[]
+    | TemplateResult[]
+    | DirectiveResult<typeof UnsafeHTMLDirective>[];
+  component: ServerRenderResult;
+  page: ServerRenderResult;
   assets: AppAssets;
   route: AppRouteInfo;
 };
@@ -42,7 +49,7 @@ export interface AppWrapperComponentClass {
 
 export interface AppWrapperComponent {
   ctx: Context;
-  page?: DirectiveResult<UnsafeHTMLDirective>;
+  page?: ServerRenderResult;
   assets?: AppAssets;
   route?: AppRouteInfo;
   render(app?: AppWrapperOptions): TemplateResult | Promise<TemplateResult>;
@@ -246,15 +253,15 @@ async function renderLayout({
   layouts,
   ctx,
 }: {
-  component: DirectiveResult<UnsafeHTMLDirective>;
+  component: DirectiveResult<typeof UnsafeHTMLDirective>;
   layouts: LayoutModule[];
   ctx: Context;
 }) {
-  if (layouts.length === 0) return;
+  if (layouts.length === 0) return component;
 
   const layoutsReversed = [...layouts].reverse();
 
-  let result = component;
+  let result: ServerRenderResult = component;
   for await (const LayoutModule of layoutsReversed) {
     const LayoutComponent = LayoutModule.default;
     const layout = new LayoutComponent();

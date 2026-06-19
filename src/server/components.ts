@@ -2,10 +2,17 @@
 import { LitElement } from 'lit';
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { TemplateResult } from 'lit';
+// @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
+import type { DirectiveResult } from 'lit/directive.js';
+// @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
+import type { UnsafeHTMLDirective } from 'lit/directives/unsafe-html.js';
 import type { Context } from './context.ts';
 
 export type IslandComponentClass = CustomElementConstructor;
 export type IslandsDefinition = Record<string, IslandComponentClass>;
+export type ServerRenderResult =
+  | TemplateResult
+  | DirectiveResult<typeof UnsafeHTMLDirective>;
 
 export interface ServerComponentClass extends CustomElementConstructor {
   __requiresContext?: boolean;
@@ -47,14 +54,14 @@ export abstract class LayoutComponent<
   TData = unknown,
   TParams extends Record<string, string> = Record<string, string>,
 > extends ServerComponent<TData, TParams> {
-  declare child: TemplateResult;
+  declare child: ServerRenderResult;
 }
 
 export abstract class AppComponent<
   TData = unknown,
   TParams extends Record<string, string> = Record<string, string>,
 > extends ServerComponent<TData, TParams> {
-  declare page: TemplateResult;
+  declare page: ServerRenderResult;
   declare assets: AppAssets;
   declare route: AppRouteInfo;
 }

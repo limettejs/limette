@@ -4,18 +4,9 @@ export interface FsRoutesViteOptions {
   root?: string;
   outDir?: string;
   base?: string;
-  configFile?: string;
   devServerOrigin?: string;
-  devServerHost?: string;
-  devServerPort?: number;
-  logLevel?: 'info' | 'warn' | 'error' | 'silent';
   manifestPath?: string;
-  mode?: string;
   serveAssets?: boolean;
-  startDevServer?: boolean;
-  startupTimeoutMs?: number;
-  strictPort?: boolean;
-  viteSpecifier?: string;
 }
 
 export interface FsRoutesPluginOptions {

@@ -7,6 +7,7 @@ const LIMETTE_VERSION = '0.2.3';
 
 const LIT_VERSION = '3.2.1';
 const TAILWIND_VERSION = '4.0.0';
+const VITE_VERSION = '8.0.0';
 
 const projectName = prompt('Your project name?');
 if (typeof projectName !== 'string' || projectName?.length < 1) {
@@ -42,20 +43,22 @@ _limette/
 const denoJson = `
 {
   "tasks": {
-    "dev": "deno run -A --watch=static/,routes/ dev.ts",
-    "build": "deno run -A dev.ts build",
+    "dev": "deno run -A npm:vite@^${VITE_VERSION} --config vite.config.ts --host 127.0.0.1",
+    "build": "deno run -A npm:vite@^${VITE_VERSION} --config vite.config.ts build",
     "start": "deno run -A main.ts"
   },
   "imports": {
-    "@limette/core": "jsr:@limette/core@${LIMETTE_VERSION}",
-    "@limette/core/deno": "jsr:@limette/core@${LIMETTE_VERSION}/deno",
+    "@limette/core": "npm:@limette/core@^${LIMETTE_VERSION}",
+    "@limette/core/deno": "npm:@limette/core@^${LIMETTE_VERSION}/deno",
+    "@limette/core/vite": "npm:@limette/core@^${LIMETTE_VERSION}/vite",
     ${
   enableTailwind
     ? `"@tailwindcss/cli": "npm:@tailwindcss/cli@^${TAILWIND_VERSION}",`
     : ``
 }
     "/lit": "npm:/lit@^${LIT_VERSION}/",
-    "lit": "npm:lit@^${LIT_VERSION}"${
+    "lit": "npm:lit@^${LIT_VERSION}",
+    "vite": "npm:vite@^${VITE_VERSION}"${
   enableTailwind
     ? `,
     "tailwindcss": "npm:tailwindcss@^${TAILWIND_VERSION}"`
@@ -79,20 +82,6 @@ const denoJson = `
 }
 `;
 
-const devTs = `
-${enableTailwind ? `import { tailwind } from "@limette/core";` : ``}
-import { Builder } from "@limette/core/dev";
-import { app } from "./main.ts";
-
-const builder = new Builder();
-${enableTailwind ? `tailwind(app);` : ``}
-if (Deno.args.includes("build")) {
-  await builder.build(app);
-} else {
-  await builder.listen(app);
-}
-`;
-
 const mainTs = `
 import { App, staticFiles, fsRoutes } from "@limette/core";
 
@@ -108,6 +97,23 @@ if (import.meta.main) {
   const { serve } = await import("@limette/core/deno");
   await serve(app);
 }
+`;
+
+const viteConfigTs = `
+import { clientEntryInputs, limette } from "@limette/core/vite";
+
+export default async () => ({
+  appType: "custom",
+  build: {
+    manifest: true,
+    rolldownOptions: {
+      input: await clientEntryInputs(),
+    },
+  },
+  plugins: [
+    limette({ dev: { appModule: "./main.ts" } }),
+  ],
+});
 `;
 
 const counterIslandTs = `
@@ -394,8 +400,8 @@ Deno.writeTextFileSync(
   join(projectPath, 'deno.json'),
   removeEmptyLines(denoJson),
 );
-Deno.writeTextFileSync(join(projectPath, 'dev.ts'), devTs);
 Deno.writeTextFileSync(join(projectPath, 'main.ts'), mainTs);
+Deno.writeTextFileSync(join(projectPath, 'vite.config.ts'), viteConfigTs);
 Deno.writeTextFileSync(
   join(projectPath, 'islands/counter.ts'),
   enableTailwind ? counterIslandTsTailwind : counterIslandTs,

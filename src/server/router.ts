@@ -7,6 +7,17 @@ import type { ServerComponentClass } from './components.ts';
 
 export type Method = 'HEAD' | 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
+export interface URLPatternMatchResult {
+  pathname: {
+    groups: Record<string, string | undefined>;
+  };
+}
+
+export interface URLPatternLike {
+  pathname: string;
+  exec(input: string | URL): URLPatternMatchResult | null;
+}
+
 export interface RouteConfig {
   skipInheritedLayouts: boolean; // Skip already inherited layouts
 }
@@ -26,13 +37,13 @@ interface RouteResult {
 }
 
 export interface Route {
-  path: URLPattern;
+  path: URLPatternLike;
   method: Method | 'ALL';
   handlers: MiddlewareFn[];
 }
 
 interface ErrorRoute {
-  path: URLPattern;
+  path: URLPatternLike;
   handler: MiddlewareFn;
 }
 
@@ -53,7 +64,7 @@ export class UrlPatternRouter {
     this.#middlewares.push(fn);
   }
 
-  addError(pathname: string | URLPattern, fn: MiddlewareFn) {
+  addError(pathname: string | URLPatternLike, fn: MiddlewareFn) {
     let path = pathname;
 
     if (typeof pathname === 'string' && pathname.endsWith('/_error')) {
@@ -70,7 +81,7 @@ export class UrlPatternRouter {
 
   add(
     method: Method | 'ALL',
-    pathname: string | URLPattern,
+    pathname: string | URLPatternLike,
     handlers: MiddlewareFn[],
   ) {
     this.#routes.push({

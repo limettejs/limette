@@ -4,7 +4,6 @@
   "exports": {
     ".": "./src/mod.ts",
     "./runtime": "./src/runtime/mod.ts",
-    "./dev": "./src/dev/mod.ts",
     "./deno": "./src/deno.ts",
     "./node": "./src/node.ts",
     "./vite": "./src/vite/mod.ts",
@@ -12,18 +11,10 @@
     "./runtime/ssr-client/lit-element-hydrate-support-patch.ts": "./src/runtime/ssr-client/lit-element-hydrate-support-patch.ts",
     "./runtime/refresh.ts": "./src/runtime/refresh.ts"
   },
-  "tasks": {
-    "release": "deno run -A ./tools/release.ts && deno publish --dry-run"
-  },
-  "publish": {
-    "include": ["src/**", "deno.json", "README.md", "LICENSE"]
-  },
   "imports": {
     "@limette/core": "./src/mod.ts",
     "@lit-labs/ssr": "npm:@lit-labs/ssr@3.3.0",
     "@lit-labs/ssr/": "npm:/@lit-labs/ssr@3.3.0/",
-    "@std/semver": "jsr:@std/semver@1.0.3",
-    "@limette/core/dev": "./src/dev/mod.ts",
     "@limette/core/deno": "./src/deno.ts",
     "@limette/core/node": "./src/node.ts",
     "@limette/core/vite": "./src/vite/mod.ts",
@@ -45,9 +36,6 @@
       "deno.ns",
       "deno.unstable"
     ]
-  },
-  "lint": {
-    "tags": ["jsr"]
   },
   "fmt": {
     "singleQuote": true

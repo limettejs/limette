@@ -3,7 +3,6 @@ export default {
     index: 'src/mod.ts',
     deno: 'src/deno.ts',
     node: 'src/node.ts',
-    dev: 'src/dev/mod.ts',
     vite: 'src/vite/mod.ts',
     runtime: 'src/runtime/mod.ts',
     'runtime/refresh': 'src/runtime/refresh.ts',

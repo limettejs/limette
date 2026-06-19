@@ -1,4 +1,8 @@
-import { type Method, UrlPatternRouter } from './router.ts';
+import {
+  type Method,
+  type URLPatternLike,
+  UrlPatternRouter,
+} from './router.ts';
 import { type MiddlewareFn, runMiddlewares } from './middlewares.ts';
 import { HttpError } from './error.ts';
 import type { FsRoutesPluginOptions } from '../plugins/fs-routes.ts';
@@ -91,7 +95,7 @@ export class App {
     return this;
   }
 
-  error(pathname: string | URLPattern, middleware: MiddlewareFn): this {
+  error(pathname: string | URLPatternLike, middleware: MiddlewareFn): this {
     this.#router.addError(pathname, middleware);
     return this;
   }
@@ -120,7 +124,7 @@ export class App {
 
   #addRoutes(
     method: Method | 'ALL',
-    pathname: string | URLPattern,
+    pathname: string | URLPatternLike,
     middlewares: MiddlewareFn[],
   ): this {
     const merged = typeof pathname === 'string'

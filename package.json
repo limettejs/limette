@@ -29,10 +29,6 @@
       "types": "./dist/node.d.mts",
       "default": "./dist/node.mjs"
     },
-    "./dev": {
-      "types": "./dist/dev.d.mts",
-      "default": "./dist/dev.mjs"
-    },
     "./vite": {
       "types": "./dist/vite.d.mts",
       "default": "./dist/vite.mjs"

@@ -24,7 +24,6 @@ Do not convert islands to React/Preact. Islands are Lit/Web Components.
 
 ## Important directories
 
-- `/src/dev` - dev server and build related files
 - `/src/plugins` - built-in plugins
 - `/src/runtime` - client-side framework runtime
 - `/src/server` - server-side logic

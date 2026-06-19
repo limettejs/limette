@@ -1,7 +1,7 @@
 {
   "tasks": {
     "dev": "deno run -A npm:vite@^8.0.0 --config vite.config.ts --host 127.0.0.1",
-    "build": "deno run -A dev.ts build",
+    "build": "deno run -A npm:vite@^8.0.0 --config vite.config.ts build",
     "start": "deno run -A main.ts",
     "vite:routes": "deno run -A npm:vite@^8.0.0 --config vite.config.ts build --ssr vite-routes-smoke.ts --outDir .vite-limette-smoke",
     "vite:client": "deno run -A npm:vite@^8.0.0 --config vite.config.ts build --outDir .vite-limette-client",
@@ -14,8 +14,7 @@
     "vite:dev-server": "deno run -A vite-dev-server-smoke.ts"
   },
   "imports": {
-    "@limette/core": "jsr:@limette/core@0.2.3",
-    "@limette/core/dev": "../src/dev/mod.ts",
+    "@limette/core": "../src/mod.ts",
     "@limette/core/deno": "../src/deno.ts",
     "@limette/core/node": "../src/node.ts",
     "@limette/core/vite": "../src/vite/mod.ts",
