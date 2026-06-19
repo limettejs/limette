@@ -29,6 +29,6 @@ export default {
   },
   format: 'esm',
   outDir: 'dist',
-  sourcemap: true,
+  sourcemap: false,
   target: 'es2022',
 };
