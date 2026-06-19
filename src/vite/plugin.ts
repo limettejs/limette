@@ -1,10 +1,11 @@
 import { resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 import { discoverRoutes } from './manifest.ts';
 import {
   incomingMessageToRequest,
   writeResponseToServerResponse,
 } from './node-adapter.ts';
+import { setFsRoutes } from '../server/fs.ts';
 import type { DiscoverRoutesOptions } from './manifest.ts';
 import type { App } from '../server/app.ts';
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -21,7 +22,6 @@ const RESOLVED_ROUTES_MODULE_ID = `\0${ROUTES_MODULE_ID}`;
 const CLIENT_ENTRY_MODULE_PREFIX = 'virtual:limette/client-entry/';
 const RESOLVED_CLIENT_ENTRY_MODULE_PREFIX = `\0${CLIENT_ENTRY_MODULE_PREFIX}`;
 const CLIENT_ENTRY_DEV_PREFIX = '/@limette/client-entry/';
-const SOURCE_ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
 export type LimetteVitePluginOptions = DiscoverRoutesOptions & {
   dev?: {
@@ -54,15 +54,6 @@ async function loadAppModule(
   return app as App;
 }
 
-async function loadSetFsRoutes() {
-  const url = pathToFileURL(resolve(SOURCE_ROOT, 'server/fs.ts')).href;
-  const module = await import(url) as {
-    setFsRoutes: (app: App) => Promise<void>;
-  };
-
-  return module.setFsRoutes;
-}
-
 export function limette(options: LimetteVitePluginOptions = {}) {
   let root = options.root ?? process.cwd();
   let devHandler:
@@ -83,7 +74,6 @@ export function limette(options: LimetteVitePluginOptions = {}) {
           options.dev!.appModule!,
           options.dev!.appExport,
         );
-      const setFsRoutes = await loadSetFsRoutes();
       app.config.mode = 'development';
       await setFsRoutes(app);
 
@@ -99,22 +89,6 @@ export function limette(options: LimetteVitePluginOptions = {}) {
       return {
         resolve: {
           alias: [
-            {
-              find:
-                '@limette/core/runtime/ssr-client/lit-element-hydrate-support.ts',
-              replacement: resolve(
-                SOURCE_ROOT,
-                'runtime/ssr-client/lit-element-hydrate-support.ts',
-              ),
-            },
-            {
-              find:
-                '@limette/core/runtime/ssr-client/lit-element-hydrate-support-patch.ts',
-              replacement: resolve(
-                SOURCE_ROOT,
-                'runtime/ssr-client/lit-element-hydrate-support-patch.ts',
-              ),
-            },
             {
               find: /^lit$/,
               replacement: resolve(root, 'node_modules/lit/index.js'),

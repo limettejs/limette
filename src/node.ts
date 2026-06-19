@@ -14,6 +14,13 @@ export interface ServeOptions {
   onListen?: (address: { hostname: string; port: number }) => void;
 }
 
+function logStarted(t0: number, port: number, hostname = 'localhost') {
+  const duration = ((performance.now() - t0) / 1000).toFixed(2);
+  console.log(
+    `Limette app started (${duration}s)\n\t http://${hostname}:${port}\n`,
+  );
+}
+
 function listen(server: Server, port: number, hostname?: string) {
   return new Promise<void>((resolve, reject) => {
     function onError(error: Error) {
@@ -34,12 +41,14 @@ function listen(server: Server, port: number, hostname?: string) {
 
 export async function serve(
   app: App,
-  { hostname, onListen, port = 8000 }: ServeOptions = {},
+  { hostname, onListen, port }: ServeOptions = {},
 ) {
+  const t0 = performance.now();
+
   await prepareApp(app);
 
   const handler = app.handler();
-  const server = createServer(async (req, res) => {
+  const createAppServer = () => createServer(async (req, res) => {
     try {
       const request = await incomingMessageToRequest(req);
       const response = await handler(request, {});
@@ -51,13 +60,52 @@ export async function serve(
     }
   });
 
-  await listen(server, port, hostname);
+  let server = createAppServer();
+
+  if (port) {
+    await listen(server, port, hostname);
+  } else {
+    let firstError;
+    for (let candidate = 8000; candidate < 8020; candidate++) {
+      try {
+        await listen(server, candidate, hostname);
+        firstError = undefined;
+        break;
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          'code' in error &&
+          error.code === 'EADDRINUSE'
+        ) {
+          if (!firstError) firstError = error;
+          server = createAppServer();
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    if (firstError) throw firstError;
+  }
 
   const address = server.address() as AddressInfo | null;
-  onListen?.({
+  const actualPort = address?.port ?? port;
+
+  if (!actualPort) {
+    throw new Error('Unable to determine server port.');
+  }
+
+  const listenAddress = {
     hostname: hostname ?? 'localhost',
-    port: address?.port ?? port,
-  });
+    port: actualPort,
+  };
+
+  if (onListen) {
+    onListen(listenAddress);
+  } else {
+    logStarted(t0, listenAddress.port, listenAddress.hostname);
+  }
 
   return server;
 }

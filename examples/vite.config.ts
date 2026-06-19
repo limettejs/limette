@@ -1,4 +1,4 @@
-import { clientEntryInputs, limette } from '../src/vite/mod.ts';
+import { clientEntryInputs, limette } from '@limette/core/vite';
 
 export default async () => ({
   appType: 'custom',
@@ -9,6 +9,6 @@ export default async () => ({
     },
   },
   plugins: [
-    limette({ dev: { appModule: './main.ts' } }),
+    limette({ dev: { appModule: './main.js' } }),
   ],
 });

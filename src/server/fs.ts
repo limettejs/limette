@@ -5,6 +5,7 @@ import { handlersForRoute } from './handlers.ts';
 import type { AppWrapperComponentClass } from './ssr.ts';
 import { staticViteBuildMiddleware } from './static-files.ts';
 import { join } from 'node:path';
+import { cwd } from 'node:process';
 
 function normalizeViteOptions(
   vite: App['builtinPluginOptions']['fsRoutes']['vite'],
@@ -29,7 +30,7 @@ export async function setFsRoutes(app: App) {
     await import(
       '../vite/mod.ts'
     );
-  const root = viteOptions.root ?? Deno.cwd();
+  const root = viteOptions.root ?? cwd();
   const outDir = viteOptions.outDir ?? 'dist';
   const fsOutDir = join(root, outDir);
   const viteRouteOptions = {

@@ -1,0 +1,19 @@
+{
+  "name": "limette-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "start": "node main.js",
+    "start:deno": "deno run -A main.js"
+  },
+  "dependencies": {
+    "@limette/core": "file:..",
+    "lit": "^3.2.1"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vite": "^8.0.0"
+  }
+}

@@ -49,7 +49,6 @@ const denoJson = `
   },
   "imports": {
     "@limette/core": "npm:@limette/core@^${LIMETTE_VERSION}",
-    "@limette/core/deno": "npm:@limette/core@^${LIMETTE_VERSION}/deno",
     "@limette/core/vite": "npm:@limette/core@^${LIMETTE_VERSION}/vite",
     ${
   enableTailwind
@@ -83,7 +82,7 @@ const denoJson = `
 `;
 
 const mainTs = `
-import { App, staticFiles, fsRoutes } from "@limette/core";
+import { App, staticFiles, fsRoutes, serve } from "@limette/core";
 
 export const app = new App();
 
@@ -94,7 +93,6 @@ fsRoutes(app, {
 });
 
 if (import.meta.main) {
-  const { serve } = await import("@limette/core/deno");
   await serve(app);
 }
 `;

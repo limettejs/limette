@@ -1,5 +1,5 @@
 import { serve } from '../src/node.ts';
-import { app } from './main.ts';
+import { app } from './main.js';
 
 const port = 5180;
 
