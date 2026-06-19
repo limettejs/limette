@@ -7,51 +7,67 @@
   "homepage": "https://limette.dev",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/limette-dev/limette.git"
+    "url": "git+https://github.com/limettejs/limette.git"
   },
   "bugs": {
-    "url": "https://github.com/limette-dev/limette/issues"
+    "url": "https://github.com/limettejs/limette/issues"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "prepack": "npm run build"
   },
   "exports": {
     ".": {
-      "types": "./src/mod.ts",
-      "default": "./src/mod.ts"
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
     },
     "./deno": {
-      "types": "./src/deno.ts",
-      "default": "./src/deno.ts"
+      "types": "./dist/deno.d.mts",
+      "default": "./dist/deno.mjs"
     },
     "./node": {
-      "types": "./src/node.ts",
-      "default": "./src/node.ts"
+      "types": "./dist/node.d.mts",
+      "default": "./dist/node.mjs"
     },
     "./dev": {
-      "types": "./src/dev/mod.ts",
-      "default": "./src/dev/mod.ts"
+      "types": "./dist/dev.d.mts",
+      "default": "./dist/dev.mjs"
     },
     "./vite": {
-      "types": "./src/vite/mod.ts",
-      "default": "./src/vite/mod.ts"
+      "types": "./dist/vite.d.mts",
+      "default": "./dist/vite.mjs"
     },
     "./runtime": {
-      "types": "./src/runtime/mod.ts",
-      "default": "./src/runtime/mod.ts"
+      "types": "./dist/runtime.d.mts",
+      "default": "./dist/runtime.mjs"
+    },
+    "./runtime/refresh": {
+      "types": "./dist/runtime/refresh.d.mts",
+      "default": "./dist/runtime/refresh.mjs"
     },
     "./runtime/refresh.ts": {
-      "types": "./src/runtime/refresh.ts",
-      "default": "./src/runtime/refresh.ts"
+      "types": "./dist/runtime/refresh.d.mts",
+      "default": "./dist/runtime/refresh.mjs"
+    },
+    "./runtime/ssr-client/lit-element-hydrate-support": {
+      "types": "./dist/runtime/ssr-client/lit-element-hydrate-support.d.mts",
+      "default": "./dist/runtime/ssr-client/lit-element-hydrate-support.mjs"
     },
     "./runtime/ssr-client/lit-element-hydrate-support.ts": {
-      "types": "./src/runtime/ssr-client/lit-element-hydrate-support.ts",
-      "default": "./src/runtime/ssr-client/lit-element-hydrate-support.ts"
+      "types": "./dist/runtime/ssr-client/lit-element-hydrate-support.d.mts",
+      "default": "./dist/runtime/ssr-client/lit-element-hydrate-support.mjs"
+    },
+    "./runtime/ssr-client/lit-element-hydrate-support-patch": {
+      "types": "./dist/runtime/ssr-client/lit-element-hydrate-support-patch.d.mts",
+      "default": "./dist/runtime/ssr-client/lit-element-hydrate-support-patch.mjs"
     },
     "./runtime/ssr-client/lit-element-hydrate-support-patch.ts": {
-      "types": "./src/runtime/ssr-client/lit-element-hydrate-support-patch.ts",
-      "default": "./src/runtime/ssr-client/lit-element-hydrate-support-patch.ts"
+      "types": "./dist/runtime/ssr-client/lit-element-hydrate-support-patch.d.mts",
+      "default": "./dist/runtime/ssr-client/lit-element-hydrate-support-patch.mjs"
     }
   },
   "files": [
-    "src",
+    "dist",
     "README.md",
     "LICENSE"
   ],
@@ -67,5 +83,9 @@
     "@lit-labs/ssr-client": "1.1.7",
     "linkedom": "0.18.12",
     "tailwindcss": "4.3.1"
+  },
+  "devDependencies": {
+    "tsdown": "^0.22.3",
+    "typescript": "^5.9.3"
   }
 }
