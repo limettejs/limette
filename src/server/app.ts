@@ -1,9 +1,11 @@
 import { type Method, UrlPatternRouter } from './router.ts';
 import { type MiddlewareFn, runMiddlewares } from './middlewares.ts';
 import { HttpError } from './error.ts';
+import { fsRoutes as configureFsRoutes } from '../plugins/fs-routes.ts';
 import type { FsRoutesPluginOptions } from '../plugins/fs-routes.ts';
 import type { TailwindPluginOptions } from '../plugins/tailwind.ts';
 import { Context } from './context.ts';
+import type { ServeOptions } from './runtime-serve.ts';
 
 // TODO: context on client side
 
@@ -91,6 +93,11 @@ export class App {
     return this;
   }
 
+  fsRoutes(options: FsRoutesPluginOptions = {}): this {
+    configureFsRoutes(this, options);
+    return this;
+  }
+
   error(pathname: string | URLPattern, middleware: MiddlewareFn): this {
     this.#router.addError(pathname, middleware);
     return this;
@@ -116,6 +123,11 @@ export class App {
   }
   all(path: string, ...middlewares: MiddlewareFn[]): this {
     return this.#addRoutes('ALL', path, middlewares);
+  }
+
+  async listen(options: ServeOptions = {}) {
+    const { serve } = await import('./runtime-serve.ts');
+    return await serve(this, options);
   }
 
   #addRoutes(

@@ -1,11 +1,8 @@
-import { App, fsRoutes } from '../src/mod.ts';
+import { App } from '../src/mod.ts';
 import { setFsRoutes } from '../src/server/fs.ts';
 
 const outDir = '.vite-limette-builder-client';
-const app = new App();
-
-fsRoutes(app, {
-  loadFile: (path: string) => import(`./${path}`),
+const app = new App().fsRoutes({
   vite: {
     outDir,
   },

@@ -81,20 +81,18 @@ const denoJson = `
 }
 `;
 
+const appTs = `
+import { App, staticFiles } from "@limette/core";
+
+export const app = new App()
+  .use(staticFiles)
+  .fsRoutes();
+`;
+
 const mainTs = `
-import { App, staticFiles, fsRoutes, serve } from "@limette/core";
+import { app } from "./app.ts";
 
-export const app = new App();
-
-app.use(staticFiles);
-
-fsRoutes(app, {
-  loadFile: (path: string) => import(\`./\${path}\`),
-});
-
-if (import.meta.main) {
-  await serve(app);
-}
+await app.listen();
 `;
 
 const viteConfigTs = `
@@ -109,7 +107,7 @@ export default async () => ({
     },
   },
   plugins: [
-    limette({ dev: { appModule: "./main.ts" } }),
+    limette({ dev: { appModule: "./app.ts" } }),
   ],
 });
 `;
@@ -398,6 +396,7 @@ Deno.writeTextFileSync(
   join(projectPath, 'deno.json'),
   removeEmptyLines(denoJson),
 );
+Deno.writeTextFileSync(join(projectPath, 'app.ts'), appTs);
 Deno.writeTextFileSync(join(projectPath, 'main.ts'), mainTs);
 Deno.writeTextFileSync(join(projectPath, 'vite.config.ts'), viteConfigTs);
 Deno.writeTextFileSync(

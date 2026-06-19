@@ -1,12 +1,9 @@
-import { App, fsRoutes } from '../src/mod.ts';
+import { App } from '../src/mod.ts';
 import { setFsRoutes } from '../src/server/fs.ts';
 
 const port = 5178;
 const origin = `http://127.0.0.1:${port}`;
-const app = new App({ mode: 'development' });
-
-fsRoutes(app, {
-  loadFile: (path: string) => import(`./${path}`),
+const app = new App({ mode: 'development' }).fsRoutes({
   vite: {
     devServerOrigin: origin,
   },

@@ -9,6 +9,6 @@ export default async () => ({
     },
   },
   plugins: [
-    limette({ dev: { appModule: './main.js' } }),
+    limette({ dev: { appModule: './app.js' } }),
   ],
 });

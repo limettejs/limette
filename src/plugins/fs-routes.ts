@@ -1,4 +1,7 @@
 import type { App } from '../server/app.ts';
+import { resolve } from 'node:path';
+import { cwd } from 'node:process';
+import { pathToFileURL } from 'node:url';
 
 export interface FsRoutesViteOptions {
   root?: string;
@@ -15,14 +18,14 @@ export interface FsRoutesPluginOptions {
   vite?: FsRoutesViteOptions;
 }
 
-export function fsRoutes(app: App, options: FsRoutesPluginOptions) {
-  if (typeof options?.loadFile !== 'function') {
-    throw new Error('Option missing: loadFile.');
-  }
+function defaultLoadFile(root = cwd()) {
+  return (path: string) => import(pathToFileURL(resolve(root, path)).href);
+}
 
+export function fsRoutes(app: App, options: FsRoutesPluginOptions = {}) {
   app._setBuiltinPluginOptions('fsRoutes', {
     enabled: true,
-    loadFile: options.loadFile,
+    loadFile: options.loadFile ?? defaultLoadFile(options.vite?.root),
     vite: options.vite ?? {},
   });
 }

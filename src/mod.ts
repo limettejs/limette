@@ -1,6 +1,5 @@
 export { App } from './server/app.ts';
 export type { AppHandler } from './server/app.ts';
-export { serve } from './server/runtime-serve.ts';
 export type { ServeOptions } from './server/runtime-serve.ts';
 export { fsRoutes } from './plugins/fs-routes.ts';
 export { tailwind } from './plugins/tailwind.ts';
