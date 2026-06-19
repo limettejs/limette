@@ -8,8 +8,7 @@
     "./node": "./src/node.ts",
     "./vite": "./src/vite/mod.ts",
     "./runtime/ssr-client/lit-element-hydrate-support.ts": "./src/runtime/ssr-client/lit-element-hydrate-support.ts",
-    "./runtime/ssr-client/lit-element-hydrate-support-patch.ts": "./src/runtime/ssr-client/lit-element-hydrate-support-patch.ts",
-    "./runtime/refresh.ts": "./src/runtime/refresh.ts"
+    "./runtime/ssr-client/lit-element-hydrate-support-patch.ts": "./src/runtime/ssr-client/lit-element-hydrate-support-patch.ts"
   },
   "imports": {
     "@limette/core": "./src/mod.ts",
@@ -19,7 +18,6 @@
     "@limette/core/node": "./src/node.ts",
     "@limette/core/vite": "./src/vite/mod.ts",
     "@limette/core/runtime": "./src/runtime/mod.ts",
-    "@limette/core/runtime/refresh.ts": "./src/runtime/refresh.ts",
     "@limette/core/runtime/ssr-client/lit-element-hydrate-support.ts": "./src/runtime/ssr-client/lit-element-hydrate-support.ts",
     "@limette/core/runtime/ssr-client/lit-element-hydrate-support-patch.ts": "./src/runtime/ssr-client/lit-element-hydrate-support-patch.ts",
     "@lit-labs/ssr-client": "npm:@lit-labs/ssr-client@1.1.7",

@@ -47,6 +47,7 @@ export async function setFsRoutes(app: App) {
         root,
         loadFile: fsRoutesOptions.loadFile!,
         devServerOrigin: viteOptions.devServerOrigin,
+        tagNameSuffix: viteOptions.devTagNameSuffix,
       })
       : loadViteBuildRoutes(viteRouteOptions),
   ]);

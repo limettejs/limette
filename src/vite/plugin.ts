@@ -1,4 +1,6 @@
-import { resolve } from 'node:path';
+import { createRequire } from 'node:module';
+import { existsSync } from 'node:fs';
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { discoverRoutes } from './manifest.ts';
 import {
@@ -14,7 +16,22 @@ type ViteDevServerLike = {
   middlewares: {
     use: (handler: (...args: unknown[]) => void | Promise<void>) => void;
   };
+  moduleGraph?: {
+    invalidateAll?: () => void;
+  };
+  ssrLoadModule: (url: string) => Promise<Record<string, unknown>>;
   transformRequest: (url: string) => Promise<{ code: string } | null>;
+  watcher: {
+    on: (event: 'add' | 'unlink', listener: (file: string) => void) => void;
+  };
+  ws: {
+    send: (payload: { type: 'full-reload' }) => void;
+  };
+};
+
+type HotUpdateContextLike = {
+  file: string;
+  server: ViteDevServerLike;
 };
 
 const ROUTES_MODULE_ID = 'virtual:limette/routes';
@@ -22,6 +39,7 @@ const RESOLVED_ROUTES_MODULE_ID = `\0${ROUTES_MODULE_ID}`;
 const CLIENT_ENTRY_MODULE_PREFIX = 'virtual:limette/client-entry/';
 const RESOLVED_CLIENT_ENTRY_MODULE_PREFIX = `\0${CLIENT_ENTRY_MODULE_PREFIX}`;
 const CLIENT_ENTRY_DEV_PREFIX = '/@limette/client-entry/';
+const IS_DENO = typeof Deno !== 'undefined';
 
 export type LimetteVitePluginOptions = DiscoverRoutesOptions & {
   dev?: {
@@ -36,13 +54,126 @@ export function clientEntryDevPath(routeId: string) {
   return `${CLIENT_ENTRY_DEV_PREFIX}${routeId}.js`;
 }
 
+function normalizePath(path: string) {
+  return path.split(sep).join('/');
+}
+
+function isInsidePath(parent: string, child: string) {
+  const relativePath = relative(parent, child);
+  return relativePath === '' ||
+    (!relativePath.startsWith('..') && !isAbsolute(relativePath));
+}
+
+function viteRootModuleUrl(root: string, path: string, version?: number) {
+  const absolutePath = resolve(root, path);
+  const relativePath = normalizePath(relative(root, absolutePath));
+  const search = version === undefined ? '' : `?lmt=${version}`;
+
+  if (relativePath.startsWith('..')) {
+    return `/@fs/${normalizePath(absolutePath)}${search}`;
+  }
+
+  return `/${relativePath}${search}`;
+}
+
+function nativeModuleUrl(root: string, path: string, version?: number) {
+  const url = pathToFileURL(resolve(root, path));
+  if (version !== undefined) {
+    url.searchParams.set('lmt', String(version));
+  }
+  return url.href;
+}
+
+function packageName(specifier: string) {
+  const segments = specifier.split('/');
+  return specifier.startsWith('@')
+    ? `${segments[0]}/${segments[1]}`
+    : segments[0];
+}
+
+function packageSubpath(specifier: string) {
+  const name = packageName(specifier);
+  return specifier.slice(name.length).replace(/^\/+/, '');
+}
+
+function denoNodeModulePath(root: string, specifier: string) {
+  const name = packageName(specifier);
+  const subpath = packageSubpath(specifier);
+  return resolve(
+    root,
+    'node_modules/.deno/node_modules',
+    name,
+    subpath,
+  );
+}
+
+function resolveFromRoot(root: string, specifier: string) {
+  const require = createRequire(resolve(root, 'package.json'));
+
+  try {
+    return require.resolve(specifier);
+  } catch {
+    return denoNodeModulePath(root, specifier);
+  }
+}
+
+function findPackageRoot(path: string) {
+  if (existsSync(resolve(path, 'package.json'))) {
+    return path;
+  }
+
+  let current = dirname(path);
+
+  while (current !== dirname(current)) {
+    if (existsSync(resolve(current, 'package.json'))) {
+      return current;
+    }
+
+    current = dirname(current);
+  }
+
+  return dirname(path);
+}
+
+function packageRootFromRoot(root: string, specifier: string) {
+  const name = packageName(specifier);
+  const require = createRequire(resolve(root, 'package.json'));
+
+  try {
+    const packageJsonPath = require.resolve(`${name}/package.json`);
+    return packageJsonPath.slice(0, -'/package.json'.length);
+  } catch {
+    try {
+      return findPackageRoot(resolveFromRoot(root, name));
+    } catch {
+      return denoNodeModulePath(root, name);
+    }
+  }
+}
+
+function loadServerModule(
+  server: ViteDevServerLike,
+  root: string,
+  path: string,
+  version?: number,
+) {
+  if (IS_DENO) {
+    return import(nativeModuleUrl(root, path, version)) as Promise<
+      Record<string, unknown>
+    >;
+  }
+
+  return server.ssrLoadModule(viteRootModuleUrl(root, path, version));
+}
+
 async function loadAppModule(
+  server: ViteDevServerLike,
   root: string,
   appModule: string,
   appExport = 'app',
+  version?: number,
 ) {
-  const url = pathToFileURL(resolve(root, appModule)).href;
-  const module = await import(url) as Record<string, unknown>;
+  const module = await loadServerModule(server, root, appModule, version);
   const app = module[appExport];
 
   if (!app) {
@@ -62,23 +193,65 @@ export function limette(options: LimetteVitePluginOptions = {}) {
     >
     | undefined;
 
-  async function getDevHandler() {
-    if (!options.dev?.app && !options.dev?.appModule && !options.dev?.loadApp) {
-      return undefined;
+  const hasDevApp = () =>
+    Boolean(options.dev?.app || options.dev?.appModule || options.dev?.loadApp);
+
+  function invalidateDevHandler() {
+    if (!options.dev?.app) {
+      devHandler = undefined;
+    }
+  }
+
+  function isServerFile(file: string) {
+    const absoluteFile = resolve(file);
+    const routesPath = resolve(root, options.routesDir ?? 'routes');
+    const appModulePath = options.dev?.appModule
+      ? resolve(root, options.dev.appModule)
+      : undefined;
+
+    return isInsidePath(routesPath, absoluteFile) ||
+      (appModulePath ? absoluteFile === appModulePath : false);
+  }
+
+  function sendFullReload(server: ViteDevServerLike) {
+    invalidateDevHandler();
+    server.moduleGraph?.invalidateAll?.();
+    server.ws.send({ type: 'full-reload' });
+  }
+
+  async function createDevHandler(server: ViteDevServerLike) {
+    const version = Date.now();
+    const app = options.dev!.app ?? await options.dev!.loadApp?.() ??
+      await loadAppModule(
+        server,
+        root,
+        options.dev!.appModule!,
+        options.dev!.appExport,
+        version,
+      );
+    const fsRoutesOptions = app.builtinPluginOptions.fsRoutes;
+    app.config.mode = 'development';
+    app._setBuiltinPluginOptions('fsRoutes', {
+      ...fsRoutesOptions,
+      loadFile: (path) =>
+        loadServerModule(server, root, path, version),
+      vite: {
+        ...fsRoutesOptions.vite,
+        devTagNameSuffix: String(version),
+        root: fsRoutesOptions.vite?.root ?? root,
+      },
+    });
+    await setFsRoutes(app);
+
+    return app.handler();
+  }
+
+  async function getDevHandler(server: ViteDevServerLike) {
+    if (!options.dev?.app) {
+      return await createDevHandler(server);
     }
 
-    devHandler ??= (async () => {
-      const app = options.dev!.app ?? await options.dev!.loadApp?.() ??
-        await loadAppModule(
-          root,
-          options.dev!.appModule!,
-          options.dev!.appExport,
-        );
-      app.config.mode = 'development';
-      await setFsRoutes(app);
-
-      return app.handler();
-    })();
+    devHandler ??= createDevHandler(server);
 
     return await devHandler;
   }
@@ -86,31 +259,101 @@ export function limette(options: LimetteVitePluginOptions = {}) {
   return {
     name: 'limette',
     config() {
+      const litRoot = packageRootFromRoot(root, 'lit');
+      const litHtmlRoot = packageRootFromRoot(root, 'lit-html');
+      const litElementRoot = packageRootFromRoot(root, 'lit-element');
+      const reactiveElementRoot = packageRootFromRoot(
+        root,
+        '@lit/reactive-element',
+      );
+      const ssrRoot = packageRootFromRoot(root, '@lit-labs/ssr');
+      const ssrClientRoot = packageRootFromRoot(root, '@lit-labs/ssr-client');
+      const ssrDomShimRoot = packageRootFromRoot(
+        root,
+        '@lit-labs/ssr-dom-shim',
+      );
+
       return {
         resolve: {
           alias: [
             {
               find: /^lit$/,
-              replacement: resolve(root, 'node_modules/lit/index.js'),
+              replacement: resolveFromRoot(root, 'lit'),
             },
             {
               find: /^lit\/(.*)$/,
-              replacement: resolve(root, 'node_modules/lit/$1'),
+              replacement: `${litRoot}/$1`,
+            },
+            {
+              find: /^lit-html$/,
+              replacement: resolveFromRoot(root, 'lit-html'),
+            },
+            {
+              find: /^lit-html\/(.*)$/,
+              replacement: `${litHtmlRoot}/$1`,
+            },
+            {
+              find: /^lit-element$/,
+              replacement: resolveFromRoot(root, 'lit-element'),
+            },
+            {
+              find: /^lit-element\/(.*)$/,
+              replacement: `${litElementRoot}/$1`,
+            },
+            {
+              find: /^@lit\/reactive-element$/,
+              replacement: resolveFromRoot(root, '@lit/reactive-element'),
+            },
+            {
+              find: /^@lit\/reactive-element\/(.*)$/,
+              replacement: `${reactiveElementRoot}/$1`,
+            },
+            {
+              find: /^@lit-labs\/ssr$/,
+              replacement: resolveFromRoot(root, '@lit-labs/ssr'),
+            },
+            {
+              find: /^@lit-labs\/ssr\/(.*)$/,
+              replacement: `${ssrRoot}/$1`,
             },
             {
               find: /^@lit-labs\/ssr-client$/,
-              replacement: resolve(
-                root,
-                'node_modules/@lit-labs/ssr-client/index.js',
-              ),
+              replacement: resolveFromRoot(root, '@lit-labs/ssr-client'),
             },
             {
               find: /^@lit-labs\/ssr-client\/(.*)$/,
-              replacement: resolve(
-                root,
-                'node_modules/@lit-labs/ssr-client/$1',
-              ),
+              replacement: `${ssrClientRoot}/$1`,
             },
+            {
+              find: /^@lit-labs\/ssr-dom-shim$/,
+              replacement: resolveFromRoot(root, '@lit-labs/ssr-dom-shim'),
+            },
+            {
+              find: /^@lit-labs\/ssr-dom-shim\/(.*)$/,
+              replacement: `${ssrDomShimRoot}/$1`,
+            },
+          ],
+          dedupe: [
+            '@lit-labs/ssr',
+            '@lit-labs/ssr-client',
+            '@lit/reactive-element',
+            'lit',
+            'lit-element',
+            'lit-html',
+          ],
+        },
+        ssr: {
+          noExternal: [
+            '@limette/core',
+            '@lit-labs/ssr',
+            '@lit-labs/ssr-client',
+            '@lit/reactive-element',
+            'lit',
+            'lit-element',
+            'lit-html',
+            'parse5',
+            '@parse5/tools',
+            'entities',
           ],
         },
       };
@@ -119,6 +362,15 @@ export function limette(options: LimetteVitePluginOptions = {}) {
       root = options.root ?? config.root;
     },
     configureServer(server: ViteDevServerLike) {
+      const reloadChangedServerFile = (file: string) => {
+        if (hasDevApp() && isServerFile(file)) {
+          sendFullReload(server);
+        }
+      };
+
+      server.watcher.on('add', reloadChangedServerFile);
+      server.watcher.on('unlink', reloadChangedServerFile);
+
       server.middlewares.use(async (...args) => {
         const [req, res, next] = args as [
           { url?: string },
@@ -169,7 +421,7 @@ export function limette(options: LimetteVitePluginOptions = {}) {
               ServerResponse,
               () => void,
             ];
-            const handler = await getDevHandler();
+            const handler = await getDevHandler(server);
             if (!handler) {
               next();
               return;
@@ -181,6 +433,15 @@ export function limette(options: LimetteVitePluginOptions = {}) {
           },
         );
       };
+    },
+    handleHotUpdate(ctx: HotUpdateContextLike) {
+      if (!hasDevApp() || !isServerFile(ctx.file)) {
+        return;
+      }
+
+      sendFullReload(ctx.server);
+
+      return [];
     },
     resolveId(id: string) {
       if (id === ROUTES_MODULE_ID) {

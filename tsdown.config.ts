@@ -5,7 +5,6 @@ export default {
     node: 'src/node.ts',
     vite: 'src/vite/mod.ts',
     runtime: 'src/runtime/mod.ts',
-    'runtime/refresh': 'src/runtime/refresh.ts',
     'runtime/ssr-client/lit-element-hydrate-support':
       'src/runtime/ssr-client/lit-element-hydrate-support.ts',
     'runtime/ssr-client/lit-element-hydrate-support-patch':

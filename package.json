@@ -45,14 +45,6 @@
       "types": "./dist/runtime.d.mts",
       "default": "./dist/runtime.mjs"
     },
-    "./runtime/refresh": {
-      "types": "./dist/runtime/refresh.d.mts",
-      "default": "./dist/runtime/refresh.mjs"
-    },
-    "./runtime/refresh.ts": {
-      "types": "./dist/runtime/refresh.d.mts",
-      "default": "./dist/runtime/refresh.mjs"
-    },
     "./runtime/ssr-client/lit-element-hydrate-support": {
       "types": "./dist/runtime/ssr-client/lit-element-hydrate-support.d.mts",
       "default": "./dist/runtime/ssr-client/lit-element-hydrate-support.mjs"

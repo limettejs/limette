@@ -1,7 +1,11 @@
+import { join } from 'node:path';
 import { exampleRoot } from './_paths.ts';
 
 const port = 5179;
 const origin = `http://127.0.0.1:${port}`;
+const homeRoutePath = join(exampleRoot, 'routes/index.js');
+const originalHomeRoute = await Deno.readTextFile(homeRoutePath);
+let homeRouteChanged = false;
 const command = new Deno.Command(Deno.execPath(), {
   args: [
     'run',
@@ -19,9 +23,10 @@ const command = new Deno.Command(Deno.execPath(), {
   ],
   cwd: exampleRoot,
   stdout: 'null',
-  stderr: 'null',
+  stderr: 'piped',
 });
 const child = command.spawn();
+const stderr = new Response(child.stderr).text();
 
 try {
   let pageResponse: Response | undefined;
@@ -39,10 +44,16 @@ try {
   }
 
   if (!pageResponse?.ok) {
+    try {
+      child.kill('SIGTERM');
+    } catch {
+      // The process may already have exited if startup failed.
+    }
+
     throw new Error(
       `Expected Vite dev server to render the page. Last error: ${
         lastError instanceof Error ? lastError.message : String(lastError)
-      }`,
+      }\nVite stderr:\n${await stderr}`,
     );
   }
 
@@ -80,11 +91,48 @@ try {
   if (!recoveryResponse.ok) {
     throw new Error('Expected dev server to keep running after a 404.');
   }
+
+  const updatedHomeRoute = originalHomeRoute.replace(
+    'SSR content',
+    'SSR content changed by Vite dev smoke',
+  );
+
+  if (updatedHomeRoute === originalHomeRoute) {
+    throw new Error('Expected home route fixture to contain SSR content.');
+  }
+
+  await Deno.writeTextFile(homeRoutePath, updatedHomeRoute);
+  homeRouteChanged = true;
+
+  let updatedHtml = '';
+
+  for (let i = 0; i < 40; i++) {
+    const updatedResponse = await fetch(`${origin}/`);
+    updatedHtml = await updatedResponse.text();
+
+    if (
+      updatedResponse.ok &&
+      updatedHtml.includes('SSR content changed by Vite dev smoke')
+    ) {
+      break;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  if (!updatedHtml.includes('SSR content changed by Vite dev smoke')) {
+    throw new Error('Expected changed server route code to be reloaded.');
+  }
 } finally {
+  if (homeRouteChanged) {
+    await Deno.writeTextFile(homeRoutePath, originalHomeRoute);
+  }
+
   try {
     child.kill('SIGTERM');
   } catch {
     // The process may already have exited if startup failed.
   }
   await child.status;
+  await stderr;
 }

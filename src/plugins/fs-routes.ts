@@ -8,6 +8,7 @@ export interface FsRoutesViteOptions {
   outDir?: string;
   base?: string;
   devServerOrigin?: string;
+  devTagNameSuffix?: string;
   manifestPath?: string;
   serveAssets?: boolean;
 }
@@ -19,7 +20,8 @@ export interface FsRoutesPluginOptions {
 }
 
 function defaultLoadFile(root = cwd()) {
-  return (path: string) => import(pathToFileURL(resolve(root, path)).href);
+  return (path: string) =>
+    import(/* @vite-ignore */ pathToFileURL(resolve(root, path)).href);
 }
 
 export function fsRoutes(app: App, options: FsRoutesPluginOptions = {}) {

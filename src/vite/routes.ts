@@ -16,6 +16,7 @@ export type LoadViteBuildRoutesOptions = ResolveClientAssetsOptions & {
 export type LoadViteDevRoutesOptions = DiscoverRoutesOptions & {
   loadFile: (path: string) => Promise<unknown>;
   devServerOrigin?: string;
+  tagNameSuffix?: string;
 };
 
 function routeTagName(path: string, id: string) {
@@ -25,6 +26,11 @@ function routeTagName(path: string, id: string) {
     .replace(/-+/g, '-')
     .replace(/^-+|-+$/g, '')
     .toLowerCase();
+}
+
+function devRouteTagName(path: string, id: string, suffix?: string) {
+  const tagName = routeTagName(path, id);
+  return suffix ? `${tagName}-${suffix}` : tagName;
 }
 
 function relativeRouteFile(path: string) {
@@ -126,7 +132,11 @@ export async function loadViteDevRoutes(
         relativeFilePath: relativeRouteFile(route.routeFile),
         absoluteFilePath: resolve(root, route.routeFile),
         routeModule,
-        tagName: routeTagName(route.path, route.id),
+        tagName: devRouteTagName(
+          route.path,
+          route.id,
+          options.tagNameSuffix,
+        ),
         jsAssetContent: undefined,
         jsAssetPath,
         jsAssetPaths: jsAssetPath ? [jsAssetPath] : undefined,
