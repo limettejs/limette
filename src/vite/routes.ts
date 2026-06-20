@@ -1,7 +1,7 @@
 import { resolve } from 'node:path';
 import { discoverRoutes } from './manifest.ts';
 import { resolveClientAssets } from './assets.ts';
-import { clientEntryDevPath } from './plugin.ts';
+import { clientEntryDevPath } from './client-entry.ts';
 import type { ResolveClientAssetsOptions } from './assets.ts';
 import type { DiscoverRoutesOptions } from './manifest.ts';
 import type { BuildRoute } from '../server/route.ts';
