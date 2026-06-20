@@ -1,6 +1,7 @@
 import { App } from '../../src/mod.ts';
 import { setFsRoutes } from '../../src/server/fs.ts';
 import { exampleRoot } from './_paths.ts';
+import { viteCommand } from './_vite-command.ts';
 
 const outDir = '.vite-limette-builder-client';
 const app = new App().fsRoutes({
@@ -10,21 +11,13 @@ const app = new App().fsRoutes({
   },
 });
 
-const command = new Deno.Command(Deno.execPath(), {
-  args: [
-    'run',
-    '-A',
-    'npm:vite@^8.0.0',
-    '--config',
-    'vite.config.ts',
-    'build',
-    '--outDir',
-    outDir,
-  ],
-  cwd: exampleRoot,
-  stdout: 'null',
-  stderr: 'piped',
-});
+const command = viteCommand([
+  '--config',
+  'vite.config.ts',
+  'build',
+  '--outDir',
+  outDir,
+]);
 const output = await command.output();
 
 if (!output.success) {

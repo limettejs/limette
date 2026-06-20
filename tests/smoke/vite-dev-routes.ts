@@ -1,6 +1,7 @@
 import { App } from '../../src/mod.ts';
 import { setFsRoutes } from '../../src/server/fs.ts';
 import { exampleRoot } from './_paths.ts';
+import { viteCommand } from './_vite-command.ts';
 
 const port = 5178;
 const origin = `http://127.0.0.1:${port}`;
@@ -27,20 +28,15 @@ if (!scriptPath?.startsWith(`${origin}/@limette/client-entry/`)) {
   throw new Error('Expected SSR output to include a Vite dev client entry.');
 }
 
-const command = new Deno.Command(Deno.execPath(), {
-  args: [
-    'run',
-    '-A',
-    'npm:vite@^8.0.0',
-    '--config',
-    'vite.config.ts',
-    '--host',
-    '127.0.0.1',
-    '--port',
-    String(port),
-    '--strictPort',
-  ],
-  cwd: exampleRoot,
+const command = viteCommand([
+  '--config',
+  'vite.config.ts',
+  '--host',
+  '127.0.0.1',
+  '--port',
+  String(port),
+  '--strictPort',
+], {
   stdout: 'null',
   stderr: 'null',
 });

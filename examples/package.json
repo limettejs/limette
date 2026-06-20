@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
+    "test:routes": "vite --config vite.config.ts build --ssr ../tests/smoke/vite-routes.ts --outDir .vite-limette-smoke",
     "start": "node main.js",
     "start:deno": "deno run -A main.js"
   },

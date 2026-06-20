@@ -1,22 +1,14 @@
 import { serve } from '../../src/node.ts';
 import { app } from '../../examples/app.js';
-import { exampleRoot } from './_paths.ts';
+import { viteCommand } from './_vite-command.ts';
 
 const port = 5180;
 
-const command = new Deno.Command(Deno.execPath(), {
-  args: [
-    'run',
-    '-A',
-    'npm:vite@^8.0.0',
-    '--config',
-    'vite.config.ts',
-    'build',
-  ],
-  cwd: exampleRoot,
-  stdout: 'null',
-  stderr: 'piped',
-});
+const command = viteCommand([
+  '--config',
+  'vite.config.ts',
+  'build',
+]);
 const output = await command.output();
 
 if (!output.success) {

@@ -1,6 +1,11 @@
-import { existsSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
+
+type Alias = {
+  find: RegExp;
+  replacement: string;
+};
 
 function packageName(specifier: string) {
   const segments = specifier.split('/');
@@ -9,141 +14,127 @@ function packageName(specifier: string) {
     : segments[0];
 }
 
-function packageSubpath(specifier: string) {
-  const name = packageName(specifier);
-  return specifier.slice(name.length).replace(/^\/+/, '');
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function denoNodeModulePath(root: string, specifier: string) {
-  const name = packageName(specifier);
-  const subpath = packageSubpath(specifier);
-  return resolve(
-    root,
-    'node_modules/.deno/node_modules',
-    name,
-    subpath,
-  );
-}
-
-function resolveFromRoot(root: string, specifier: string) {
-  const require = createRequire(resolve(root, 'package.json'));
-
-  try {
-    return require.resolve(specifier);
-  } catch {
-    return denoNodeModulePath(root, specifier);
-  }
+function resolveWith(require: NodeRequire, specifier: string) {
+  return realpathSync(require.resolve(specifier));
 }
 
 function findPackageRoot(path: string) {
   if (existsSync(resolve(path, 'package.json'))) {
-    return path;
+    return realpathSync(path);
   }
 
   let current = dirname(path);
 
   while (current !== dirname(current)) {
     if (existsSync(resolve(current, 'package.json'))) {
-      return current;
+      return realpathSync(current);
     }
 
     current = dirname(current);
   }
 
-  return dirname(path);
+  return realpathSync(dirname(path));
 }
 
-function packageRootFromRoot(root: string, specifier: string) {
+function resolveFromRoot(root: string, specifier: string) {
+  const require = createRequire(resolve(root, 'package.json'));
+  return resolveWith(require, specifier);
+}
+
+function resolveFromPackages(
+  root: string,
+  specifier: string,
+  fromSpecifiers: string[],
+) {
+  try {
+    return resolveFromRoot(root, specifier);
+  } catch (rootError) {
+    for (const fromSpecifier of fromSpecifiers) {
+      try {
+        const fromRoot = packageRootFromRoot(root, fromSpecifier);
+        const require = createRequire(resolve(fromRoot, 'package.json'));
+        return resolveWith(require, specifier);
+      } catch {
+        // Try the next importer package.
+      }
+    }
+
+    throw rootError;
+  }
+}
+
+function packageRootFromRoot(
+  root: string,
+  specifier: string,
+  fromSpecifiers: string[] = [],
+) {
   const name = packageName(specifier);
   const require = createRequire(resolve(root, 'package.json'));
 
   try {
-    const packageJsonPath = require.resolve(`${name}/package.json`);
-    return packageJsonPath.slice(0, -'/package.json'.length);
+    return dirname(resolveWith(require, `${name}/package.json`));
   } catch {
-    try {
-      return findPackageRoot(resolveFromRoot(root, name));
-    } catch {
-      return denoNodeModulePath(root, name);
-    }
+    return findPackageRoot(resolveFromPackages(root, name, fromSpecifiers));
   }
 }
 
-export function litResolution(root: string) {
-  const litRoot = packageRootFromRoot(root, 'lit');
-  const litHtmlRoot = packageRootFromRoot(root, 'lit-html');
-  const litElementRoot = packageRootFromRoot(root, 'lit-element');
-  const reactiveElementRoot = packageRootFromRoot(
-    root,
-    '@lit/reactive-element',
-  );
-  const ssrRoot = packageRootFromRoot(root, '@lit-labs/ssr');
-  const ssrClientRoot = packageRootFromRoot(root, '@lit-labs/ssr-client');
-  const ssrDomShimRoot = packageRootFromRoot(
-    root,
-    '@lit-labs/ssr-dom-shim',
-  );
+function addPackageAlias(aliases: Alias[], root: string, specifier: string) {
+  const aliasSources: Record<string, string[]> = {
+    'lit-html': ['lit', '@lit-labs/ssr'],
+    'lit-element': ['lit'],
+    '@lit/reactive-element': ['lit', 'lit-element', '@lit-labs/ssr'],
+    '@lit-labs/ssr-dom-shim': ['@lit-labs/ssr', '@lit-labs/ssr-client'],
+  };
+  const fromSpecifiers = aliasSources[specifier] ?? [];
 
+  try {
+    const packageRoot = packageRootFromRoot(root, specifier, fromSpecifiers);
+    const pattern = escapeRegExp(specifier);
+
+    aliases.push(
+      {
+        find: new RegExp(`^${pattern}$`),
+        replacement: resolveFromPackages(root, specifier, fromSpecifiers),
+      },
+      {
+        find: new RegExp(`^${pattern}/(.*)$`),
+        replacement: `${packageRoot}/$1`,
+      },
+    );
+  } catch {
+    // Some package managers do not expose transitive packages at the app root.
+    // Vite's dedupe/noExternal settings below still keep SSR bundling coherent.
+  }
+}
+
+function litAliases(root: string) {
+  const aliases: Alias[] = [];
+
+  for (
+    const specifier of [
+      'lit',
+      'lit-html',
+      'lit-element',
+      '@lit/reactive-element',
+      '@lit-labs/ssr',
+      '@lit-labs/ssr-client',
+      '@lit-labs/ssr-dom-shim',
+    ]
+  ) {
+    addPackageAlias(aliases, root, specifier);
+  }
+
+  return aliases;
+}
+
+export function litResolution(root: string) {
   return {
     resolve: {
-      alias: [
-        {
-          find: /^lit$/,
-          replacement: resolveFromRoot(root, 'lit'),
-        },
-        {
-          find: /^lit\/(.*)$/,
-          replacement: `${litRoot}/$1`,
-        },
-        {
-          find: /^lit-html$/,
-          replacement: resolveFromRoot(root, 'lit-html'),
-        },
-        {
-          find: /^lit-html\/(.*)$/,
-          replacement: `${litHtmlRoot}/$1`,
-        },
-        {
-          find: /^lit-element$/,
-          replacement: resolveFromRoot(root, 'lit-element'),
-        },
-        {
-          find: /^lit-element\/(.*)$/,
-          replacement: `${litElementRoot}/$1`,
-        },
-        {
-          find: /^@lit\/reactive-element$/,
-          replacement: resolveFromRoot(root, '@lit/reactive-element'),
-        },
-        {
-          find: /^@lit\/reactive-element\/(.*)$/,
-          replacement: `${reactiveElementRoot}/$1`,
-        },
-        {
-          find: /^@lit-labs\/ssr$/,
-          replacement: resolveFromRoot(root, '@lit-labs/ssr'),
-        },
-        {
-          find: /^@lit-labs\/ssr\/(.*)$/,
-          replacement: `${ssrRoot}/$1`,
-        },
-        {
-          find: /^@lit-labs\/ssr-client$/,
-          replacement: resolveFromRoot(root, '@lit-labs/ssr-client'),
-        },
-        {
-          find: /^@lit-labs\/ssr-client\/(.*)$/,
-          replacement: `${ssrClientRoot}/$1`,
-        },
-        {
-          find: /^@lit-labs\/ssr-dom-shim$/,
-          replacement: resolveFromRoot(root, '@lit-labs/ssr-dom-shim'),
-        },
-        {
-          find: /^@lit-labs\/ssr-dom-shim\/(.*)$/,
-          replacement: `${ssrDomShimRoot}/$1`,
-        },
-      ],
+      alias: litAliases(root),
       dedupe: [
         '@lit-labs/ssr',
         '@lit-labs/ssr-client',

@@ -1,27 +1,23 @@
 import { join } from 'node:path';
 import { exampleRoot } from './_paths.ts';
+import { viteCommand } from './_vite-command.ts';
 
 const port = 5179;
 const origin = `http://127.0.0.1:${port}`;
 const homeRoutePath = join(exampleRoot, 'routes/index.js');
 const originalHomeRoute = await Deno.readTextFile(homeRoutePath);
 let homeRouteChanged = false;
-const command = new Deno.Command(Deno.execPath(), {
-  args: [
-    'run',
-    '-A',
-    'npm:vite@^8.0.0',
-    '--config',
-    'vite.config.ts',
-    '--host',
-    '127.0.0.1',
-    '--port',
-    String(port),
-    '--strictPort',
-    '--logLevel',
-    'error',
-  ],
-  cwd: exampleRoot,
+const command = viteCommand([
+  '--config',
+  'vite.config.ts',
+  '--host',
+  '127.0.0.1',
+  '--port',
+  String(port),
+  '--strictPort',
+  '--logLevel',
+  'error',
+], {
   stdout: 'null',
   stderr: 'piped',
 });
