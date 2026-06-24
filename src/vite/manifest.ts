@@ -102,7 +102,7 @@ function routePathForFile(file: string, routesPath: string) {
 function directoriesForRouteFile(file: string, routesPath: string) {
   const relativeFile = normalizePath(relative(routesPath, file));
   const segments = relativeFile.split('/').slice(0, -1);
-  const directories: string[] = [];
+  const directories: string[] = [''];
   let current = '';
 
   for (const segment of segments) {

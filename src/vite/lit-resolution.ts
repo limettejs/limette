@@ -121,7 +121,6 @@ function litAliases(root: string) {
       'lit-element',
       '@lit/reactive-element',
       '@lit-labs/ssr',
-      '@lit-labs/ssr-client',
       '@lit-labs/ssr-dom-shim',
     ]
   ) {

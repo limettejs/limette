@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 export type IslandImport = {
@@ -13,6 +13,9 @@ type ImportBinding = {
   local: string;
   moduleSpecifier: string;
 };
+
+const MODULE_EXTENSIONS = ['', '.ts', '.js'];
+const INDEX_MODULES = ['index.ts', 'index.js'];
 
 function normalizePath(path: string) {
   return path.split(sep).join('/');
@@ -192,21 +195,113 @@ function resolveIslandImport({
   return `/${normalizePath(relative(root, resolved))}`;
 }
 
-export async function discoverIslandImportsForFile({
+async function fileExists(path: string) {
+  try {
+    const info = await stat(path);
+    return info.isFile();
+  } catch {
+    return false;
+  }
+}
+
+function stripImportQuery(moduleSpecifier: string) {
+  return moduleSpecifier.split(/[?#]/, 1)[0];
+}
+
+function isInsideRoot(root: string, path: string) {
+  const relativePath = relative(root, path);
+  return relativePath === '' ||
+    (!relativePath.startsWith('..') && !isAbsolute(relativePath));
+}
+
+async function resolveLocalModuleFile({
+  root,
+  sourceFile,
+  moduleSpecifier,
+}: {
+  root: string;
+  sourceFile: string;
+  moduleSpecifier: string;
+}) {
+  const specifier = stripImportQuery(moduleSpecifier);
+
+  if (!specifier.startsWith('.') && !specifier.startsWith('/')) {
+    return undefined;
+  }
+
+  const resolved = specifier.startsWith('/')
+    ? join(root, specifier)
+    : resolve(dirname(sourceFile), specifier);
+
+  if (!isInsideRoot(root, resolved)) {
+    return undefined;
+  }
+
+  for (const extension of MODULE_EXTENSIONS) {
+    const candidate = `${resolved}${extension}`;
+    if (await fileExists(candidate)) {
+      return normalizePath(relative(root, candidate));
+    }
+  }
+
+  for (const indexModule of INDEX_MODULES) {
+    const candidate = join(resolved, indexModule);
+    if (await fileExists(candidate)) {
+      return normalizePath(relative(root, candidate));
+    }
+  }
+
+  return undefined;
+}
+
+async function discoverIslandImportsForFileInternal({
   root,
   file,
+  visited,
 }: {
   root: string;
   file: string;
+  visited: Set<string>;
 }) {
   const sourceFile = isAbsolute(file) ? file : join(root, file);
-  const code = await readFile(sourceFile, 'utf8');
-  const islandsBlocks = getStaticIslandsBlocks(code);
-  if (!islandsBlocks.length) return [];
+  const sourceKey = normalizePath(relative(root, sourceFile));
 
-  const imports: IslandImport[] = [];
-  const islandEntries = getStaticIslandEntries(islandsBlocks);
+  if (visited.has(sourceKey)) {
+    return [];
+  }
+
+  visited.add(sourceKey);
+
+  const code = await readFile(sourceFile, 'utf8');
   const importBindings = getImportBindings(code);
+  const islandsBlocks = getStaticIslandsBlocks(code);
+  const imports: IslandImport[] = [];
+
+  const importedFiles = await Promise.all(
+    importBindings.map((binding) =>
+      resolveLocalModuleFile({
+        root,
+        sourceFile,
+        moduleSpecifier: binding.moduleSpecifier,
+      })
+    ),
+  );
+
+  for (const importedFile of importedFiles) {
+    if (!importedFile) continue;
+
+    imports.push(
+      ...await discoverIslandImportsForFileInternal({
+        root,
+        file: importedFile,
+        visited,
+      }),
+    );
+  }
+
+  if (!islandsBlocks.length) return imports;
+
+  const islandEntries = getStaticIslandEntries(islandsBlocks);
 
   for (const binding of importBindings) {
     const islandEntry = islandEntries.find((entry) =>
@@ -232,6 +327,20 @@ export async function discoverIslandImportsForFile({
   return imports;
 }
 
+export async function discoverIslandImportsForFile({
+  root,
+  file,
+}: {
+  root: string;
+  file: string;
+}) {
+  return await discoverIslandImportsForFileInternal({
+    root,
+    file,
+    visited: new Set(),
+  });
+}
+
 export async function discoverIslandImportsForFiles({
   root,
   files,
@@ -241,7 +350,13 @@ export async function discoverIslandImportsForFiles({
 }) {
   const imports = (
     await Promise.all(
-      files.map((file) => discoverIslandImportsForFile({ root, file })),
+      files.map((file) =>
+        discoverIslandImportsForFileInternal({
+          root,
+          file,
+          visited: new Set(),
+        })
+      ),
     )
   ).flat();
   const seen = new Set<string>();
