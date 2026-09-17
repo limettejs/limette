@@ -1,18 +1,17 @@
 import { App } from '../../src/mod.ts';
-import { setFsRoutes } from '../../src/server/fs.ts';
-import { exampleRoot } from './_paths.ts';
+import { materializeDevRoutes } from '../../src/vite/routes.ts';
+import { exampleRoot, loadExampleFile } from './_paths.ts';
 import { viteCommand } from './_vite-command.ts';
 
 const port = 5178;
 const origin = `http://127.0.0.1:${port}`;
-const app = new App({ mode: 'development' }).fsRoutes({
-  vite: {
-    root: exampleRoot,
-    devServerOrigin: origin,
-  },
-});
+const app = new App().fsRoutes();
 
-await setFsRoutes(app);
+await materializeDevRoutes(app, {
+  root: exampleRoot,
+  devServerOrigin: origin,
+  loadFile: loadExampleFile,
+});
 
 const response = await app.handler()(
   new Request('http://localhost/'),
@@ -26,6 +25,22 @@ if (response.status !== 200) {
 
 if (!scriptPath?.startsWith(`${origin}/@limette/client-entry/`)) {
   throw new Error('Expected SSR output to include a Vite dev client entry.');
+}
+
+let undeclaredLoadAttempted = false;
+const appWithoutFsRoutes = new App();
+await materializeDevRoutes(appWithoutFsRoutes, {
+  root: exampleRoot,
+  loadFile: async () => {
+    undeclaredLoadAttempted = true;
+    throw new Error('An app without fsRoutes() must not load route modules.');
+  },
+});
+const undeclaredResponse = await appWithoutFsRoutes.handler()(
+  new Request('http://localhost/'),
+);
+if (undeclaredLoadAttempted || undeclaredResponse.status !== 404) {
+  throw new Error('Vite dev materialized routes without fsRoutes().');
 }
 
 const command = viteCommand([

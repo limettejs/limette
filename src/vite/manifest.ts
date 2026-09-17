@@ -123,6 +123,33 @@ function findInheritedFiles(
     .filter((file): file is string => Boolean(file));
 }
 
+function routeSpecificity(path: string) {
+  const isDynamic = path.includes(':') || path.includes('*') ||
+    path.includes('{');
+  const wildcardCount = (path.match(/[:*]/g) ?? []).length;
+
+  return { isDynamic, wildcardCount };
+}
+
+function compareRoutesBySpecificity(
+  a: LimetteRouteManifestEntry,
+  b: LimetteRouteManifestEntry,
+) {
+  const aSpecificity = routeSpecificity(a.path);
+  const bSpecificity = routeSpecificity(b.path);
+
+  if (aSpecificity.isDynamic !== bSpecificity.isDynamic) {
+    return aSpecificity.isDynamic ? 1 : -1;
+  }
+
+  if (!aSpecificity.isDynamic && !bSpecificity.isDynamic) {
+    return a.path.length - b.path.length || a.path.localeCompare(b.path);
+  }
+
+  return aSpecificity.wildcardCount - bSpecificity.wildcardCount ||
+    a.path.localeCompare(b.path);
+}
+
 export async function discoverRoutes(
   options: DiscoverRoutesOptions = {},
 ): Promise<LimetteRouteManifest> {
@@ -203,7 +230,7 @@ export async function discoverRoutes(
         islandImports: [],
       };
     })
-    .sort((a, b) => a.path.localeCompare(b.path));
+    .sort(compareRoutesBySpecificity);
 
   const duplicate = routes.find((route, index) =>
     routes.findIndex((candidate) => candidate.path === route.path) !== index

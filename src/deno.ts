@@ -1,13 +1,16 @@
-import { prepareApp } from './server/serve.ts';
-import type { App } from './server/app.ts';
+import { staticDirectoryHandler } from './adapters/deno-static-files.ts';
+import type { StaticDirectoryHandlerOptions } from './adapters/static-files.ts';
+import type { AppHandler } from './server/app.ts';
 
 export type ServeOptions =
   & Partial<
     Deno.ServeTcpOptions & Deno.TlsCertifiedKeyPem
   >
   & {
-    remoteAddress?: string;
+    staticFiles?: StaticDirectoryHandlerOptions;
   };
+
+export type { StaticDirectoryHandlerOptions };
 
 function logStarted(t0: number, port: number) {
   const duration = ((performance.now() - t0) / 1000).toFixed(2);
@@ -40,27 +43,32 @@ function normalizeOptions(options: ServeOptions): ServeOptions {
   };
 }
 
-export async function serve(app: App, options: ServeOptions = {}) {
+export async function serve(
+  handler: AppHandler,
+  options: ServeOptions = {},
+) {
   const t0 = performance.now();
-
-  await prepareApp(app);
-
-  const handler = app.handler();
-  const serveOptions = normalizeOptions(options);
+  const { staticFiles, ...denoOptions } = options;
+  const serveOptions = normalizeOptions(denoOptions);
+  const serveStatic = staticFiles
+    ? staticDirectoryHandler(staticFiles)
+    : undefined;
+  const hostedHandler: Deno.ServeHandler = async (request, info) =>
+    await serveStatic?.(request) ?? await handler(request, info);
 
   if (serveOptions.port) {
-    Deno.serve(serveOptions, handler);
+    const server = Deno.serve(serveOptions, hostedHandler);
     logStarted(t0, serveOptions.port);
-    return;
+    return server;
   }
 
   let firstError;
   for (let port = 8000; port < 8020; port++) {
     try {
-      Deno.serve({ ...serveOptions, port }, handler);
+      const server = Deno.serve({ ...serveOptions, port }, hostedHandler);
       firstError = undefined;
       logStarted(t0, port);
-      return;
+      return server;
     } catch (err) {
       if (err instanceof Deno.errors.AddrInUse) {
         if (!firstError) firstError = err;

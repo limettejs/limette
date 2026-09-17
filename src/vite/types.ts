@@ -19,3 +19,10 @@ export type HotUpdateContextLike = {
   file: string;
   server: ViteDevServerLike;
 };
+
+export type PluginContextLike = {
+  resolve: (
+    id: string,
+    importer?: string,
+  ) => Promise<{ id: string } | null>;
+};

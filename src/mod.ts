@@ -1,9 +1,5 @@
 export { App } from './server/app.ts';
 export type { AppHandler } from './server/app.ts';
-export type { ServeOptions } from './server/runtime-serve.ts';
-export { fsRoutes } from './plugins/fs-routes.ts';
-export { tailwind } from './plugins/tailwind.ts';
-export { staticFiles } from './server/static-files.ts';
 export { ContextMixin } from './server/context.ts';
 export {
   AppComponent,
@@ -16,10 +12,7 @@ export type { Cookie } from './server/cookies.ts';
 export { HttpError } from './server/error.ts';
 export type { Context } from './server/context.ts';
 export type { AppWrapperComponent, AppWrapperOptions } from './server/ssr.ts';
-export type {
-  RouteConfig,
-  RouteModule,
-} from './server/router.ts';
+export type { RouteConfig, RouteModule } from './server/router.ts';
 export type { Handlers } from './server/handlers.ts';
 export type { MiddlewareFn } from './server/middlewares.ts';
 export type {

@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { discoverRoutes } from './manifest.ts';
-import type { DiscoverRoutesOptions } from './manifest.ts';
+import { clientEntryName } from './client-entry.ts';
+import type { LimetteRouteManifest } from './manifest.ts';
+import type { ServerEntryAssets } from './server-entry.ts';
 
 export type ViteManifestChunk = {
   file: string;
@@ -14,7 +14,7 @@ export type ViteManifestChunk = {
 
 export type ViteManifest = Record<string, ViteManifestChunk>;
 
-export type RouteClientAssets = {
+type RouteClientAssets = {
   routeId: string;
   routePath: string;
   entry: string | undefined;
@@ -22,15 +22,13 @@ export type RouteClientAssets = {
   styles: string[];
 };
 
-export type ResolveClientAssetsOptions = DiscoverRoutesOptions & {
-  outDir?: string;
-  base?: string;
-  manifestPath?: string;
+export type ReadViteManifestOptions = {
+  manifestPath: string;
 };
 
 function joinUrl(base: string, path: string) {
   const normalizedBase = base.endsWith('/') ? base : `${base}/`;
-  return `${normalizedBase}${path}`.replace(/([^:])\/+/g, '$1/');
+  return `${normalizedBase}${path.replace(/^\/+/, '')}`;
 }
 
 function collectImportedAssets({
@@ -69,28 +67,78 @@ function collectImportedAssets({
 }
 
 export async function readViteManifest(
-  options: ResolveClientAssetsOptions = {},
+  options: ReadViteManifestOptions,
 ) {
-  const root = options.root ?? process.cwd();
-  const manifestPath = options.manifestPath ??
-    join(root, options.outDir ?? 'dist', '.vite/manifest.json');
-  const content = await readFile(manifestPath, 'utf8');
+  const content = await readFile(options.manifestPath, 'utf8');
 
   return JSON.parse(content) as ViteManifest;
 }
 
-export async function resolveClientAssets(
-  options: ResolveClientAssetsOptions = {},
-) {
-  const base = options.base ?? '/';
-  const [routeManifest, viteManifest] = await Promise.all([
-    discoverRoutes(options),
-    readViteManifest(options),
-  ]);
+interface ResolveRouteClientAssetsOptions {
+  routeManifest: LimetteRouteManifest;
+  viteManifest: ViteManifest;
+  base: string;
+  manifestPath: string;
+}
+
+function resolveRouteClientAssets(
+  options: ResolveRouteClientAssetsOptions,
+): RouteClientAssets[] {
+  const { routeManifest, viteManifest, base, manifestPath } = options;
+  const routesById = new Map(
+    routeManifest.routes.map((route) => [route.id, route]),
+  );
+  const expectedRouteIds = new Set(
+    routeManifest.routes
+      .filter((route) => route.islandImports.length > 0)
+      .map((route) => route.id),
+  );
+
+  for (const chunk of Object.values(viteManifest)) {
+    if (!chunk.isEntry || !chunk.name?.startsWith('limette-route-')) continue;
+
+    const routeId = chunk.name.slice('limette-route-'.length);
+    if (!routeId || !/^[a-zA-Z0-9_-]+$/.test(routeId)) {
+      throw new Error(
+        `Malformed Limette client entry identity "${chunk.name}" in Vite manifest "${manifestPath}".`,
+      );
+    }
+
+    const route = routesById.get(routeId);
+    if (!route) {
+      throw new Error(
+        `Unknown or stale Limette client entry "${chunk.name}" for route ID "${routeId}" in Vite manifest "${manifestPath}".`,
+      );
+    }
+
+    if (!expectedRouteIds.has(routeId)) {
+      throw new Error(
+        `Unexpected Limette client entry "${chunk.name}" for non-island route "${route.path}" (${routeId}) in Vite manifest "${manifestPath}".`,
+      );
+    }
+  }
 
   return routeManifest.routes.map((route): RouteClientAssets => {
-    const manifestKey = `virtual:limette/client-entry/${route.id}`;
-    const entryChunk = viteManifest[manifestKey];
+    const expectedEntryName = clientEntryName(route.id);
+    const matchingEntries = Object.entries(viteManifest).filter(([, chunk]) =>
+      chunk.isEntry && chunk.name === expectedEntryName
+    );
+
+    if (matchingEntries.length > 1) {
+      throw new Error(
+        `Vite manifest "${manifestPath}" contains multiple entries named "${expectedEntryName}" for Limette route "${route.path}" (${route.id}).`,
+      );
+    }
+
+    const [entryManifestKey, entryChunk] = matchingEntries[0] ?? [];
+
+    if (route.islandImports.length > 0 && !entryChunk) {
+      throw new Error(
+        `Missing Vite client entry "${expectedEntryName}" for Limette route "${route.path}" (${route.id}) in manifest "${manifestPath}". ` +
+          'Build with clientEntryInputs() and resolve assets from the resulting Vite manifest.',
+      );
+    }
+
     const scripts = new Set<string>();
     const styles = new Set<string>();
 
@@ -101,7 +149,7 @@ export async function resolveClientAssets(
         chunk: entryChunk,
         scripts,
         styles,
-        seen: new Set([manifestKey]),
+        seen: new Set(entryManifestKey ? [entryManifestKey] : []),
       });
     }
 
@@ -113,4 +161,32 @@ export async function resolveClientAssets(
       styles: Array.from(styles).map((asset) => joinUrl(base, asset)),
     };
   });
+}
+
+export interface ResolveServerEntryAssetsOptions {
+  readonly manifest: ViteManifest;
+  readonly routes: LimetteRouteManifest;
+  readonly base?: string;
+  readonly manifestPath: string;
+}
+
+export function resolveServerEntryAssets(
+  options: ResolveServerEntryAssetsOptions,
+): ServerEntryAssets {
+  const routeAssets = resolveRouteClientAssets({
+    routeManifest: options.routes,
+    viteManifest: options.manifest,
+    base: options.base ?? '/',
+    manifestPath: options.manifestPath,
+  });
+
+  return new Map(
+    routeAssets.map((assets) => [
+      assets.routeId,
+      {
+        scripts: assets.entry ? [assets.entry] : [],
+        styles: assets.styles,
+      },
+    ]),
+  );
 }

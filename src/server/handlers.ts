@@ -1,4 +1,4 @@
-import type { BuildRoute } from './route.ts';
+import type { RuntimeRouteDefinition } from './route.ts';
 import type { Context } from './context.ts';
 import { HttpError } from './error.ts';
 import type { MiddlewareFn } from './middlewares.ts';
@@ -15,7 +15,7 @@ export interface Handlers {
 }
 
 export function handlersForRoute(
-  route: BuildRoute,
+  route: RuntimeRouteDefinition,
   AppWrapper: AppWrapperComponentClass,
 ) {
   const handlers: Handlers = {};

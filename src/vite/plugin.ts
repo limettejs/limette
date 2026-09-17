@@ -1,30 +1,125 @@
 import { discoverRoutes } from './manifest.ts';
 import { litResolution } from './lit-resolution.ts';
 import { createLimetteDevServer } from './dev-server.ts';
+import { clientEntryInputs } from './client-entries.ts';
+import { readViteManifest, resolveServerEntryAssets } from './assets.ts';
 import {
   CLIENT_ENTRY_MODULE_PREFIX,
   configureClientEntryMiddleware,
   RESOLVED_CLIENT_ENTRY_MODULE_PREFIX,
 } from './client-entry.ts';
-import type { LimetteDevOptions } from './dev-server.ts';
-import type { HotUpdateContextLike, ViteDevServerLike } from './types.ts';
+import type {
+  HotUpdateContextLike,
+  PluginContextLike,
+  ViteDevServerLike,
+} from './types.ts';
+import {
+  generateServerEntry,
+  RESOLVED_SERVER_ENTRY_MODULE_ID,
+  SERVER_ENTRY_MODULE_ID,
+  SERVER_RUNTIME_MODULE_ID,
+} from './server-entry.ts';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROUTES_MODULE_ID = 'virtual:limette/routes';
-const RESOLVED_ROUTES_MODULE_ID = `\0${ROUTES_MODULE_ID}`;
+export interface LimetteOptions {
+  app: string;
+  routesDir?: string;
+}
 
-export type LimetteVitePluginOptions = LimetteDevOptions;
+type UserConfigLike = {
+  root?: string;
+  base?: string;
+};
 
-export function limette(options: LimetteVitePluginOptions = {}) {
-  let root = options.root ?? process.cwd();
-  const devServer = createLimetteDevServer(options);
+type ConfigEnvLike = {
+  command: 'build' | 'serve';
+};
+
+function serverRuntimePath() {
+  const sourcePath = fileURLToPath(
+    new URL('../server-runtime.ts', import.meta.url),
+  );
+  if (existsSync(sourcePath)) return sourcePath;
+
+  return fileURLToPath(
+    new URL('./internal/server-runtime.mjs', import.meta.url),
+  );
+}
+
+export function limette(options: LimetteOptions) {
+  let root = process.cwd();
+  let base = '/';
+  const devServer = createLimetteDevServer({
+    routesDir: options.routesDir,
+    dev: { appModule: options.app },
+  });
 
   return {
     name: 'limette',
-    config() {
-      return litResolution(root);
+    async config(config: UserConfigLike, env: ConfigEnvLike) {
+      root = resolve(config.root ?? root);
+      base = config.base ?? '/';
+      const resolution = litResolution(root);
+
+      if (env.command !== 'build') {
+        return { ...resolution, appType: 'custom' as const };
+      }
+
+      const clientInputs = await clientEntryInputs({
+        root,
+        routesDir: options.routesDir,
+      });
+
+      return {
+        resolve: resolution.resolve,
+        appType: 'custom',
+        builder: {},
+        environments: {
+          client: {
+            consumer: 'client',
+            build: {
+              outDir: 'dist/client',
+              emptyOutDir: true,
+              manifest: true,
+              rolldownOptions: {
+                input: clientInputs,
+              },
+            },
+          },
+          server: {
+            consumer: 'server',
+            resolve: {
+              alias: {
+                [SERVER_RUNTIME_MODULE_ID]: serverRuntimePath(),
+              },
+              external: ['@limette/core'],
+              noExternal: resolution.ssr.noExternal.filter((dependency) =>
+                dependency !== '@limette/core'
+              ),
+            },
+            build: {
+              outDir: 'dist/server',
+              emptyOutDir: true,
+              copyPublicDir: false,
+              ssr: true,
+              rolldownOptions: {
+                input: {
+                  entry: SERVER_ENTRY_MODULE_ID,
+                },
+                output: {
+                  entryFileNames: 'entry.js',
+                },
+              },
+            },
+          },
+        },
+      };
     },
-    configResolved(config: { root: string }) {
-      root = options.root ?? config.root;
+    configResolved(config: { root: string; base: string }) {
+      root = config.root;
+      base = config.base;
       devServer.setRoot(root);
     },
     configureServer(server: ViteDevServerLike) {
@@ -35,8 +130,8 @@ export function limette(options: LimetteVitePluginOptions = {}) {
       return devServer.handleHotUpdate(ctx);
     },
     resolveId(id: string) {
-      if (id === ROUTES_MODULE_ID) {
-        return RESOLVED_ROUTES_MODULE_ID;
+      if (id === SERVER_ENTRY_MODULE_ID) {
+        return RESOLVED_SERVER_ENTRY_MODULE_ID;
       }
 
       if (id.startsWith(CLIENT_ENTRY_MODULE_PREFIX)) {
@@ -47,19 +142,37 @@ export function limette(options: LimetteVitePluginOptions = {}) {
 
       return undefined;
     },
-    async load(id: string) {
-      if (id === RESOLVED_ROUTES_MODULE_ID) {
+    async load(this: PluginContextLike, id: string) {
+      if (id === RESOLVED_SERVER_ENTRY_MODULE_ID) {
+        const importer = resolve(root, '__limette_server_entry__.js');
+        const resolvedApp = await this.resolve(options.app, importer);
+        if (!resolvedApp) {
+          throw new Error(
+            `Could not resolve configured Limette app module "${options.app}" from "${root}".`,
+          );
+        }
+
         const manifest = await discoverRoutes({
-          ...options,
           root,
+          routesDir: options.routesDir,
+        });
+        const manifestPath = resolve(
+          root,
+          'dist/client/.vite/manifest.json',
+        );
+        const assets = resolveServerEntryAssets({
+          manifest: await readViteManifest({ manifestPath }),
+          routes: manifest,
+          base,
+          manifestPath,
         });
 
-        return [
-          `export const appFile = ${JSON.stringify(manifest.appFile)};`,
-          `export const routes = ${JSON.stringify(manifest.routes, null, 2)};`,
-          `export const manifest = { appFile, routes };`,
-          `export default manifest;`,
-        ].join('\n');
+        return generateServerEntry({
+          root,
+          appModule: resolvedApp.id,
+          manifest,
+          assets,
+        });
       }
 
       if (!id.startsWith(RESOLVED_CLIENT_ENTRY_MODULE_PREFIX)) {
@@ -68,8 +181,8 @@ export function limette(options: LimetteVitePluginOptions = {}) {
 
       const routeId = id.slice(RESOLVED_CLIENT_ENTRY_MODULE_PREFIX.length);
       const manifest = await discoverRoutes({
-        ...options,
         root,
+        routesDir: options.routesDir,
       });
       const route = manifest.routes.find((route) => route.id === routeId);
 

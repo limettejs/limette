@@ -3,8 +3,6 @@ node_modules
 .vite
 dist
 _limette
-.vite-limette-client
-.vite-limette-builder-client
-.vite-limette-smoke
+.vite-limette-*
 vite.config.ts.timestamp-*.mjs
 .DS_Store

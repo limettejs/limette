@@ -5,14 +5,18 @@ import {
   incomingMessageToRequest,
   writeResponseToServerResponse,
 } from './adapters/node-http.ts';
-import { prepareApp } from './server/serve.ts';
-import type { App } from './server/app.ts';
+import { staticDirectoryHandler } from './adapters/node-static-files.ts';
+import type { StaticDirectoryHandlerOptions } from './adapters/static-files.ts';
+import type { AppHandler } from './server/app.ts';
 
 export interface ServeOptions {
   port?: number;
   hostname?: string;
   onListen?: (address: { hostname: string; port: number }) => void;
+  staticFiles?: StaticDirectoryHandlerOptions;
 }
+
+export type { StaticDirectoryHandlerOptions };
 
 function logStarted(t0: number, port: number, hostname = 'localhost') {
   const duration = ((performance.now() - t0) / 1000).toFixed(2);
@@ -40,25 +44,26 @@ function listen(server: Server, port: number, hostname?: string) {
 }
 
 export async function serve(
-  app: App,
-  { hostname, onListen, port }: ServeOptions = {},
+  handler: AppHandler,
+  { hostname, onListen, port, staticFiles }: ServeOptions = {},
 ) {
   const t0 = performance.now();
-
-  await prepareApp(app);
-
-  const handler = app.handler();
-  const createAppServer = () => createServer(async (req, res) => {
-    try {
-      const request = await incomingMessageToRequest(req);
-      const response = await handler(request, {});
-      await writeResponseToServerResponse(response, res);
-    } catch (error) {
-      console.error(error);
-      res.statusCode = 500;
-      res.end('Internal server error');
-    }
-  });
+  const serveStatic = staticFiles
+    ? staticDirectoryHandler(staticFiles)
+    : undefined;
+  const createAppServer = () =>
+    createServer(async (req, res) => {
+      try {
+        const request = await incomingMessageToRequest(req);
+        const response = await serveStatic?.(request) ??
+          await handler(request, {});
+        await writeResponseToServerResponse(response, res);
+      } catch (error) {
+        console.error(error);
+        res.statusCode = 500;
+        res.end('Internal server error');
+      }
+    });
 
   let server = createAppServer();
 

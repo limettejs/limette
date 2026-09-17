@@ -1,13 +1,12 @@
 import { Context } from '../../src/server/context.ts';
 import { renderContent } from '../../src/server/ssr.ts';
 import type { AppWrapperComponentClass } from '../../src/server/ssr.ts';
-import { discoverRoutes, loadViteBuildRoutes } from '../../src/vite/mod.ts';
+import { discoverRoutes } from '../../src/vite/manifest.ts';
+import { loadViteDevRoutes } from '../../src/vite/routes.ts';
 import { exampleRoot, loadExampleFile } from './_paths.ts';
-
 const manifest = await discoverRoutes({ root: exampleRoot });
-const routes = await loadViteBuildRoutes({
+const routes = await loadViteDevRoutes({
   root: exampleRoot,
-  outDir: '.vite-limette-client',
   loadFile: loadExampleFile,
 });
 const homeRoute = routes.find((route) => route.path === '/');
@@ -30,12 +29,10 @@ const ctx = new Context({
 });
 const html = await renderContent(AppWrapper, homeRoute, ctx);
 
-if (!html.includes('/assets/limette-route-')) {
-  throw new Error('SSR output does not include the Vite route asset.');
+if (!html.includes('/@limette/client-entry/')) {
+  throw new Error('Development SSR output does not include the Vite entry.');
 }
 
 if (html.includes('/_limette/js/chunk-')) {
   throw new Error('SSR output still includes the old Limette chunk path.');
 }
-
-console.log(html);

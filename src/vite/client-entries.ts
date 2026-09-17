@@ -1,4 +1,5 @@
 import { discoverRoutes } from './manifest.ts';
+import { clientEntryName } from './client-entry.ts';
 import type { DiscoverRoutesOptions } from './manifest.ts';
 
 export type ClientEntryInputsOptions = DiscoverRoutesOptions & {
@@ -16,7 +17,7 @@ export async function clientEntryInputs(
       continue;
     }
 
-    inputs[`limette-route-${route.id}`] =
+    inputs[clientEntryName(route.id)] =
       `virtual:limette/client-entry/${route.id}`;
   }
 

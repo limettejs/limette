@@ -4,7 +4,7 @@ import { unsafeCSS } from 'lit';
 import type { LitElement } from 'lit';
 import { LitElementRenderer } from '@lit-labs/ssr/lib/lit-element-renderer.js';
 import type { RenderInfo, RenderResult } from '@lit-labs/ssr';
-import type { BuildRoute } from '../route.ts';
+import type { RuntimeRouteDefinition } from '../route.ts';
 import type { Context } from '../context.ts';
 
 type LmtShadowRootMode = 'open' | 'closed' | 'disabled';
@@ -12,7 +12,10 @@ interface ContextLitElement extends LitElement {
   ctx: Context;
 }
 
-export const LimetteElementRenderer = (route: BuildRoute, ctx: Context) =>
+export const LimetteElementRenderer = (
+  route: RuntimeRouteDefinition,
+  ctx: Context,
+) =>
   class LimetteElementRenderer extends LitElementRenderer {
     override connectedCallback(): void {
       if (!this.element.hasAttribute('ssr')) {
@@ -33,7 +36,7 @@ export const LimetteElementRenderer = (route: BuildRoute, ctx: Context) =>
       };
 
       // A component is an island if it's included in route.islands.
-      const isIsland = route.islands?.includes(this.tagName) ||
+      const isIsland = route.islands.includes(this.tagName) ||
         this.element.hasAttribute('island');
 
       // Islands are CSR'ed, so we can't render them in light DOM
@@ -45,12 +48,15 @@ export const LimetteElementRenderer = (route: BuildRoute, ctx: Context) =>
 
       // Partial SSR islands with only Tailwind style (if not skipped)
       if (isIsland && !this.element.hasAttribute('ssr')) {
-        if (this.element.hasAttribute('skip-tailwind') || !route.cssAssetPath) {
+        if (
+          this.element.hasAttribute('skip-tailwind') ||
+          !route.assets.styles[0]
+        ) {
           // @ts-expect-error: LitElementRenderer actually accepts undefined as a returned value
           return;
         }
 
-        return `<style>@import url("${route.cssAssetPath}");</style>`;
+        return `<style>@import url("${route.assets.styles[0]}");</style>`;
       }
 
       // Inject context for every server-rendered component instance.
@@ -67,14 +73,14 @@ export const LimetteElementRenderer = (route: BuildRoute, ctx: Context) =>
        */
       if (
         isIsland &&
-        route.cssAssetPath &&
+        route.assets.styles[0] &&
         this.element.hasAttribute('ssr') &&
         !this.element.hasAttribute('skip-tailwind') &&
         ctor.__requiresTailwind !== true
       ) {
         // Inject Tailwind CSS import
         ctor.elementStyles?.unshift?.(
-          unsafeCSS(`@import url("${route.cssAssetPath}");`),
+          unsafeCSS(`@import url("${route.assets.styles[0]}");`),
         );
 
         // Mark component that was already injected

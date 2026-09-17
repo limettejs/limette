@@ -4,7 +4,7 @@ import {
   writeResponseToServerResponse,
 } from './node-adapter.ts';
 import { loadServerModule } from './module-loader.ts';
-import { setFsRoutes } from '../server/fs.ts';
+import { materializeDevRoutes } from './routes.ts';
 import type { DiscoverRoutesOptions } from './manifest.ts';
 import type { App } from '../server/app.ts';
 import type { HotUpdateContextLike, ViteDevServerLike } from './types.ts';
@@ -92,18 +92,12 @@ export function createLimetteDevServer(options: LimetteDevOptions = {}) {
         options.dev!.appExport,
         version,
       );
-    const fsRoutesOptions = app.builtinPluginOptions.fsRoutes;
-    app.config.mode = 'development';
-    app._setBuiltinPluginOptions('fsRoutes', {
-      ...fsRoutesOptions,
+    await materializeDevRoutes(app, {
+      ...options,
+      root,
       loadFile: (path) => loadServerModule(server, root, path, version),
-      vite: {
-        ...fsRoutesOptions.vite,
-        devTagNameSuffix: String(version),
-        root: fsRoutesOptions.vite?.root ?? root,
-      },
+      tagNameSuffix: String(version),
     });
-    await setFsRoutes(app);
 
     return app.handler();
   }

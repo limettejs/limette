@@ -4,6 +4,7 @@ export default {
     deno: 'src/deno.ts',
     node: 'src/node.ts',
     vite: 'src/vite/mod.ts',
+    'internal/server-runtime': 'src/server-runtime.ts',
     runtime: 'src/runtime/mod.ts',
     'runtime/ssr-client/lit-element-hydrate-support':
       'src/runtime/ssr-client/lit-element-hydrate-support.ts',
@@ -18,7 +19,6 @@ export default {
       /^@lit-labs\/ssr(?:\/.*)?$/,
       /^@lit-labs\/ssr-client(?:\/.*)?$/,
       'linkedom',
-      'tailwindcss',
       'vite',
     ],
   },

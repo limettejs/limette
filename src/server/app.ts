@@ -1,29 +1,16 @@
 import { type Method, UrlPatternRouter } from './router.ts';
 import { type MiddlewareFn, runMiddlewares } from './middlewares.ts';
 import { HttpError } from './error.ts';
-import { fsRoutes as configureFsRoutes } from '../plugins/fs-routes.ts';
-import type { FsRoutesPluginOptions } from '../plugins/fs-routes.ts';
-import type { TailwindPluginOptions } from '../plugins/tailwind.ts';
 import { Context } from './context.ts';
-import type { ServeOptions } from './runtime-serve.ts';
 
 // TODO: context on client side
 
 export interface AppConfig {
   basePath?: string;
-  mode?: 'development' | 'production';
-  builder?: unknown;
 }
 
 interface ResolvedAppConfig {
   basePath: string;
-  mode: 'development' | 'production';
-  builder?: unknown;
-}
-
-interface BuiltinPluginOptions {
-  fsRoutes: FsRoutesPluginOptions;
-  tailwind: TailwindPluginOptions;
 }
 
 export type AppHandler = (
@@ -52,40 +39,18 @@ export function mergePaths(a: string, b: string) {
 function normalizeConfig(options?: AppConfig): ResolvedAppConfig {
   return {
     basePath: options?.basePath || '',
-    mode: options?.mode || 'production',
-    builder: options?.builder,
   };
 }
 
 export class App {
   config: ResolvedAppConfig;
-  builder?: unknown;
-  #builtinPluginOptions: BuiltinPluginOptions = {
-    fsRoutes: {
-      enabled: false,
-      loadFile: undefined,
-    },
-    tailwind: {
-      enabled: false,
-    },
-  };
+  #fsRoutesEnabled = false;
 
   middlewares: MiddlewareFn[] = [];
   #router = new UrlPatternRouter();
 
-  get builtinPluginOptions(): BuiltinPluginOptions {
-    return this.#builtinPluginOptions;
-  }
-
   constructor(config?: AppConfig) {
     this.config = normalizeConfig(config);
-  }
-
-  _setBuiltinPluginOptions<K extends keyof BuiltinPluginOptions>(
-    pluginName: K,
-    options: BuiltinPluginOptions[K],
-  ): void {
-    this.#builtinPluginOptions[pluginName] = options;
   }
 
   use(middleware: MiddlewareFn): this {
@@ -93,9 +58,14 @@ export class App {
     return this;
   }
 
-  fsRoutes(options: FsRoutesPluginOptions = {}): this {
-    configureFsRoutes(this, options);
+  fsRoutes(): this {
+    this.#fsRoutesEnabled = true;
     return this;
+  }
+
+  /** @internal Used by Limette's Vite development and generated entry. */
+  _hasFsRoutes(): boolean {
+    return this.#fsRoutesEnabled;
   }
 
   error(pathname: string | URLPattern, middleware: MiddlewareFn): this {
@@ -123,11 +93,6 @@ export class App {
   }
   all(path: string, ...middlewares: MiddlewareFn[]): this {
     return this.#addRoutes('ALL', path, middlewares);
-  }
-
-  async listen(options: ServeOptions = {}) {
-    const { serve } = await import('./runtime-serve.ts');
-    return await serve(this, options);
   }
 
   #addRoutes(

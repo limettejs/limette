@@ -1,4 +1,6 @@
-import { html, render } from '@lit-labs/ssr';
+import { render } from '@lit-labs/ssr';
+// @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
+import { html } from 'lit';
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { collectResult } from '@lit-labs/ssr/lib/render-result.js';
@@ -10,7 +12,7 @@ import type { DirectiveResult } from 'lit/directive.js';
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { UnsafeHTMLDirective } from 'lit/directives/unsafe-html.js';
 import type { Context } from './context.ts';
-import type { BuildRoute } from './route.ts';
+import type { RuntimeRouteDefinition } from './route.ts';
 import { LimetteElementRenderer } from './rendering/limette-element-renderer.ts';
 import type {
   AppAssets,
@@ -164,7 +166,7 @@ function processHeadAndShadowRoots(htmlString: string) {
 
 export async function bootstrapContent(
   AppWrapper: AppWrapperComponentClass,
-  route: BuildRoute,
+  route: RuntimeRouteDefinition,
   ctx: Context,
 ) {
   const routeModule = route.routeModule;
@@ -192,7 +194,7 @@ export async function bootstrapContent(
     component = await renderLayout({
       component: component,
       layouts: !skipInheritedLayouts
-        ? (route.layouts as LayoutModule[])
+        ? route.layouts
         : ([route.layouts.at(-1)] as LayoutModule[]),
       ctx: ctx,
     });
@@ -204,17 +206,13 @@ export async function bootstrapContent(
     )
   }</script>`;
 
-  const cssAssetPaths = route.cssAssetPaths ??
-    (route.cssAssetPath ? [route.cssAssetPath] : []);
-  const jsAssetPaths = route.jsAssetPaths ??
-    (route.jsAssetPath ? [route.jsAssetPath] : []);
-  const styles = cssAssetPaths.map((path) =>
+  const styles = route.assets.styles.map((path) =>
     unsafeHTML(`<link rel="stylesheet" href="${path}" />`)
   );
-  const scripts = jsAssetPaths.length
+  const scripts = route.assets.scripts.length
     ? [
       unsafeHTML(ctxStr),
-      ...jsAssetPaths.map((path) =>
+      ...route.assets.scripts.map((path) =>
         html`
           <script type="module" src="${path}"></script>
         `
@@ -225,7 +223,7 @@ export async function bootstrapContent(
   const routeInfo = {
     id: route.id,
     path: route.path,
-    file: route.relativeFilePath,
+    file: route.file,
   };
 
   const appWrapperOptions: AppWrapperOptions = {
@@ -254,7 +252,7 @@ async function renderLayout({
   ctx,
 }: {
   component: DirectiveResult<typeof UnsafeHTMLDirective>;
-  layouts: LayoutModule[];
+  layouts: readonly LayoutModule[];
   ctx: Context;
 }) {
   if (layouts.length === 0) return component;
@@ -277,7 +275,7 @@ async function renderLayout({
 
 export async function renderContent(
   AppWrapper: AppWrapperComponentClass,
-  route: BuildRoute,
+  route: RuntimeRouteDefinition,
   ctx: Context,
 ) {
   const result = render(

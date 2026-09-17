@@ -1,8 +1,4 @@
-import { fileURLToPath } from 'node:url';
-import { App, staticFiles } from '@limette/core';
-
-const root = fileURLToPath(new URL('.', import.meta.url));
+import { App } from '@limette/core';
 
 export const app = new App()
-  .use(staticFiles)
-  .fsRoutes({ vite: { root } });
+  .fsRoutes();

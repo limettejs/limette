@@ -5,6 +5,10 @@ export const RESOLVED_CLIENT_ENTRY_MODULE_PREFIX =
   `\0${CLIENT_ENTRY_MODULE_PREFIX}`;
 const CLIENT_ENTRY_DEV_PREFIX = '/@limette/client-entry/';
 
+export function clientEntryName(routeId: string) {
+  return `limette-route-${routeId}`;
+}
+
 export function clientEntryDevPath(routeId: string) {
   return `${CLIENT_ENTRY_DEV_PREFIX}${routeId}.js`;
 }

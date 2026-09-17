@@ -2,13 +2,14 @@
   "tasks": {
     "dev": "deno run -A npm:vite@^8.0.0 --config vite.config.ts --host 127.0.0.1",
     "build": "deno run -A npm:vite@^8.0.0 --config vite.config.ts build",
-    "start": "deno run -A main.js"
+    "start": "deno run -A main.deno.js"
   },
   "imports": {
     "@limette/core": "../src/mod.ts",
     "@limette/core/deno": "../src/deno.ts",
     "@limette/core/node": "../src/node.ts",
     "@limette/core/vite": "../src/vite/mod.ts",
+    "@limette/core/internal/server-runtime": "../src/server-runtime.ts",
     "@limette/core/runtime": "../src/runtime/mod.ts",
     "@limette/core/runtime/ssr-client/lit-element-hydrate-support.ts": "../src/runtime/ssr-client/lit-element-hydrate-support.ts",
     "@limette/core/runtime/ssr-client/lit-element-hydrate-support-patch.ts": "../src/runtime/ssr-client/lit-element-hydrate-support-patch.ts",
@@ -18,7 +19,6 @@
     "/lit": "npm:/lit@^3.2.1/",
     "lit": "npm:lit@^3.2.1",
     "linkedom": "npm:linkedom@0.18.12",
-    "tailwindcss": "npm:tailwindcss@4.3.1",
     "vite": "npm:vite@^8.0.0"
   },
   "compilerOptions": {
