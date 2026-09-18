@@ -6,6 +6,7 @@ import {
   discoverStyleImportsForFiles,
 } from './islands.ts';
 import type { IslandImport } from './islands.ts';
+import type { ResolveModule } from './islands.ts';
 
 const ROUTE_EXT_PATTERN = /\.(?:ts|js)$/;
 const TEST_FILE_PATTERN = /[._]test\.(?:[tj]sx?|[mc][tj]s)$/;
@@ -28,6 +29,7 @@ export type LimetteRouteManifest = {
 export type DiscoverRoutesOptions = {
   root?: string;
   routesDir?: string;
+  resolve?: ResolveModule;
 };
 
 function normalizePath(path: string) {
@@ -251,10 +253,12 @@ export async function discoverRoutes(
     route.islandImports = await discoverIslandImportsForFiles({
       root,
       files: sourceFiles,
+      resolve: options.resolve,
     });
     route.styleImports = await discoverStyleImportsForFiles({
       root,
       files: sourceFiles,
+      resolve: options.resolve,
       excludeFiles: route.islandImports
         .map((islandImport) => islandImport.resolvedImport)
         .filter((path) => path.startsWith('/'))

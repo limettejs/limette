@@ -25,6 +25,43 @@ function isInsidePath(parent: string, child: string) {
     (!relativePath.startsWith('..') && !isAbsolute(relativePath));
 }
 
+function viteClientPath(base: string) {
+  const normalizedBase = base.endsWith('/') ? base : `${base}/`;
+  return `${normalizedBase}@vite/client`;
+}
+
+async function injectViteClient(
+  response: Response,
+  server: ViteDevServerLike,
+) {
+  if (!response.headers.get('content-type')?.includes('text/html')) {
+    return response;
+  }
+
+  const html = await response.text();
+  const clientPath = viteClientPath(server.config?.base ?? '/');
+  const hasViteClient =
+    /<script\b[^>]*\bsrc=["'][^"']*\/@vite\/client(?:[?"'])/i
+      .test(html);
+  const injected = html.replace(
+    /<\/head\s*>/i,
+    `<script type="module" src="${clientPath}"></script></head>`,
+  );
+  const output = hasViteClient
+    ? html
+    : injected === html
+    ? `<script type="module" src="${clientPath}"></script>${html}`
+    : injected;
+  const headers = new Headers(response.headers);
+  headers.delete('content-length');
+
+  return new Response(output, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 async function loadAppModule(
   server: ViteDevServerLike,
   root: string,
@@ -95,8 +132,9 @@ export function createLimetteDevServer(options: LimetteDevOptions = {}) {
     await materializeDevRoutes(app, {
       ...options,
       root,
+      resolve: (id, importer) =>
+        server.pluginContainer?.resolveId(id, importer, { ssr: true }),
       loadFile: (path) => loadServerModule(server, root, path, version),
-      tagNameSuffix: String(version),
     });
 
     return app.handler();
@@ -141,7 +179,10 @@ export function createLimetteDevServer(options: LimetteDevOptions = {}) {
           }
 
           const request = await incomingMessageToRequest(req);
-          const response = await handler(request, {});
+          const response = await injectViteClient(
+            await handler(request, {}),
+            server,
+          );
           await writeResponseToServerResponse(response, res);
         },
       );

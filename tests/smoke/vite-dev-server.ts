@@ -24,6 +24,10 @@ const command = viteCommand([
 const child = command.spawn();
 const stderr = new Response(child.stderr).text();
 
+function routeTag(html: string) {
+  return html.match(/<(lmt-route-[a-z0-9-]+)(?:\s|>)/)?.[1];
+}
+
 try {
   let pageResponse: Response | undefined;
   let lastError: unknown;
@@ -54,7 +58,33 @@ try {
   }
 
   const html = await pageResponse.text();
-  const scriptPath = html.match(/<script type="module" src="([^"]+)"/)?.[1];
+  const initialRouteTag = routeTag(html);
+
+  if (!initialRouteTag) {
+    throw new Error('Expected SSR output to contain a Limette route tag.');
+  }
+
+  for (let i = 0; i < 20; i++) {
+    const repeatedResponse = await fetch(`${origin}/`);
+    const repeatedHtml = await repeatedResponse.text();
+
+    if (!repeatedResponse.ok || routeTag(repeatedHtml) !== initialRouteTag) {
+      throw new Error(
+        `Expected repeated requests to reuse ${initialRouteTag}; got status ` +
+          `${repeatedResponse.status} and tag ${routeTag(repeatedHtml)}.`,
+      );
+    }
+  }
+  const viteClientScripts = html.match(
+    /<script type="module" src="\/@vite\/client"><\/script>/g,
+  ) ?? [];
+  const scriptPath = html.match(
+    /<script type="module" src="([^" ]*\/@limette\/client-entry\/[^"]+)"/,
+  )?.[1];
+
+  if (viteClientScripts.length !== 1) {
+    throw new Error('Expected exactly one Vite development client script.');
+  }
 
   if (!scriptPath?.startsWith('/@limette/client-entry/')) {
     throw new Error('Expected SSR output to include a same-origin Vite entry.');
@@ -70,8 +100,10 @@ try {
 
   const code = await entryResponse.text();
 
-  if (!code.includes('/@vite/client') || !code.includes('island-foo')) {
-    throw new Error('Expected Vite dev entry to include HMR and island code.');
+  if (code.includes('/@vite/client') || !code.includes('island-foo')) {
+    throw new Error(
+      'Expected island code without a duplicate Vite client import.',
+    );
   }
 
   const missingResponse = await fetch(`${origin}/missing-chunk.js`);
@@ -118,6 +150,10 @@ try {
 
   if (!updatedHtml.includes('SSR content changed by Vite dev smoke')) {
     throw new Error('Expected changed server route code to be reloaded.');
+  }
+
+  if (routeTag(updatedHtml) !== initialRouteTag) {
+    throw new Error('Expected route edits to preserve the development tag.');
   }
 } finally {
   if (homeRouteChanged) {

@@ -4,15 +4,16 @@
 
 <img align="right" src="https://limette.dev/assets/images/logo.svg" width="200px" alt="The Limette logo: a green limette with two leaves">
 
-Limette is a full-stack JavaScript framework for Web Components and Deno.
+Limette is a full-stack JavaScript framework for Web Components. Applications
+build with Vite and run through explicit Node, Deno, or Worker adapters.
 
 ## ✨ Features
 
 - Web Components (with Lit) on browser
-- Deno on server
+- Request/Response server runtime with Node, Deno, and Worker support
 - Island-based architecture
 - File system routing
-- Tailwind and TypeScript support out of the box
+- Vite-powered development and production builds
 
 ## Create a new Limette project
 
@@ -22,13 +23,18 @@ Run this command:
 deno run -A jsr:@limette/init
 ```
 
-## Start a project (dev mode)
+The initializer creates an application using `new App().fsRoutes()`, a Vite
+configuration with `limette({ app: "./app.ts" })`, and a Deno production
+launcher. Node applications can use the equivalent `@limette/core/node`
+adapter.
+
+## Start the Vite development server
 
 ```
 deno task dev
 ```
 
-## Build a project
+## Build with Vite
 
 ```
 deno task build
@@ -81,7 +87,7 @@ application in the actual workerd/Cloudflare environment before deploying.
 Limette does not integrate `@cloudflare/vite-plugin`, so Wrangler does not
 provide Limette's live Vite HMR workflow.
 
-## Start a project
+## Start the generated Deno production server
 
 ```
 deno task start

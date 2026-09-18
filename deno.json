@@ -26,7 +26,8 @@
     "@lit-labs/ssr-client": "npm:@lit-labs/ssr-client@1.1.7",
     "lit": "npm:lit@3.2.1",
     "lit/": "npm:/lit@3.2.1/",
-    "linkedom": "npm:linkedom@0.18.12"
+    "linkedom": "npm:linkedom@0.18.12",
+    "vite": "npm:vite@^8.0.0"
   },
   "compilerOptions": {
     "lib": [

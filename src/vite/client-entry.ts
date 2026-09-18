@@ -58,6 +58,6 @@ export function configureClientEntryMiddleware(server: ViteDevServerLike) {
     }
 
     res.setHeader('Content-Type', 'application/javascript');
-    res.end(`import "/@vite/client";\n${result.code}`);
+    res.end(result.code);
   });
 }

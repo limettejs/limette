@@ -25,6 +25,19 @@ export const LimetteElementRenderer = (
   ctx: Context,
 ) =>
   class LimetteElementRenderer extends LitElementRenderer {
+    constructor(tagName: string) {
+      super(tagName);
+
+      const RenderComponent = route.renderComponents?.[tagName];
+      if (RenderComponent) {
+        // CustomElementRegistry#define reads this during registration, which
+        // finalizes Lit's reactive property metadata. Development constructors
+        // deliberately bypass registration, so perform the same read locally.
+        void (RenderComponent as typeof LitElement).observedAttributes;
+        this.element = new RenderComponent() as LitElement;
+      }
+    }
+
     override connectedCallback(): void {
       if (!this.element.hasAttribute('ssr')) {
         this.element.setAttribute('skip-hydration', '');
@@ -51,12 +64,9 @@ export const LimetteElementRenderer = (
         this.shadowRootOptions.mode = 'open';
       }
 
-      // Partial SSR islands with only Tailwind style (if not skipped)
+      // Partial SSR islands render only their external styles.
       if (isIsland && !this.element.hasAttribute('ssr')) {
-        if (
-          this.element.hasAttribute('skip-tailwind') ||
-          islandStyles.length === 0
-        ) {
+        if (islandStyles.length === 0) {
           // @ts-expect-error: LitElementRenderer actually accepts undefined as a returned value
           return;
         }
@@ -72,8 +82,7 @@ export const LimetteElementRenderer = (
       const shadow = super.renderShadow(renderInfo);
       return isIsland &&
           islandStyles.length > 0 &&
-          this.element.hasAttribute('ssr') &&
-          !this.element.hasAttribute('skip-tailwind')
+          this.element.hasAttribute('ssr')
         ? renderRouteStyle(islandStyles, shadow)
         : shadow;
     }

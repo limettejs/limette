@@ -173,7 +173,7 @@ function resolveRouteClientAssets(
     if (needsClientEntry && !entryChunk) {
       throw new Error(
         `Missing Vite client entry "${expectedEntryName}" for Limette route "${route.path}" (${route.id}) in manifest "${manifestPath}". ` +
-          'Build with clientEntryInputs() and resolve assets from the resulting Vite manifest.',
+          'Build the application with the Limette Vite plugin before resolving route assets.',
       );
     }
 
@@ -204,7 +204,7 @@ function resolveRouteClientAssets(
       if (!islandEntryChunk) {
         throw new Error(
           `Missing Vite island entry "${expectedIslandEntryName}" for island "${island.tagName}" on Limette route "${route.path}" (${route.id}) in manifest "${manifestPath}". ` +
-            'Build with clientEntryInputs() and resolve assets from the resulting Vite manifest.',
+            'Build the application with the Limette Vite plugin before resolving route assets.',
         );
       }
 

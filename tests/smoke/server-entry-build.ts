@@ -380,6 +380,10 @@ try {
     expectedStyleUrls.every((url) => homeHtml.includes(url)),
     'Island route did not receive CSS from the client manifest.',
   );
+  assert(
+    !homeHtml.includes('/@vite/client'),
+    'Production SSR unexpectedly included the Vite development client.',
+  );
   const islandShadow = (tagName: string) => {
     const match = homeHtml.match(
       new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)<\\/${tagName}>`),

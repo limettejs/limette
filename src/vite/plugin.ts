@@ -60,7 +60,7 @@ export function limette(options: LimetteOptions) {
 
   return {
     name: 'limette',
-    async config(config: UserConfigLike, env: ConfigEnvLike) {
+    config(config: UserConfigLike, env: ConfigEnvLike) {
       root = resolve(config.root ?? root);
       base = config.base ?? '/';
       const resolution = litResolution(root);
@@ -68,11 +68,6 @@ export function limette(options: LimetteOptions) {
       if (env.command !== 'build') {
         return { ...resolution, appType: 'custom' as const };
       }
-
-      const clientInputs = await clientEntryInputs({
-        root,
-        routesDir: options.routesDir,
-      });
 
       return {
         resolve: resolution.resolve,
@@ -86,7 +81,7 @@ export function limette(options: LimetteOptions) {
               emptyOutDir: true,
               manifest: true,
               rolldownOptions: {
-                input: clientInputs,
+                input: [],
               },
             },
           },
@@ -118,6 +113,17 @@ export function limette(options: LimetteOptions) {
           },
         },
       };
+    },
+    async buildStart(this: PluginContextLike) {
+      if (this.environment?.name !== 'client') return;
+      const clientInputs = await clientEntryInputs({
+        root,
+        routesDir: options.routesDir,
+        resolve: (id, importer) => this.resolve(id, importer),
+      });
+      for (const [name, id] of Object.entries(clientInputs)) {
+        this.emitFile?.({ type: 'chunk', id, name });
+      }
     },
     configResolved(config: { root: string; base: string }) {
       root = config.root;
@@ -163,6 +169,7 @@ export function limette(options: LimetteOptions) {
         const manifest = await discoverRoutes({
           root,
           routesDir: options.routesDir,
+          resolve: (id, importer) => this.resolve(id, importer),
         });
         const manifestPath = resolve(
           root,
@@ -195,6 +202,7 @@ export function limette(options: LimetteOptions) {
         const manifest = await discoverRoutes({
           root,
           routesDir: options.routesDir,
+          resolve: (id, importer) => this.resolve(id, importer),
         });
         const route = manifest.routes.find((route) => route.id === routeId);
         const island = route?.islandImports[islandIndex];
@@ -214,6 +222,7 @@ export function limette(options: LimetteOptions) {
       const manifest = await discoverRoutes({
         root,
         routesDir: options.routesDir,
+        resolve: (id, importer) => this.resolve(id, importer),
       });
       const route = manifest.routes.find((route) => route.id === routeId);
 

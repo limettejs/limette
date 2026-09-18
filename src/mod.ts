@@ -15,11 +15,7 @@ export type { AppWrapperComponent, AppWrapperOptions } from './server/ssr.ts';
 export type { RouteConfig, RouteModule } from './server/router.ts';
 export type { Handlers } from './server/handlers.ts';
 export type { MiddlewareFn } from './server/middlewares.ts';
-export type {
-  LayoutComponent as LegacyLayoutComponent,
-  LayoutConfig,
-  LayoutModule,
-} from './server/layouts.ts';
+export type { LayoutConfig, LayoutModule } from './server/layouts.ts';
 export type {
   AppAssets,
   AppRouteInfo,

@@ -138,10 +138,6 @@ const elementStyles = SharedStyleIsland.elementStyles;
 const styleText = (style: unknown) => (style as { cssText: string }).cssText;
 const applicationStyles = elementStyles.map(styleText);
 const classProperties = Object.getOwnPropertyNames(SharedStyleIsland);
-assert(
-  !('__requiresTailwind' in SharedStyleIsland),
-  'The island class unexpectedly starts with route stylesheet state.',
-);
 
 assertRouteStyle(await renderRoute(routeA, 'a'), 'a', 'b');
 assertRouteStyle(await renderRoute(routeB, 'b'), 'b', 'a');
@@ -164,10 +160,6 @@ assert(
   JSON.stringify(SharedStyleIsland.elementStyles.map(styleText)) ===
     JSON.stringify(applicationStyles),
   'Rendering changed the island class application-defined styles.',
-);
-assert(
-  !('__requiresTailwind' in SharedStyleIsland),
-  'Rendering added route stylesheet state to the island class.',
 );
 assert(
   JSON.stringify(Object.getOwnPropertyNames(SharedStyleIsland)) ===

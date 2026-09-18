@@ -30,6 +30,27 @@ if (
 ) {
   throw new Error('Island route did not retain its development client entry.');
 }
+for (
+  const [tagName, expectedStyles] of [
+    [
+      'test-counter',
+      ['/islands/counter.css?direct', '/islands/shared.css?direct'],
+    ],
+    [
+      'test-status',
+      ['/islands/shared.css?direct', '/islands/status.css?direct'],
+    ],
+  ] as const
+) {
+  const islandStyles = cssHomeRoute.assets.islandStyles[tagName] ?? [];
+  if (
+    !expectedStyles.every((style) =>
+      islandStyles.includes(`${origin}${style}`)
+    ) || islandStyles.some((style) => style.includes('/styles/home.css'))
+  ) {
+    throw new Error(`Development island styles were incorrect for ${tagName}.`);
+  }
+}
 if (
   cssOnlyRoute.assets.scripts.length !== 0 ||
   ![
@@ -121,8 +142,10 @@ try {
 
   const code = await entryResponse.text();
 
-  if (!code.includes('/@vite/client') || !code.includes('island-foo')) {
-    throw new Error('Expected Vite dev entry to include HMR and island code.');
+  if (code.includes('/@vite/client') || !code.includes('island-foo')) {
+    throw new Error(
+      'Expected the island entry without a duplicate Vite client import.',
+    );
   }
 } finally {
   try {

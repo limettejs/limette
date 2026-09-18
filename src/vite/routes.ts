@@ -1,4 +1,5 @@
 import { discoverRoutes } from './manifest.ts';
+import { discoverStyleImportsForFiles } from './islands.ts';
 import { clientEntryDevPath } from './client-entry.ts';
 import type {
   DiscoverRoutesOptions,
@@ -11,11 +12,11 @@ import type { RuntimeRouteDefinition } from '../server/route.ts';
 import type { LayoutModule } from '../server/layouts.ts';
 import type { MiddlewareModule } from '../server/middlewares.ts';
 import type { RouteModule } from '../server/router.ts';
+import type { IslandsDefinition } from '../server/components.ts';
 
 export type LoadViteDevRoutesOptions = DiscoverRoutesOptions & {
   loadFile: (path: string) => Promise<unknown>;
   devServerOrigin?: string;
-  tagNameSuffix?: string;
 };
 
 export function routeTagName(path: string, id: string) {
@@ -25,11 +26,6 @@ export function routeTagName(path: string, id: string) {
     .replace(/-+/g, '-')
     .replace(/^-+|-+$/g, '')
     .toLowerCase();
-}
-
-function devRouteTagName(path: string, id: string, suffix?: string) {
-  const tagName = routeTagName(path, id);
-  return suffix ? `${tagName}-${suffix}` : tagName;
 }
 
 function relativeRouteFile(path: string) {
@@ -48,6 +44,56 @@ function clientStyleDevPath(styleImport: string) {
   return `${path}${path.includes('?') ? '&' : '?'}direct`;
 }
 
+function islandComponentsFor(
+  components: readonly unknown[],
+) {
+  const islands: IslandsDefinition = {};
+
+  for (const component of components) {
+    Object.assign(
+      islands,
+      (component as { islands?: IslandsDefinition } | undefined)?.islands,
+    );
+  }
+
+  return islands;
+}
+
+async function devIslandStyles(
+  route: LimetteRouteManifest['routes'][number],
+  options: LoadViteDevRoutesOptions,
+) {
+  const root = options.root ?? process.cwd();
+  const styles: Record<string, string[]> = {};
+
+  await Promise.all(route.islandImports.map(async (island) => {
+    if (!island.resolvedImport.startsWith('/')) return;
+
+    const islandFile = island.resolvedImport
+      .slice(1)
+      .split(/[?#]/, 1)[0];
+    const styleImports = await discoverStyleImportsForFiles({
+      root,
+      files: [islandFile],
+      resolve: options.resolve,
+    });
+    const existingStyles = styles[island.tagName] ?? [];
+    styles[island.tagName] = [
+      ...new Set([
+        ...existingStyles,
+        ...styleImports.map((styleImport) =>
+          joinDevServerUrl(
+            options.devServerOrigin,
+            clientStyleDevPath(styleImport),
+          )
+        ),
+      ]),
+    ];
+  }));
+
+  return styles;
+}
+
 export async function loadViteDevRoutes(
   options: LoadViteDevRoutesOptions,
   manifest?: LimetteRouteManifest,
@@ -56,19 +102,21 @@ export async function loadViteDevRoutes(
 
   return await Promise.all(
     manifest.routes.map(async (route): Promise<RuntimeRouteDefinition> => {
-      const [routeModule, layouts, middlewares] = await Promise.all([
-        options.loadFile(route.routeFile) as Promise<RouteModule>,
-        Promise.all(
-          route.layouts.map((layout) =>
-            options.loadFile(layout) as Promise<LayoutModule>
+      const [routeModule, layouts, middlewares, islandStyles] = await Promise
+        .all([
+          options.loadFile(route.routeFile) as Promise<RouteModule>,
+          Promise.all(
+            route.layouts.map((layout) =>
+              options.loadFile(layout) as Promise<LayoutModule>
+            ),
           ),
-        ),
-        Promise.all(
-          route.middlewares.map((middleware) =>
-            options.loadFile(middleware) as Promise<MiddlewareModule>
+          Promise.all(
+            route.middlewares.map((middleware) =>
+              options.loadFile(middleware) as Promise<MiddlewareModule>
+            ),
           ),
-        ),
-      ]);
+          devIslandStyles(route, options),
+        ]);
       const clientEntryPath = route.islandImports.length
         ? joinDevServerUrl(
           options.devServerOrigin,
@@ -83,26 +131,30 @@ export async function loadViteDevRoutes(
             clientStyleDevPath(styleImport),
           )
         );
+      const tagName = routeTagName(route.path, route.id);
 
       return {
         id: route.id,
         path: route.path,
         file: relativeRouteFile(route.routeFile),
         routeModule,
-        tagName: devRouteTagName(
-          route.path,
-          route.id,
-          options.tagNameSuffix,
-        ),
+        tagName,
         islands: route.islandImports.map((islandImport) =>
           islandImport.tagName
         ),
+        renderComponents: {
+          ...islandComponentsFor([
+            ...layouts.map((layout) => layout.default),
+            routeModule.default,
+          ]),
+          [`lmt-route-${tagName}`]: routeModule.default,
+        },
         middlewares,
         layouts,
         assets: {
           scripts: clientEntryPath ? [clientEntryPath] : [],
           styles: stylePaths,
-          islandStyles: {},
+          islandStyles,
         },
       };
     }),
@@ -123,8 +175,17 @@ export async function materializeDevRoutes(
     loadViteDevRoutes(options, manifest),
   ]);
 
+  const appIslands = islandComponentsFor([appModule.default]);
+  const routesWithAppIslands = routes.map((route) => ({
+    ...route,
+    renderComponents: {
+      ...appIslands,
+      ...route.renderComponents,
+    },
+  }));
+
   registerRouteDefinitions(app, {
     appWrapper: appModule.default,
-    routes,
+    routes: routesWithAppIslands,
   });
 }
