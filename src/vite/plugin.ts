@@ -6,7 +6,9 @@ import { readViteManifest, resolveServerEntryAssets } from './assets.ts';
 import {
   CLIENT_ENTRY_MODULE_PREFIX,
   configureClientEntryMiddleware,
+  ISLAND_ENTRY_MODULE_PREFIX,
   RESOLVED_CLIENT_ENTRY_MODULE_PREFIX,
+  RESOLVED_ISLAND_ENTRY_MODULE_PREFIX,
 } from './client-entry.ts';
 import type {
   HotUpdateContextLike,
@@ -140,6 +142,12 @@ export function limette(options: LimetteOptions) {
         }`;
       }
 
+      if (id.startsWith(ISLAND_ENTRY_MODULE_PREFIX)) {
+        return `${RESOLVED_ISLAND_ENTRY_MODULE_PREFIX}${
+          id.slice(ISLAND_ENTRY_MODULE_PREFIX.length)
+        }`;
+      }
+
       return undefined;
     },
     async load(this: PluginContextLike, id: string) {
@@ -176,7 +184,30 @@ export function limette(options: LimetteOptions) {
       }
 
       if (!id.startsWith(RESOLVED_CLIENT_ENTRY_MODULE_PREFIX)) {
-        return undefined;
+        if (!id.startsWith(RESOLVED_ISLAND_ENTRY_MODULE_PREFIX)) {
+          return undefined;
+        }
+
+        const identity = id.slice(RESOLVED_ISLAND_ENTRY_MODULE_PREFIX.length);
+        const separator = identity.lastIndexOf('/');
+        const routeId = identity.slice(0, separator);
+        const islandIndex = Number(identity.slice(separator + 1));
+        const manifest = await discoverRoutes({
+          root,
+          routesDir: options.routesDir,
+        });
+        const route = manifest.routes.find((route) => route.id === routeId);
+        const island = route?.islandImports[islandIndex];
+
+        if (!route || !island || !Number.isInteger(islandIndex)) {
+          throw new Error(`Unknown Limette island client entry: ${identity}`);
+        }
+
+        return [
+          `import ${JSON.stringify(island.resolvedImport)};`,
+          `export const routeId = ${JSON.stringify(route.id)};`,
+          `export const islandTagName = ${JSON.stringify(island.tagName)};`,
+        ].join('\n');
       }
 
       const routeId = id.slice(RESOLVED_CLIENT_ENTRY_MODULE_PREFIX.length);
@@ -190,15 +221,20 @@ export function limette(options: LimetteOptions) {
         throw new Error(`Unknown Limette route client entry: ${routeId}`);
       }
 
-      const imports = route.islandImports.length
-        ? [
-          `import '@limette/core/runtime/ssr-client/lit-element-hydrate-support.ts';`,
-          `import '@limette/core/runtime/ssr-client/lit-element-hydrate-support-patch.ts';`,
-          ...route.islandImports.map((islandImport) =>
-            `import ${JSON.stringify(islandImport.resolvedImport)};`
-          ),
-        ]
-        : [];
+      const imports = [
+        ...route.styleImports.map((styleImport) =>
+          `import ${JSON.stringify(styleImport)};`
+        ),
+        ...(route.islandImports.length
+          ? [
+            `import '@limette/core/runtime/ssr-client/lit-element-hydrate-support.ts';`,
+            `import '@limette/core/runtime/ssr-client/lit-element-hydrate-support-patch.ts';`,
+            ...route.islandImports.map((islandImport) =>
+              `import ${JSON.stringify(islandImport.resolvedImport)};`
+            ),
+          ]
+          : []),
+      ];
 
       return [
         ...imports,
@@ -206,6 +242,9 @@ export function limette(options: LimetteOptions) {
         `export const routePath = ${JSON.stringify(route.path)};`,
         `export const islandImports = ${
           JSON.stringify(route.islandImports, null, 2)
+        };`,
+        `export const styleImports = ${
+          JSON.stringify(route.styleImports, null, 2)
         };`,
       ].join('\n');
     },

@@ -1,5 +1,6 @@
 import { html, LitElement } from 'lit';
 import './counter.css';
+import './shared.css';
 
 export class TestCounter extends LitElement {
   override render() {

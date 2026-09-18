@@ -9,6 +9,7 @@ export const SERVER_RUNTIME_MODULE_ID = '@limette/core/internal/server-runtime';
 export interface ServerEntryRouteAssets {
   readonly scripts: readonly string[];
   readonly styles: readonly string[];
+  readonly islandStyles: Readonly<Record<string, readonly string[]>>;
 }
 
 export type ServerEntryAssets = ReadonlyMap<
@@ -94,6 +95,7 @@ export function generateServerEntry(
       '    assets: {',
       `      scripts: ${jsLiteral(routeAssets?.scripts ?? [])},`,
       `      styles: ${jsLiteral(routeAssets?.styles ?? [])},`,
+      `      islandStyles: ${jsLiteral(routeAssets?.islandStyles ?? {})},`,
       '    },',
       '  },',
     ].join('\n');

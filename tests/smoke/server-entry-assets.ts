@@ -23,6 +23,7 @@ const routes: LimetteRouteManifest = {
         moduleSpecifier: '../islands/test.ts',
         resolvedImport: '/islands/test.ts',
       }],
+      styleImports: ['/routes/index.css'],
     },
     {
       id: 'static-id',
@@ -31,6 +32,16 @@ const routes: LimetteRouteManifest = {
       layouts: [],
       middlewares: [],
       islandImports: [],
+      styleImports: ['/routes/about.css'],
+    },
+    {
+      id: 'empty-id',
+      path: '/empty',
+      routeFile: 'routes/empty.ts',
+      layouts: [],
+      middlewares: [],
+      islandImports: [],
+      styleImports: [],
     },
   ],
 };
@@ -45,9 +56,32 @@ const sharedChunk: ViteManifestChunk = {
   file: 'assets/shared-abc.js',
   css: ['assets/shared-def.css'],
 };
+const staticChunk: ViteManifestChunk = {
+  file: 'assets/static-entry.js',
+  css: ['assets/static.css'],
+  isEntry: true,
+  name: 'limette-route-static-id',
+};
+const islandStyleChunk: ViteManifestChunk = {
+  file: 'assets/island-build-only.js',
+  css: ['assets/island-only.css'],
+  imports: ['island-shared'],
+  isEntry: true,
+  name: 'limette-island-island-id-0',
+};
+const islandSharedChunk: ViteManifestChunk = {
+  file: 'assets/island-shared.js',
+  css: ['assets/island-shared.css'],
+};
 
 const assets = resolveServerEntryAssets({
-  manifest: { 'virtual:entry': islandChunk, shared: sharedChunk },
+  manifest: {
+    'virtual:entry': islandChunk,
+    'virtual:island': islandStyleChunk,
+    'virtual:static': staticChunk,
+    shared: sharedChunk,
+    'island-shared': islandSharedChunk,
+  },
   routes,
   base: '/my-app/',
   manifestPath,
@@ -59,15 +93,30 @@ assert(
       '/my-app/assets/entry-def.css',
       '/my-app/assets/shared-def.css',
     ],
+    islandStyles: {
+      'test-island': [
+        '/my-app/assets/island-only.css',
+        '/my-app/assets/island-shared.css',
+      ],
+    },
   }),
   'Server assets did not preserve Vite base or emitted CSS.',
 );
 assert(
   JSON.stringify(assets.get('static-id')) === JSON.stringify({
     scripts: [],
-    styles: [],
+    styles: ['/my-app/assets/static.css'],
+    islandStyles: {},
   }),
-  'A no-island route unexpectedly required a client entry.',
+  'A CSS-only route did not receive styles without a client script.',
+);
+assert(
+  JSON.stringify(assets.get('empty-id')) === JSON.stringify({
+    scripts: [],
+    styles: [],
+    islandStyles: {},
+  }),
+  'An empty route unexpectedly received client assets.',
 );
 
 function expectFailure(
@@ -104,9 +153,22 @@ expectFailure({
   first: islandChunk,
   second: { ...islandChunk, file: 'assets/duplicate.js' },
   shared: sharedChunk,
+  island: islandStyleChunk,
+  'island-shared': islandSharedChunk,
 }, [
   'multiple entries',
   'limette-route-island-id',
+  'route "/"',
+  manifestPath,
+]);
+
+expectFailure({
+  island: islandChunk,
+  static: staticChunk,
+  shared: sharedChunk,
+}, [
+  'limette-island-island-id-0',
+  'test-island',
   'route "/"',
   manifestPath,
 ]);
@@ -137,15 +199,15 @@ expectFailure({
 expectFailure({
   island: islandChunk,
   shared: sharedChunk,
-  static: {
-    file: 'assets/static.js',
+  empty: {
+    file: 'assets/empty.js',
     isEntry: true,
-    name: 'limette-route-static-id',
+    name: 'limette-route-empty-id',
   },
 }, [
   'Unexpected Limette client entry',
-  'limette-route-static-id',
-  'non-island route "/about"',
-  'static-id',
+  'limette-route-empty-id',
+  'route without client assets "/empty"',
+  'empty-id',
   manifestPath,
 ]);

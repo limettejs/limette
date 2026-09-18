@@ -14,5 +14,6 @@ export interface RuntimeRouteDefinition {
   readonly assets: {
     readonly scripts: readonly string[];
     readonly styles: readonly string[];
+    readonly islandStyles: Readonly<Record<string, readonly string[]>>;
   };
 }

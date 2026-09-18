@@ -1,7 +1,10 @@
 import { createHash } from 'node:crypto';
 import { readdir, stat } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
-import { discoverIslandImportsForFiles } from './islands.ts';
+import {
+  discoverIslandImportsForFiles,
+  discoverStyleImportsForFiles,
+} from './islands.ts';
 import type { IslandImport } from './islands.ts';
 
 const ROUTE_EXT_PATTERN = /\.(?:ts|js)$/;
@@ -14,6 +17,7 @@ export type LimetteRouteManifestEntry = {
   layouts: string[];
   middlewares: string[];
   islandImports: IslandImport[];
+  styleImports: string[];
 };
 
 export type LimetteRouteManifest = {
@@ -228,6 +232,7 @@ export async function discoverRoutes(
           file,
         ) => normalizePath(relative(root, file))),
         islandImports: [],
+        styleImports: [],
       };
     })
     .sort(compareRoutesBySpecificity);
@@ -242,9 +247,18 @@ export async function discoverRoutes(
   const appFile = normalizePath(relative(root, hasAppTs ? appTs : appJs));
 
   for (const route of routes) {
+    const sourceFiles = [appFile, ...route.layouts, route.routeFile];
     route.islandImports = await discoverIslandImportsForFiles({
       root,
-      files: [appFile, ...route.layouts, route.routeFile],
+      files: sourceFiles,
+    });
+    route.styleImports = await discoverStyleImportsForFiles({
+      root,
+      files: sourceFiles,
+      excludeFiles: route.islandImports
+        .map((islandImport) => islandImport.resolvedImport)
+        .filter((path) => path.startsWith('/'))
+        .map((path) => path.slice(1).split(/[?#]/, 1)[0]),
     });
   }
 

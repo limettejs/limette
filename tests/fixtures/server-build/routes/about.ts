@@ -1,5 +1,6 @@
 import { PageComponent } from '@limette/core';
 import { html } from 'lit';
+import '../styles/about.css';
 
 export default class AboutPage extends PageComponent {
   override render() {

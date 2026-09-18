@@ -41,6 +41,13 @@ function joinDevServerUrl(origin: string | undefined, path: string) {
   return `${origin.replace(/\/+$/g, '')}${path}`;
 }
 
+function clientStyleDevPath(styleImport: string) {
+  const path = styleImport.startsWith('/')
+    ? styleImport
+    : `/@id/${styleImport}`;
+  return `${path}${path.includes('?') ? '&' : '?'}direct`;
+}
+
 export async function loadViteDevRoutes(
   options: LoadViteDevRoutesOptions,
   manifest?: LimetteRouteManifest,
@@ -68,6 +75,14 @@ export async function loadViteDevRoutes(
           clientEntryDevPath(route.id),
         )
         : undefined;
+      const stylePaths = route.islandImports.length
+        ? []
+        : route.styleImports.map((styleImport) =>
+          joinDevServerUrl(
+            options.devServerOrigin,
+            clientStyleDevPath(styleImport),
+          )
+        );
 
       return {
         id: route.id,
@@ -86,7 +101,8 @@ export async function loadViteDevRoutes(
         layouts,
         assets: {
           scripts: clientEntryPath ? [clientEntryPath] : [],
-          styles: [],
+          styles: stylePaths,
+          islandStyles: {},
         },
       };
     }),

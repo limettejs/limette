@@ -52,6 +52,19 @@ async function readJavaScript(path: string): Promise<string> {
   return source;
 }
 
+async function cssFiles(path: string): Promise<string[]> {
+  const files: string[] = [];
+  for await (const entry of Deno.readDir(path)) {
+    const entryPath = join(path, entry.name);
+    if (entry.isDirectory) {
+      files.push(...await cssFiles(entryPath));
+    } else if (entry.isFile && entry.name.endsWith('.css')) {
+      files.push(entryPath);
+    }
+  }
+  return files;
+}
+
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
@@ -107,13 +120,164 @@ try {
     base: '/my-app/',
     manifestPath: clientManifestPath,
   });
+  const homeRoute = routeManifest.routes.find((route) => route.path === '/');
+  const aboutRoute = routeManifest.routes.find((route) =>
+    route.path === '/about'
+  );
+  assert(homeRoute && aboutRoute, 'Missing CSS fixture routes.');
+  const homeAssets = fixtureRootAssets.get(homeRoute.id);
+  const aboutAssets = fixtureRootAssets.get(aboutRoute.id);
+  assert(homeAssets && aboutAssets, 'Missing resolved CSS fixture assets.');
+  for (
+    const styleImport of [
+      '/styles/app.css',
+      '/styles/layout.css',
+      '/styles/shared.css',
+      '/styles/home.css',
+    ]
+  ) {
+    assert(
+      homeRoute.styleImports.includes(styleImport),
+      `Home route did not discover ${styleImport}.`,
+    );
+  }
+  for (
+    const styleImport of [
+      '/styles/app.css',
+      '/styles/layout.css',
+      '/styles/shared.css',
+      '/styles/about.css',
+    ]
+  ) {
+    assert(
+      aboutRoute.styleImports.includes(styleImport),
+      `About route did not discover ${styleImport}.`,
+    );
+  }
+  assert(
+    homeAssets.scripts.length === 1 && homeAssets.styles.length > 0,
+    'Island route did not receive its script and route-scoped styles.',
+  );
+  assert(
+    aboutAssets.scripts.length === 0 && aboutAssets.styles.length > 0,
+    'CSS-only route received a script or lost its styles.',
+  );
+  const emittedCssFiles = await cssFiles(clientDir);
+  const cssContents = new Map(
+    await Promise.all(
+      emittedCssFiles.map(async (path) =>
+        [path, await Deno.readTextFile(path)] as const
+      ),
+    ),
+  );
+  const sharedCssFiles = [...cssContents]
+    .filter(([, css]) => css.includes('fixture-shared-style'))
+    .map(([path]) => path);
+  assert(
+    sharedCssFiles.length === 1,
+    `Shared CSS was emitted ${sharedCssFiles.length} times instead of once.`,
+  );
+  const sharedCssUrl = `/my-app/${
+    sharedCssFiles[0].slice(clientDir.length + 1).replaceAll('\\', '/')
+  }`;
+  assert(
+    homeAssets.styles.includes(sharedCssUrl) &&
+      aboutAssets.styles.includes(sharedCssUrl),
+    'Shared CSS was not associated with every affected route.',
+  );
+  const routeCss = async (styles: readonly string[]) =>
+    (await Promise.all(
+      styles.map((url) =>
+        Deno.readTextFile(join(clientDir, url.slice('/my-app/'.length)))
+      ),
+    )).join('\n');
+  const homeCss = await routeCss(homeAssets.styles);
+  const aboutCss = await routeCss(aboutAssets.styles);
+  const counterStyles = homeAssets.islandStyles['test-counter'];
+  const statusStyles = homeAssets.islandStyles['test-status'];
+  assert(
+    counterStyles?.length > 1 && statusStyles?.length > 1,
+    'An island requiring own and shared CSS did not retain every CSS asset.',
+  );
+  const counterCss = await routeCss(counterStyles);
+  const statusCss = await routeCss(statusStyles);
+  for (
+    const marker of [
+      'fixture-app-style',
+      'fixture-layout-style',
+      'fixture-shared-style',
+      'fixture-home-style',
+      'fixture-island-style',
+    ]
+  ) {
+    assert(homeCss.includes(marker), `Home CSS lost ${marker}.`);
+  }
+  for (
+    const marker of [
+      'fixture-app-style',
+      'fixture-layout-style',
+      'fixture-shared-style',
+      'fixture-about-style',
+    ]
+  ) {
+    assert(aboutCss.includes(marker), `About CSS lost ${marker}.`);
+  }
+  for (
+    const marker of ['fixture-island-style', 'fixture-shared-island-style']
+  ) {
+    assert(counterCss.includes(marker), `Counter island CSS lost ${marker}.`);
+  }
+  assert(
+    !counterCss.includes('fixture-status-island-style'),
+    'Counter island CSS included the other island stylesheet.',
+  );
+  for (
+    const marker of [
+      'fixture-status-island-style',
+      'fixture-shared-island-style',
+    ]
+  ) {
+    assert(statusCss.includes(marker), `Status island CSS lost ${marker}.`);
+  }
+  assert(
+    !statusCss.includes('fixture-island-style'),
+    'Status island CSS included the counter stylesheet.',
+  );
+  for (
+    const pageMarker of [
+      'fixture-app-style',
+      'fixture-layout-style',
+      'fixture-shared-style',
+      'fixture-home-style',
+    ]
+  ) {
+    assert(
+      !counterCss.includes(pageMarker) && !statusCss.includes(pageMarker),
+      `Page-only CSS ${pageMarker} leaked into an island CSS graph.`,
+    );
+  }
+  const sharedIslandCssFiles = [...cssContents]
+    .filter(([, css]) => css.includes('fixture-shared-island-style'))
+    .map(([path]) => path);
+  assert(
+    sharedIslandCssFiles.length === 1,
+    `Shared island CSS was emitted ${sharedIslandCssFiles.length} times instead of once.`,
+  );
+  const sharedIslandCssUrl = `/my-app/${
+    sharedIslandCssFiles[0].slice(clientDir.length + 1).replaceAll('\\', '/')
+  }`;
+  assert(
+    counterStyles.includes(sharedIslandCssUrl) &&
+      statusStyles.includes(sharedIslandCssUrl),
+    'Shared island CSS was not associated with both islands.',
+  );
   assert(
     JSON.stringify([...repositoryRootAssets]) ===
       JSON.stringify([...fixtureRootAssets]),
     'Route assets changed when Vite was invoked from another working directory.',
   );
   const homeEntry = Object.values(clientManifest).find((chunk) =>
-    chunk.isEntry && chunk.name?.startsWith('limette-route-')
+    chunk.isEntry && chunk.name === `limette-route-${homeRoute.id}`
   );
   assert(homeEntry, 'Client build did not emit the island route entry.');
   assert(
@@ -124,10 +288,8 @@ try {
     await exists(join(clientDir, homeEntry.file)),
     'Client manifest entry does not reference an emitted client file.',
   );
-  const expectedScriptUrl = `/my-app/${homeEntry.file}`;
-  const expectedStyleUrls = (homeEntry.css ?? []).map((path) =>
-    `/my-app/${path}`
-  );
+  const expectedScriptUrl = homeAssets.scripts[0];
+  const expectedStyleUrls = homeAssets.styles;
   assert(
     expectedStyleUrls.length > 0 &&
       (await Promise.all(
@@ -218,6 +380,37 @@ try {
     expectedStyleUrls.every((url) => homeHtml.includes(url)),
     'Island route did not receive CSS from the client manifest.',
   );
+  const islandShadow = (tagName: string) => {
+    const match = homeHtml.match(
+      new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)<\\/${tagName}>`),
+    );
+    assert(match, `Generated ${tagName} island did not render.`);
+    return match[1];
+  };
+  const counterShadow = islandShadow('test-counter');
+  const statusShadow = islandShadow('test-status');
+  assert(
+    counterStyles.every((url) => counterShadow.includes(url)) &&
+      statusStyles.every((url) => statusShadow.includes(url)),
+    'An island shadow root lost one of its associated stylesheets.',
+  );
+  assert(
+    statusStyles.filter((url) => !counterStyles.includes(url))
+      .every((url) => !counterShadow.includes(url)) &&
+      counterStyles.filter((url) => !statusStyles.includes(url))
+        .every((url) => !statusShadow.includes(url)),
+    "An island shadow root received another island's stylesheet.",
+  );
+  const pageOnlyStyleUrls = expectedStyleUrls.filter((url) =>
+    !counterStyles.includes(url) && !statusStyles.includes(url)
+  );
+  assert(
+    pageOnlyStyleUrls.length > 0 &&
+      pageOnlyStyleUrls.every((url) =>
+        !counterShadow.includes(url) && !statusShadow.includes(url)
+      ),
+    'Document-only CSS was injected into an island shadow root.',
+  );
   assert(
     homeHtml.includes('shadowroot="open"') ||
       homeHtml.includes('shadowrootmode="open"'),
@@ -231,6 +424,10 @@ try {
   assert(
     aboutResponse.status === 200 && aboutHtml.includes('Generated about'),
     'Static generated route did not render.',
+  );
+  assert(
+    aboutAssets.styles.every((url) => aboutHtml.includes(url)),
+    'CSS-only route did not render its route-scoped stylesheet URLs.',
   );
   assert(
     !aboutHtml.includes('<script type="module"'),

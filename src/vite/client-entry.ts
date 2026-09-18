@@ -3,10 +3,21 @@ import type { ViteDevServerLike } from './types.ts';
 export const CLIENT_ENTRY_MODULE_PREFIX = 'virtual:limette/client-entry/';
 export const RESOLVED_CLIENT_ENTRY_MODULE_PREFIX =
   `\0${CLIENT_ENTRY_MODULE_PREFIX}`;
+export const ISLAND_ENTRY_MODULE_PREFIX = 'virtual:limette/island-entry/';
+export const RESOLVED_ISLAND_ENTRY_MODULE_PREFIX =
+  `\0${ISLAND_ENTRY_MODULE_PREFIX}`;
 const CLIENT_ENTRY_DEV_PREFIX = '/@limette/client-entry/';
 
 export function clientEntryName(routeId: string) {
   return `limette-route-${routeId}`;
+}
+
+export function islandEntryName(routeId: string, islandIndex: number) {
+  return `limette-island-${routeId}-${islandIndex}`;
+}
+
+export function islandEntryModuleId(routeId: string, islandIndex: number) {
+  return `${ISLAND_ENTRY_MODULE_PREFIX}${routeId}/${islandIndex}`;
 }
 
 export function clientEntryDevPath(routeId: string) {

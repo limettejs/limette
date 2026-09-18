@@ -1,11 +1,50 @@
+import { fileURLToPath } from 'node:url';
 import { App } from '../../src/mod.ts';
-import { materializeDevRoutes } from '../../src/vite/routes.ts';
+import {
+  loadViteDevRoutes,
+  materializeDevRoutes,
+} from '../../src/vite/routes.ts';
 import { exampleRoot, loadExampleFile } from './_paths.ts';
 import { viteCommand } from './_vite-command.ts';
 
 const port = 5178;
 const origin = `http://127.0.0.1:${port}`;
 const app = new App().fsRoutes();
+const cssFixtureRoot = fileURLToPath(
+  new URL('../fixtures/server-build/', import.meta.url),
+);
+
+const cssRoutes = await loadViteDevRoutes({
+  root: cssFixtureRoot,
+  devServerOrigin: origin,
+  loadFile: async () => ({}),
+});
+const cssHomeRoute = cssRoutes.find((route) => route.path === '/');
+const cssOnlyRoute = cssRoutes.find((route) => route.path === '/about');
+if (!cssHomeRoute || !cssOnlyRoute) {
+  throw new Error('Expected CSS development fixture routes.');
+}
+if (
+  cssHomeRoute.assets.scripts.length !== 1 ||
+  cssHomeRoute.assets.styles.length !== 0
+) {
+  throw new Error('Island route did not retain its development client entry.');
+}
+if (
+  cssOnlyRoute.assets.scripts.length !== 0 ||
+  ![
+    '/styles/app.css',
+    '/styles/layout.css',
+    '/styles/shared.css',
+    '/styles/about.css',
+  ].every((path) =>
+    cssOnlyRoute.assets.styles.includes(`${origin}${path}?direct`)
+  )
+) {
+  throw new Error(
+    'CSS-only route did not receive development styles without a script.',
+  );
+}
 
 await materializeDevRoutes(app, {
   root: exampleRoot,

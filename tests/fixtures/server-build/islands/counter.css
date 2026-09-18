@@ -1,3 +1,7 @@
 button {
   color: rebeccapurple;
 }
+
+.fixture-island-style {
+  --fixture-source: island;
+}

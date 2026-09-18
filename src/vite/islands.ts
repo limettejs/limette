@@ -14,6 +14,11 @@ type ImportBinding = {
   moduleSpecifier: string;
 };
 
+type SourceImport = {
+  moduleSpecifier: string;
+  typeOnly: boolean;
+};
+
 const MODULE_EXTENSIONS = ['', '.ts', '.js'];
 const INDEX_MODULES = ['index.ts', 'index.js'];
 
@@ -70,6 +75,34 @@ function getImportBindings(code: string): ImportBinding[] {
   }
 
   return bindings;
+}
+
+function getSourceImports(code: string): SourceImport[] {
+  const imports: SourceImport[] = [];
+  const importPattern =
+    /import\s+(?:(type)\s+)?(?:(.*?)\s+from\s*)?["']([^"']+)["'];?/gs;
+
+  for (const match of code.matchAll(importPattern)) {
+    const [, explicitTypeOnly, rawClause, moduleSpecifier] = match;
+    const clause = rawClause?.trim();
+    const namedImports = clause?.match(/^\{([\s\S]*)\}$/)?.[1]
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+    const namedTypesOnly = namedImports?.length &&
+      namedImports.every((entry) => entry.startsWith('type '));
+
+    imports.push({
+      moduleSpecifier,
+      typeOnly: Boolean(
+        explicitTypeOnly ||
+          clause?.startsWith('type ') ||
+          namedTypesOnly,
+      ),
+    });
+  }
+
+  return imports;
 }
 
 function readBalancedBlock(code: string, start: number) {
@@ -193,6 +226,10 @@ function resolveIslandImport({
     : resolve(dirname(sourceFile), moduleSpecifier);
 
   return `/${normalizePath(relative(root, resolved))}`;
+}
+
+function isCssImport(moduleSpecifier: string) {
+  return stripImportQuery(moduleSpecifier).endsWith('.css');
 }
 
 async function fileExists(path: string) {
@@ -327,6 +364,59 @@ async function discoverIslandImportsForFileInternal({
   return imports;
 }
 
+async function discoverStyleImportsForFileInternal({
+  root,
+  file,
+  visited,
+  excluded,
+}: {
+  root: string;
+  file: string;
+  visited: Set<string>;
+  excluded: Set<string>;
+}): Promise<string[]> {
+  const sourceFile = isAbsolute(file) ? file : join(root, file);
+  const sourceKey = normalizePath(relative(root, sourceFile));
+
+  if (visited.has(sourceKey) || excluded.has(sourceKey)) return [];
+  visited.add(sourceKey);
+
+  const code = await readFile(sourceFile, 'utf8');
+  const imports = getSourceImports(code).filter((sourceImport) =>
+    !sourceImport.typeOnly
+  );
+  const styles: string[] = [];
+
+  for (const sourceImport of imports) {
+    if (isCssImport(sourceImport.moduleSpecifier)) {
+      styles.push(resolveIslandImport({
+        root,
+        sourceFile,
+        moduleSpecifier: sourceImport.moduleSpecifier,
+      }));
+      continue;
+    }
+
+    const importedFile = await resolveLocalModuleFile({
+      root,
+      sourceFile,
+      moduleSpecifier: sourceImport.moduleSpecifier,
+    });
+    if (!importedFile) continue;
+
+    styles.push(
+      ...await discoverStyleImportsForFileInternal({
+        root,
+        file: importedFile,
+        visited,
+        excluded,
+      }),
+    );
+  }
+
+  return styles;
+}
+
 export async function discoverIslandImportsForFile({
   root,
   file,
@@ -366,4 +456,32 @@ export async function discoverIslandImportsForFiles({
     seen.add(islandImport.resolvedImport);
     return true;
   });
+}
+
+export async function discoverStyleImportsForFiles({
+  root,
+  files,
+  excludeFiles = [],
+}: {
+  root: string;
+  files: string[];
+  excludeFiles?: string[];
+}) {
+  const excluded = new Set(
+    excludeFiles.map((file) => normalizePath(file.replace(/^\/+/, ''))),
+  );
+  const styles = (
+    await Promise.all(
+      files.map((file) =>
+        discoverStyleImportsForFileInternal({
+          root,
+          file,
+          visited: new Set(),
+          excluded,
+        })
+      ),
+    )
+  ).flat();
+
+  return [...new Set(styles)];
 }

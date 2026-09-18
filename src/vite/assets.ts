@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { clientEntryName } from './client-entry.ts';
+import { clientEntryName, islandEntryName } from './client-entry.ts';
 import type { LimetteRouteManifest } from './manifest.ts';
 import type { ServerEntryAssets } from './server-entry.ts';
 
@@ -20,6 +20,7 @@ type RouteClientAssets = {
   entry: string | undefined;
   scripts: string[];
   styles: string[];
+  islandStyles: Record<string, string[]>;
 };
 
 export type ReadViteManifestOptions = {
@@ -66,6 +67,25 @@ function collectImportedAssets({
   }
 }
 
+function matchingEntry(
+  viteManifest: ViteManifest,
+  entryName: string,
+  manifestPath: string,
+  description: string,
+) {
+  const matchingEntries = Object.entries(viteManifest).filter(([, chunk]) =>
+    chunk.isEntry && chunk.name === entryName
+  );
+
+  if (matchingEntries.length > 1) {
+    throw new Error(
+      `Vite manifest "${manifestPath}" contains multiple entries named "${entryName}" for ${description}.`,
+    );
+  }
+
+  return matchingEntries[0];
+}
+
 export async function readViteManifest(
   options: ReadViteManifestOptions,
 ) {
@@ -90,9 +110,20 @@ function resolveRouteClientAssets(
   );
   const expectedRouteIds = new Set(
     routeManifest.routes
-      .filter((route) => route.islandImports.length > 0)
+      .filter((route) =>
+        route.islandImports.length > 0 || route.styleImports.length > 0
+      )
       .map((route) => route.id),
   );
+  const expectedIslandEntries = new Map<string, string>();
+  for (const route of routeManifest.routes) {
+    route.islandImports.forEach((island, index) => {
+      expectedIslandEntries.set(
+        islandEntryName(route.id, index),
+        `island "${island.tagName}" on Limette route "${route.path}" (${route.id})`,
+      );
+    });
+  }
 
   for (const chunk of Object.values(viteManifest)) {
     if (!chunk.isEntry || !chunk.name?.startsWith('limette-route-')) continue;
@@ -113,26 +144,33 @@ function resolveRouteClientAssets(
 
     if (!expectedRouteIds.has(routeId)) {
       throw new Error(
-        `Unexpected Limette client entry "${chunk.name}" for non-island route "${route.path}" (${routeId}) in Vite manifest "${manifestPath}".`,
+        `Unexpected Limette client entry "${chunk.name}" for route without client assets "${route.path}" (${routeId}) in Vite manifest "${manifestPath}".`,
+      );
+    }
+  }
+
+  for (const chunk of Object.values(viteManifest)) {
+    if (!chunk.isEntry || !chunk.name?.startsWith('limette-island-')) continue;
+
+    if (!expectedIslandEntries.has(chunk.name)) {
+      throw new Error(
+        `Unknown, stale, or malformed Limette island entry "${chunk.name}" in Vite manifest "${manifestPath}".`,
       );
     }
   }
 
   return routeManifest.routes.map((route): RouteClientAssets => {
     const expectedEntryName = clientEntryName(route.id);
-    const matchingEntries = Object.entries(viteManifest).filter(([, chunk]) =>
-      chunk.isEntry && chunk.name === expectedEntryName
-    );
+    const [entryManifestKey, entryChunk] = matchingEntry(
+      viteManifest,
+      expectedEntryName,
+      manifestPath,
+      `Limette route "${route.path}" (${route.id})`,
+    ) ?? [];
 
-    if (matchingEntries.length > 1) {
-      throw new Error(
-        `Vite manifest "${manifestPath}" contains multiple entries named "${expectedEntryName}" for Limette route "${route.path}" (${route.id}).`,
-      );
-    }
-
-    const [entryManifestKey, entryChunk] = matchingEntries[0] ?? [];
-
-    if (route.islandImports.length > 0 && !entryChunk) {
+    const needsClientEntry = route.islandImports.length > 0 ||
+      route.styleImports.length > 0;
+    if (needsClientEntry && !entryChunk) {
       throw new Error(
         `Missing Vite client entry "${expectedEntryName}" for Limette route "${route.path}" (${route.id}) in manifest "${manifestPath}". ` +
           'Build with clientEntryInputs() and resolve assets from the resulting Vite manifest.',
@@ -153,12 +191,49 @@ function resolveRouteClientAssets(
       });
     }
 
+    const islandStyles: Record<string, string[]> = {};
+    route.islandImports.forEach((island, islandIndex) => {
+      const expectedIslandEntryName = islandEntryName(route.id, islandIndex);
+      const [islandManifestKey, islandEntryChunk] = matchingEntry(
+        viteManifest,
+        expectedIslandEntryName,
+        manifestPath,
+        `island "${island.tagName}" on Limette route "${route.path}" (${route.id})`,
+      ) ?? [];
+
+      if (!islandEntryChunk) {
+        throw new Error(
+          `Missing Vite island entry "${expectedIslandEntryName}" for island "${island.tagName}" on Limette route "${route.path}" (${route.id}) in manifest "${manifestPath}". ` +
+            'Build with clientEntryInputs() and resolve assets from the resulting Vite manifest.',
+        );
+      }
+
+      const islandCss = new Set<string>();
+      collectImportedAssets({
+        manifest: viteManifest,
+        chunk: islandEntryChunk,
+        scripts: new Set<string>(),
+        styles: islandCss,
+        seen: new Set(islandManifestKey ? [islandManifestKey] : []),
+      });
+      const existingStyles = islandStyles[island.tagName] ?? [];
+      islandStyles[island.tagName] = Array.from(
+        new Set([
+          ...existingStyles,
+          ...Array.from(islandCss).map((asset) => joinUrl(base, asset)),
+        ]),
+      );
+    });
+
     return {
       routeId: route.id,
       routePath: route.path,
-      entry: entryChunk?.file ? joinUrl(base, entryChunk.file) : undefined,
+      entry: route.islandImports.length > 0 && entryChunk?.file
+        ? joinUrl(base, entryChunk.file)
+        : undefined,
       scripts: Array.from(scripts).map((asset) => joinUrl(base, asset)),
       styles: Array.from(styles).map((asset) => joinUrl(base, asset)),
+      islandStyles,
     };
   });
 }
@@ -186,6 +261,7 @@ export function resolveServerEntryAssets(
       {
         scripts: assets.entry ? [assets.entry] : [],
         styles: assets.styles,
+        islandStyles: assets.islandStyles,
       },
     ]),
   );

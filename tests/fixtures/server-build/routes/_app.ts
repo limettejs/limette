@@ -1,5 +1,6 @@
 import { AppComponent } from '@limette/core';
 import { html } from 'lit';
+import '../styles/app.css';
 
 export default class TestApp extends AppComponent {
   override render() {

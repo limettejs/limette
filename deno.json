@@ -15,6 +15,7 @@
     "@limette/core": "./src/mod.ts",
     "@lit-labs/ssr": "npm:@lit-labs/ssr@3.3.0",
     "@lit-labs/ssr/": "npm:/@lit-labs/ssr@3.3.0/",
+    "@lit-labs/ssr-dom-shim": "npm:@lit-labs/ssr-dom-shim@1.6.0",
     "@limette/core/deno": "./src/deno.ts",
     "@limette/core/node": "./src/node.ts",
     "@limette/core/vite": "./src/vite/mod.ts",

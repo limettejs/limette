@@ -33,7 +33,7 @@ function handlerRoute(
     layouts: [],
     middlewares,
     islands: [],
-    assets: { scripts: [], styles: [] },
+    assets: { scripts: [], styles: [], islandStyles: {} },
   };
 }
 
@@ -155,6 +155,7 @@ function componentRoute(
     islands?: readonly string[];
     scripts?: readonly string[];
     styles?: readonly string[];
+    islandStyles?: Readonly<Record<string, readonly string[]>>;
   } = {},
 ): RuntimeRouteDefinition {
   return {
@@ -182,6 +183,7 @@ function componentRoute(
     assets: {
       scripts: options.scripts ?? [],
       styles: options.styles ?? [],
+      islandStyles: options.islandStyles ?? {},
     },
   };
 }
@@ -197,6 +199,9 @@ registerRouteDefinitions(renderApp, {
       islands: ['runtime-boundary-island'],
       scripts: ['/assets/with-island.js'],
       styles: ['/assets/with-island.css'],
+      islandStyles: {
+        'runtime-boundary-island': ['/assets/island-only.css'],
+      },
     }),
   ],
 });
@@ -225,9 +230,14 @@ assert(
   'The island route lost its stylesheet.',
 );
 assert(
-  islandHtml.includes('@import url(&quot;/assets/with-island.css&quot;)') ||
-    islandHtml.includes('@import url("/assets/with-island.css")'),
-  'The first stylesheet was not retained for island shadow rendering.',
+  islandHtml.includes('@import url(&quot;/assets/island-only.css&quot;)') ||
+    islandHtml.includes('@import url("/assets/island-only.css")'),
+  'The island stylesheet was not retained for shadow rendering.',
+);
+assert(
+  !islandHtml.includes('@import url(&quot;/assets/with-island.css&quot;)') &&
+    !islandHtml.includes('@import url("/assets/with-island.css")'),
+  'The document stylesheet leaked into island shadow rendering.',
 );
 assert(
   islandHtml.indexOf('data-layout="outer"') <

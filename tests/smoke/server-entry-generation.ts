@@ -3,6 +3,7 @@ import {
   generateServerEntry,
   SERVER_ENTRY_MODULE_ID,
   type ServerEntryAssets,
+  type ServerEntryRouteAssets,
 } from '../../src/vite/server-entry.ts';
 import type { LimetteRouteManifest } from '../../src/vite/manifest.ts';
 import { limette } from '../../src/vite/plugin.ts';
@@ -25,6 +26,7 @@ const manifest: LimetteRouteManifest = {
       layouts: ['routes/shared-layout.ts'],
       middlewares: ['routes/shared-middleware.ts'],
       islandImports: [],
+      styleImports: [],
     },
     {
       id: 'island-id',
@@ -39,17 +41,22 @@ const manifest: LimetteRouteManifest = {
         moduleSpecifier: '../islands/test.ts',
         resolvedImport: '/islands/test.ts',
       }],
+      styleImports: [],
     },
   ],
 };
-const assets: ServerEntryAssets = new Map([
+const assets: ServerEntryAssets = new Map<string, ServerEntryRouteAssets>([
   ['static-id', {
     scripts: [],
     styles: ['/assets/static "quoted".css'],
+    islandStyles: {},
   }],
   ['island-id', {
     scripts: ['/assets/island "quoted".js'],
     styles: ['/assets/island.css'],
+    islandStyles: {
+      'test-"island"': ['/assets/island shadow "quoted".css'],
+    },
   }],
 ]);
 const options = {
@@ -98,7 +105,10 @@ assert(
 );
 assert(
   first.includes('scripts: ["/assets/island \\"quoted\\".js"]') &&
-    first.includes('islands: ["test-\\"island\\""]'),
+    first.includes('islands: ["test-\\"island\\""]') &&
+    first.includes(
+      'islandStyles: {"test-\\"island\\"":["/assets/island shadow \\"quoted\\".css"]}',
+    ),
   'Island metadata was not serialized safely.',
 );
 assert(
@@ -130,7 +140,10 @@ let unknownAssetsError = '';
 try {
   generateServerEntry({
     ...options,
-    assets: new Map([...assets, ['unknown-id', { scripts: [], styles: [] }]]),
+    assets: new Map([
+      ...assets,
+      ['unknown-id', { scripts: [], styles: [], islandStyles: {} }],
+    ]),
   });
 } catch (error) {
   unknownAssetsError = error instanceof Error ? error.message : String(error);

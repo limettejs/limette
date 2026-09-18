@@ -34,6 +34,53 @@ deno task dev
 deno task build
 ```
 
+## Deploy to Cloudflare Workers
+
+Build the application with Vite, then wrap the generated request handler in
+`worker-entry.js`:
+
+```js
+import handler from "./dist/server/entry.js";
+
+export default {
+  fetch(request, env, ctx) {
+    return handler(request, { env, ctx });
+  },
+};
+```
+
+Configure Wrangler to serve the Vite client build through Cloudflare Static
+Assets and run the Worker for application routes:
+
+```json
+{
+  "main": "./worker-entry.js",
+  "compatibility_date": "2026-09-18",
+  "assets": {
+    "directory": "./dist/client"
+  }
+}
+```
+
+Matching Vite assets are served directly by Cloudflare without invoking
+Limette. Application routes and missing assets fall through to the Worker. No
+`ASSETS` binding, `run_worker_first`, or `nodejs_compat` flag is required.
+
+The intended workflow is:
+
+```sh
+npm run dev
+npm run build
+npx wrangler dev
+npx wrangler deploy
+```
+
+Use `vite dev` (normally exposed as `npm run dev`) for fast application
+development. After a build, use `wrangler dev` to validate the generated
+application in the actual workerd/Cloudflare environment before deploying.
+Limette does not integrate `@cloudflare/vite-plugin`, so Wrangler does not
+provide Limette's live Vite HMR workflow.
+
 ## Start a project
 
 ```

@@ -1,6 +1,4 @@
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
-import { unsafeCSS } from 'lit';
-// @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { LitElement } from 'lit';
 import { LitElementRenderer } from '@lit-labs/ssr/lib/lit-element-renderer.js';
 import type { RenderInfo, RenderResult } from '@lit-labs/ssr';
@@ -10,6 +8,16 @@ import type { Context } from '../context.ts';
 type LmtShadowRootMode = 'open' | 'closed' | 'disabled';
 interface ContextLitElement extends LitElement {
   ctx: Context;
+}
+
+function* renderRouteStyle(
+  stylesheets: readonly string[],
+  shadow: RenderResult,
+): RenderResult {
+  yield `<style>${
+    stylesheets.map((stylesheet) => `@import url("${stylesheet}");`).join('')
+  }</style>`;
+  yield* shadow;
 }
 
 export const LimetteElementRenderer = (
@@ -31,13 +39,10 @@ export const LimetteElementRenderer = (
      * emitted.
      */
     override renderShadow(renderInfo: RenderInfo): RenderResult {
-      const ctor = this.element.constructor as typeof LitElement & {
-        __requiresTailwind: boolean;
-      };
-
       // A component is an island if it's included in route.islands.
       const isIsland = route.islands.includes(this.tagName) ||
         this.element.hasAttribute('island');
+      const islandStyles = route.assets.islandStyles[this.tagName] ?? [];
 
       // Islands are CSR'ed, so we can't render them in light DOM
       if (!isIsland) {
@@ -50,13 +55,13 @@ export const LimetteElementRenderer = (
       if (isIsland && !this.element.hasAttribute('ssr')) {
         if (
           this.element.hasAttribute('skip-tailwind') ||
-          !route.assets.styles[0]
+          islandStyles.length === 0
         ) {
           // @ts-expect-error: LitElementRenderer actually accepts undefined as a returned value
           return;
         }
 
-        return `<style>@import url("${route.assets.styles[0]}");</style>`;
+        return renderRouteStyle(islandStyles, []);
       }
 
       // Inject context for every server-rendered component instance.
@@ -64,29 +69,12 @@ export const LimetteElementRenderer = (
         (this.element as ContextLitElement).ctx = ctx;
       }
 
-      /**
-       * Inject Tailwind CSS for
-       *    - is island
-       *    - is ssr'ed
-       *    - no skip-tailwind attribute
-       *    - route has css
-       */
-      if (
-        isIsland &&
-        route.assets.styles[0] &&
-        this.element.hasAttribute('ssr') &&
-        !this.element.hasAttribute('skip-tailwind') &&
-        ctor.__requiresTailwind !== true
-      ) {
-        // Inject Tailwind CSS import
-        ctor.elementStyles?.unshift?.(
-          unsafeCSS(`@import url("${route.assets.styles[0]}");`),
-        );
-
-        // Mark component that was already injected
-        ctor.__requiresTailwind = true;
-      }
-
-      return super.renderShadow(renderInfo);
+      const shadow = super.renderShadow(renderInfo);
+      return isIsland &&
+          islandStyles.length > 0 &&
+          this.element.hasAttribute('ssr') &&
+          !this.element.hasAttribute('skip-tailwind')
+        ? renderRouteStyle(islandStyles, shadow)
+        : shadow;
     }
   };
