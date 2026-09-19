@@ -13,10 +13,12 @@ import type { LayoutModule } from '../server/layouts.ts';
 import type { MiddlewareModule } from '../server/middlewares.ts';
 import type { RouteModule } from '../server/router.ts';
 import type { IslandsDefinition } from '../server/components.ts';
+import { tailwindEntryDevPath, tailwindSourceVersion } from './tailwind.ts';
 
 export type LoadViteDevRoutesOptions = DiscoverRoutesOptions & {
   loadFile: (path: string) => Promise<unknown>;
   devServerOrigin?: string;
+  tailwind?: string;
 };
 
 export function routeTagName(path: string, id: string) {
@@ -102,21 +104,33 @@ export async function loadViteDevRoutes(
 
   return await Promise.all(
     manifest.routes.map(async (route): Promise<RuntimeRouteDefinition> => {
-      const [routeModule, layouts, middlewares, islandStyles] = await Promise
-        .all([
-          options.loadFile(route.routeFile) as Promise<RouteModule>,
-          Promise.all(
-            route.layouts.map((layout) =>
-              options.loadFile(layout) as Promise<LayoutModule>
-            ),
+      const [
+        routeModule,
+        layouts,
+        middlewares,
+        islandStyles,
+        tailwindVersion,
+      ] = await Promise.all([
+        options.loadFile(route.routeFile) as Promise<RouteModule>,
+        Promise.all(
+          route.layouts.map((layout) =>
+            options.loadFile(layout) as Promise<LayoutModule>
           ),
-          Promise.all(
-            route.middlewares.map((middleware) =>
-              options.loadFile(middleware) as Promise<MiddlewareModule>
-            ),
+        ),
+        Promise.all(
+          route.middlewares.map((middleware) =>
+            options.loadFile(middleware) as Promise<MiddlewareModule>
           ),
-          devIslandStyles(route, options),
-        ]);
+        ),
+        devIslandStyles(route, options),
+        options.tailwind
+            ? tailwindSourceVersion({
+              root: options.root ?? process.cwd(),
+              route,
+              tailwindFile: options.tailwind,
+            })
+          : undefined,
+      ]);
       const clientEntryPath = route.islandImports.length
         ? joinDevServerUrl(
           options.devServerOrigin,
@@ -155,6 +169,12 @@ export async function loadViteDevRoutes(
           scripts: clientEntryPath ? [clientEntryPath] : [],
           styles: stylePaths,
           islandStyles,
+          tailwindStyle: options.tailwind
+            ? joinDevServerUrl(
+              options.devServerOrigin,
+              tailwindEntryDevPath(route.id, tailwindVersion),
+            )
+            : undefined,
         },
       };
     }),

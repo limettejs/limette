@@ -23,6 +23,7 @@ const routes: LimetteRouteManifest = {
         moduleSpecifier: '../islands/test.ts',
         resolvedImport: '/islands/test.ts',
       }],
+      sourceFiles: ['routes/_app.ts', 'routes/index.ts', 'islands/test.ts'],
       styleImports: ['/routes/index.css'],
     },
     {
@@ -32,6 +33,7 @@ const routes: LimetteRouteManifest = {
       layouts: [],
       middlewares: [],
       islandImports: [],
+      sourceFiles: ['routes/_app.ts', 'routes/about.ts'],
       styleImports: ['/routes/about.css'],
     },
     {
@@ -41,6 +43,7 @@ const routes: LimetteRouteManifest = {
       layouts: [],
       middlewares: [],
       islandImports: [],
+      sourceFiles: ['routes/_app.ts', 'routes/empty.ts'],
       styleImports: [],
     },
   ],

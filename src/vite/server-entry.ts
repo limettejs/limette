@@ -10,6 +10,7 @@ export interface ServerEntryRouteAssets {
   readonly scripts: readonly string[];
   readonly styles: readonly string[];
   readonly islandStyles: Readonly<Record<string, readonly string[]>>;
+  readonly tailwindStyle?: string;
 }
 
 export type ServerEntryAssets = ReadonlyMap<
@@ -96,6 +97,11 @@ export function generateServerEntry(
       `      scripts: ${jsLiteral(routeAssets?.scripts ?? [])},`,
       `      styles: ${jsLiteral(routeAssets?.styles ?? [])},`,
       `      islandStyles: ${jsLiteral(routeAssets?.islandStyles ?? {})},`,
+      `      tailwindStyle: ${
+        routeAssets?.tailwindStyle === undefined
+          ? 'undefined'
+          : jsLiteral(routeAssets.tailwindStyle)
+      },`,
       '    },',
       '  },',
     ].join('\n');

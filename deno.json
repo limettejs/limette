@@ -24,6 +24,7 @@
     "@limette/core/runtime/ssr-client/lit-element-hydrate-support.ts": "./src/runtime/ssr-client/lit-element-hydrate-support.ts",
     "@limette/core/runtime/ssr-client/lit-element-hydrate-support-patch.ts": "./src/runtime/ssr-client/lit-element-hydrate-support-patch.ts",
     "@lit-labs/ssr-client": "npm:@lit-labs/ssr-client@1.1.7",
+    "@tailwindcss/vite": "npm:@tailwindcss/vite@^4.3.3",
     "lit": "npm:lit@3.2.1",
     "lit/": "npm:/lit@3.2.1/",
     "linkedom": "npm:linkedom@0.18.12",

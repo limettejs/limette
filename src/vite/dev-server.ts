@@ -11,6 +11,7 @@ import type { HotUpdateContextLike, ViteDevServerLike } from './types.ts';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 export type LimetteDevOptions = DiscoverRoutesOptions & {
+  tailwind?: string;
   dev?: {
     app?: App;
     appModule?: string;

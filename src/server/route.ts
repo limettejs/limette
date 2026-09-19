@@ -17,5 +17,6 @@ export interface RuntimeRouteDefinition {
     readonly scripts: readonly string[];
     readonly styles: readonly string[];
     readonly islandStyles: Readonly<Record<string, readonly string[]>>;
+    readonly tailwindStyle?: string;
   };
 }

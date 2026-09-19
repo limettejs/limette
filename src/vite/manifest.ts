@@ -3,6 +3,7 @@ import { readdir, stat } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import {
   discoverIslandImportsForFiles,
+  discoverSourceFilesForFiles,
   discoverStyleImportsForFiles,
 } from './islands.ts';
 import type { IslandImport } from './islands.ts';
@@ -18,6 +19,7 @@ export type LimetteRouteManifestEntry = {
   layouts: string[];
   middlewares: string[];
   islandImports: IslandImport[];
+  sourceFiles: string[];
   styleImports: string[];
 };
 
@@ -234,6 +236,7 @@ export async function discoverRoutes(
           file,
         ) => normalizePath(relative(root, file))),
         islandImports: [],
+        sourceFiles: [],
         styleImports: [],
       };
     })
@@ -250,6 +253,11 @@ export async function discoverRoutes(
 
   for (const route of routes) {
     const sourceFiles = [appFile, ...route.layouts, route.routeFile];
+    route.sourceFiles = await discoverSourceFilesForFiles({
+      root,
+      files: sourceFiles,
+      resolve: options.resolve,
+    });
     route.islandImports = await discoverIslandImportsForFiles({
       root,
       files: sourceFiles,

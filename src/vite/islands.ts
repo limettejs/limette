@@ -425,6 +425,44 @@ async function discoverStyleImportsForFileInternal({
   return styles;
 }
 
+async function discoverSourceFilesForFileInternal({
+  root,
+  file,
+  visited,
+  resolveModule,
+}: {
+  root: string;
+  file: string;
+  visited: Set<string>;
+  resolveModule?: ResolveModule;
+}): Promise<string[]> {
+  const { sourceFile, sourceKey, parsed } = await parsedLocalModule(root, file);
+  if (visited.has(sourceKey)) return [];
+  visited.add(sourceKey);
+  const files = [sourceKey];
+  for (
+    const reference of parsed.references.filter((entry) => !entry.typeOnly)
+  ) {
+    const resolved = await resolveReference({
+      root,
+      sourceFile,
+      moduleSpecifier: reference.moduleSpecifier,
+      resolveModule,
+    });
+    if (resolved.localFile && isSourceModule(resolved.localFile)) {
+      files.push(
+        ...await discoverSourceFilesForFileInternal({
+          root,
+          file: resolved.localFile,
+          visited,
+          resolveModule,
+        }),
+      );
+    }
+  }
+  return files;
+}
+
 export async function discoverIslandImportsForFile({
   root,
   file,
@@ -495,4 +533,27 @@ export async function discoverStyleImportsForFiles({
       })
     ))).flat();
   return [...new Set(styles)];
+}
+
+export async function discoverSourceFilesForFiles({
+  root,
+  files,
+  resolve: resolveModule,
+}: {
+  root: string;
+  files: string[];
+  resolve?: ResolveModule;
+}) {
+  const visited = new Set<string>();
+  const sourceFiles = (await Promise.all(
+    files.map((file) =>
+      discoverSourceFilesForFileInternal({
+        root,
+        file,
+        visited,
+        resolveModule,
+      })
+    ),
+  )).flat();
+  return [...new Set(sourceFiles)];
 }

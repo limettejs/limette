@@ -198,7 +198,11 @@ export async function bootstrapContent(
     )
   }</script>`;
 
-  const styles = route.assets.styles.map((path) =>
+  const documentStylePaths = [
+    ...route.assets.styles,
+    ...(route.assets.tailwindStyle ? [route.assets.tailwindStyle] : []),
+  ];
+  const styles = documentStylePaths.map((path) =>
     unsafeHTML(`<link rel="stylesheet" href="${path}" />`)
   );
   const scripts = route.assets.scripts.length

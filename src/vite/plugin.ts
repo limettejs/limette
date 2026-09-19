@@ -21,6 +21,12 @@ import {
   SERVER_ENTRY_MODULE_ID,
   SERVER_RUNTIME_MODULE_ID,
 } from './server-entry.ts';
+import {
+  generateTailwindEntry,
+  resolveTailwindEntryId,
+  tailwindRouteIdFromModuleId,
+  tailwindRouteIdFromResolvedId,
+} from './tailwind.ts';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -28,6 +34,7 @@ import { fileURLToPath } from 'node:url';
 export interface LimetteOptions {
   app: string;
   routesDir?: string;
+  tailwind?: string;
 }
 
 type UserConfigLike = {
@@ -56,6 +63,7 @@ export function limette(options: LimetteOptions) {
   let command: ConfigEnvLike['command'] = 'serve';
   const devServer = createLimetteDevServer({
     routesDir: options.routesDir,
+    tailwind: options.tailwind,
     dev: { appModule: options.app },
   });
 
@@ -121,6 +129,7 @@ export function limette(options: LimetteOptions) {
       const clientInputs = await clientEntryInputs({
         root,
         routesDir: options.routesDir,
+        tailwind: Boolean(options.tailwind),
         resolve: (id, importer) => this.resolve(id, importer),
       });
       for (const [name, id] of Object.entries(clientInputs)) {
@@ -156,9 +165,41 @@ export function limette(options: LimetteOptions) {
         }`;
       }
 
+      const tailwindRouteId = tailwindRouteIdFromModuleId(id);
+      if (options.tailwind && tailwindRouteId) {
+        const query = id.includes('?') ? id.slice(id.indexOf('?') + 1) : '';
+        return resolveTailwindEntryId({
+          root,
+          tailwind: options.tailwind,
+          routeId: tailwindRouteId,
+          query,
+        });
+      }
+
       return undefined;
     },
     async load(this: PluginContextLike, id: string) {
+      const tailwindFile = options.tailwind
+        ? resolve(root, options.tailwind)
+        : undefined;
+      const tailwindRouteId = tailwindFile
+        ? tailwindRouteIdFromResolvedId(id, tailwindFile)
+        : undefined;
+      if (tailwindFile && tailwindRouteId) {
+        const manifest = await discoverRoutes({
+          root,
+          routesDir: options.routesDir,
+          resolve: (id, importer) => this.resolve(id, importer),
+        });
+        const route = manifest.routes.find((route) =>
+          route.id === tailwindRouteId
+        );
+        if (!route) {
+          throw new Error(`Unknown Limette Tailwind entry: ${tailwindRouteId}`);
+        }
+        return generateTailwindEntry({ root, tailwindFile, route });
+      }
+
       if (id === RESOLVED_SERVER_ENTRY_MODULE_ID) {
         const importer = resolve(root, '__limette_server_entry__.js');
         const resolvedApp = await this.resolve(options.app, importer);
@@ -182,6 +223,7 @@ export function limette(options: LimetteOptions) {
           routes: manifest,
           base,
           manifestPath,
+          tailwind: Boolean(options.tailwind),
         });
 
         return generateServerEntry({

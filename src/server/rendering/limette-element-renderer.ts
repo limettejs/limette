@@ -56,6 +56,10 @@ export const LimetteElementRenderer = (
       const isIsland = route.islands.includes(this.tagName) ||
         this.element.hasAttribute('island');
       const islandStyles = route.assets.islandStyles[this.tagName] ?? [];
+      const shadowStyles = [
+        ...(route.assets.tailwindStyle ? [route.assets.tailwindStyle] : []),
+        ...(isIsland ? islandStyles : []),
+      ];
 
       // Islands are CSR'ed, so we can't render them in light DOM
       if (!isIsland) {
@@ -66,12 +70,12 @@ export const LimetteElementRenderer = (
 
       // Partial SSR islands render only their external styles.
       if (isIsland && !this.element.hasAttribute('ssr')) {
-        if (islandStyles.length === 0) {
+        if (shadowStyles.length === 0) {
           // @ts-expect-error: LitElementRenderer actually accepts undefined as a returned value
           return;
         }
 
-        return renderRouteStyle(islandStyles, []);
+        return renderRouteStyle(shadowStyles, []);
       }
 
       // Inject context for every server-rendered component instance.
@@ -80,10 +84,9 @@ export const LimetteElementRenderer = (
       }
 
       const shadow = super.renderShadow(renderInfo);
-      return isIsland &&
-          islandStyles.length > 0 &&
-          this.element.hasAttribute('ssr')
-        ? renderRouteStyle(islandStyles, shadow)
+      return shadowStyles.length > 0 &&
+          (!isIsland || this.element.hasAttribute('ssr'))
+        ? renderRouteStyle(shadowStyles, shadow)
         : shadow;
     }
   };

@@ -26,6 +26,7 @@ const manifest: LimetteRouteManifest = {
       layouts: ['routes/shared-layout.ts'],
       middlewares: ['routes/shared-middleware.ts'],
       islandImports: [],
+      sourceFiles: ['routes/_app "quoted".ts', 'routes/static.ts'],
       styleImports: [],
     },
     {
@@ -41,6 +42,11 @@ const manifest: LimetteRouteManifest = {
         moduleSpecifier: '../islands/test.ts',
         resolvedImport: '/islands/test.ts',
       }],
+      sourceFiles: [
+        'routes/_app "quoted".ts',
+        'routes/island.ts',
+        'islands/test.ts',
+      ],
       styleImports: [],
     },
   ],
