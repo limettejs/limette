@@ -36,6 +36,7 @@ type ResolvedReference = { importId: string; localFile?: string };
 
 const MODULE_EXTENSIONS = ['', '.ts', '.js'];
 const INDEX_MODULES = ['index.ts', 'index.js'];
+const NON_SOURCE_DIRECTORIES = new Set(['node_modules', '.vite']);
 
 function normalizePath(path: string) {
   return path.split(sep).join('/');
@@ -216,15 +217,21 @@ function isInsideRoot(root: string, path: string) {
     (!relativePath.startsWith('..') && !isAbsolute(relativePath));
 }
 
+function isApplicationSourcePath(path: string) {
+  const segments = normalizePath(path).split('/');
+  return !segments.some((segment) => NON_SOURCE_DIRECTORIES.has(segment)) &&
+    segments[0] !== 'dist';
+}
+
 async function localFileFor(root: string, path: string) {
   if (!isAbsolute(path) || !await fileExists(path)) return undefined;
   const [realRoot, realPath] = await Promise.all([
     realpath(root),
     realpath(path),
   ]);
-  return isInsideRoot(realRoot, realPath)
-    ? normalizePath(relative(realRoot, realPath))
-    : undefined;
+  if (!isInsideRoot(realRoot, realPath)) return undefined;
+  const relativePath = normalizePath(relative(realRoot, realPath));
+  return isApplicationSourcePath(relativePath) ? relativePath : undefined;
 }
 
 async function resolveLocalFallback(
@@ -254,6 +261,11 @@ function resolvedId(resolution: ModuleResolution) {
   return resolution?.id;
 }
 
+function isExternalResolution(resolution: ModuleResolution) {
+  return typeof resolution === 'object' && resolution !== null &&
+    Boolean(resolution.external);
+}
+
 async function resolveReference({
   root,
   sourceFile,
@@ -265,14 +277,17 @@ async function resolveReference({
   moduleSpecifier: string;
   resolveModule?: ResolveModule;
 }): Promise<ResolvedReference> {
-  const viteId = resolveModule
-    ? resolvedId(await resolveModule(moduleSpecifier, sourceFile))
+  const resolution = resolveModule
+    ? await resolveModule(moduleSpecifier, sourceFile)
     : undefined;
-  let resolved = viteId ?? await resolveLocalFallback(
-    root,
-    sourceFile,
-    moduleSpecifier,
-  );
+  const viteId = resolvedId(resolution);
+  let resolved = isExternalResolution(resolution)
+    ? undefined
+    : viteId ?? await resolveLocalFallback(
+      root,
+      sourceFile,
+      moduleSpecifier,
+    );
   if (resolved?.startsWith('file:')) resolved = fileURLToPath(resolved);
   if (resolved?.startsWith('\0')) resolved = undefined;
   const resolvedPath = resolved && stripImportQuery(resolved);

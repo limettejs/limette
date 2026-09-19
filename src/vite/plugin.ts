@@ -53,6 +53,7 @@ function serverRuntimePath() {
 export function limette(options: LimetteOptions) {
   let root = process.cwd();
   let base = '/';
+  let command: ConfigEnvLike['command'] = 'serve';
   const devServer = createLimetteDevServer({
     routesDir: options.routesDir,
     dev: { appModule: options.app },
@@ -61,6 +62,7 @@ export function limette(options: LimetteOptions) {
   return {
     name: 'limette',
     config(config: UserConfigLike, env: ConfigEnvLike) {
+      command = env.command;
       root = resolve(config.root ?? root);
       base = config.base ?? '/';
       const resolution = litResolution(root);
@@ -115,7 +117,7 @@ export function limette(options: LimetteOptions) {
       };
     },
     async buildStart(this: PluginContextLike) {
-      if (this.environment?.name !== 'client') return;
+      if (command !== 'build' || this.environment?.name !== 'client') return;
       const clientInputs = await clientEntryInputs({
         root,
         routesDir: options.routesDir,

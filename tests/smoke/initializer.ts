@@ -43,6 +43,7 @@ const packageDirectory = join(temporaryRoot, 'package');
 const packedConsumer = join(temporaryRoot, 'packed-consumer');
 const npmCache = join(temporaryRoot, 'npm-cache');
 let server: Deno.ChildProcess | undefined;
+let devServer: Deno.ChildProcess | undefined;
 
 async function npm(args: string[], cwd: string) {
   const executable = Deno.build.os === 'windows' ? 'npm.cmd' : 'npm';
@@ -176,6 +177,84 @@ try {
     'Generated application did not produce dist/server/entry.js.',
   );
 
+  const generatedRoutePath = join(projectRoot, 'routes/index.ts');
+  const originalGeneratedRoute = await Deno.readTextFile(generatedRoutePath);
+  const updatedGeneratedRoute = originalGeneratedRoute.replace(
+    'This is SSR content.',
+    'This is updated SSR content.',
+  );
+  assert(
+    updatedGeneratedRoute !== originalGeneratedRoute,
+    'Generated route fixture did not contain the expected SSR content.',
+  );
+  const devListener = Deno.listen({ hostname: '127.0.0.1', port: 0 });
+  const devPort = (devListener.addr as Deno.NetAddr).port;
+  devListener.close();
+  devServer = new Deno.Command(Deno.execPath(), {
+    args: [
+      'task',
+      'dev',
+      '--port',
+      String(devPort),
+      '--strictPort',
+      '--logLevel',
+      'error',
+    ],
+    cwd: projectRoot,
+    stdout: 'piped',
+    stderr: 'piped',
+  }).spawn();
+  const devStdout = new Response(devServer.stdout).text();
+  const devStderr = new Response(devServer.stderr).text();
+
+  async function waitForDevContent(expected: string) {
+    let lastError: unknown;
+    let lastHtml = '';
+    for (let attempt = 0; attempt < 80; attempt++) {
+      try {
+        const response = await fetch(`http://127.0.0.1:${devPort}/`);
+        lastHtml = await response.text();
+        if (response.ok && lastHtml.includes(expected)) return lastHtml;
+        lastError = new Error(`HTTP ${response.status}`);
+      } catch (error) {
+        lastError = error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    throw new Error(
+      `Generated Vite dev server did not render ${JSON.stringify(expected)}: ` +
+        `${String(lastError)}\n${lastHtml.slice(0, 300)}`,
+    );
+  }
+
+  await waitForDevContent('This is SSR content.');
+  await Deno.writeTextFile(generatedRoutePath, updatedGeneratedRoute);
+  const updatedDevHtml = await waitForDevContent(
+    'This is updated SSR content.',
+  );
+  assert(
+    updatedDevHtml.includes('island-counter'),
+    'Generated Vite dev server lost the island after a route reload.',
+  );
+  await Deno.writeTextFile(generatedRoutePath, originalGeneratedRoute);
+  devServer.kill('SIGTERM');
+  await devServer.status;
+  devServer = undefined;
+  const devDiagnostics = `${await devStdout}\n${await devStderr}`;
+  for (
+    const forbidden of [
+      'emitFile() is not supported in serve mode',
+      'Unable to statically analyze "static islands"',
+      'node_modules/.vite/deps/@limette_core.js',
+      'already has "island-counter" defined',
+    ]
+  ) {
+    assert(
+      !devDiagnostics.includes(forbidden),
+      `Generated Vite dev server logged an obsolete reload failure: ${forbidden}.\n${devDiagnostics}`,
+    );
+  }
+
   const listener = Deno.listen({ hostname: '127.0.0.1', port: 0 });
   const port = (listener.addr as Deno.NetAddr).port;
   listener.close();
@@ -217,6 +296,14 @@ try {
     'Generated application returned an unexpected SSR response.',
   );
 } finally {
+  if (devServer) {
+    try {
+      devServer.kill('SIGTERM');
+    } catch {
+      // The process may already have exited after a startup failure.
+    }
+    await devServer.status;
+  }
   if (server) {
     try {
       server.kill('SIGTERM');

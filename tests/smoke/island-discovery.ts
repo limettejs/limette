@@ -61,6 +61,7 @@ try {
         ServerCard,
       } from '@shared/server-card.js';
       import { shared } from '@shared/page-shared.js';
+      import 'generated-output';
 
       // import './fake.css';
       const example = 'import "./also-fake.css"';
@@ -151,6 +152,18 @@ try {
   );
   await writeFile('islands/card.css', '.card {}');
   await writeFile('styles/page-shared.css', '.page-shared {}');
+  await writeFile(
+    'node_modules/.vite/deps/@limette_core.js',
+    `export class CompiledFrameworkCode {
+       static islands = createRuntimeIslandMap();
+     }`,
+  );
+  await writeFile(
+    'dist/generated.js',
+    `import '../styles/generated.css';
+     export const generated = true;`,
+  );
+  await writeFile('styles/generated.css', '.generated {}');
 
   const vite = await createServer({
     root,
@@ -158,6 +171,10 @@ try {
     logLevel: 'silent',
     resolve: {
       alias: {
+        '@limette/core': join(
+          root,
+          'node_modules/.vite/deps/@limette_core.js',
+        ),
         '@shared': join(root, 'shared'),
       },
     },
@@ -173,6 +190,16 @@ try {
     root,
     files: ['shared/island-barrel.js'],
     resolve,
+  });
+  const generatedStyles = await discoverStyleImportsForFiles({
+    root,
+    files: ['routes/index.ts'],
+    resolve: async (id, importer) => {
+      if (id === 'generated-output') {
+        return { id: join(root, 'dist/generated.js') };
+      }
+      return await resolve(id, importer);
+    },
   });
   const unsupportedRoute = join(root, 'routes/unsupported.ts');
   await Deno.writeTextFile(
@@ -228,6 +255,9 @@ try {
   }
   if (!reexportStyles.includes('/islands/card.css')) {
     throw new Error('Missing CSS reached through a named re-export.');
+  }
+  if (generatedStyles.includes('/styles/generated.css')) {
+    throw new Error('Discovery traversed generated build output.');
   }
   if (
     homeRoute.styleImports.some((style) =>

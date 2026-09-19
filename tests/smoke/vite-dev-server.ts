@@ -166,5 +166,15 @@ try {
     // The process may already have exited if startup failed.
   }
   await child.status;
-  await stderr;
+  const errors = await stderr;
+  for (
+    const forbidden of [
+      'emitFile() is not supported in serve mode',
+      'Unable to statically analyze "static islands"',
+    ]
+  ) {
+    if (errors.includes(forbidden)) {
+      throw new Error(`Vite dev logged ${forbidden}.\n${errors}`);
+    }
+  }
 }

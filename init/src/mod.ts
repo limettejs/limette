@@ -148,7 +148,9 @@ export class Counter extends LitElement {
   }
 }
 
-customElements.define("island-counter", Counter);
+if (!customElements.get("island-counter")) {
+  customElements.define("island-counter", Counter);
+}
 `;
 
 const _appRouteTs = `
