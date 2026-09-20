@@ -210,7 +210,7 @@ async function runCombination(
     await exists(join(projectRoot, 'tailwind.css')) === tailwind &&
       viteConfig.includes('@tailwindcss/vite') === tailwind &&
       viteConfig.includes('tailwind: "./tailwind.css"') === tailwind &&
-      island.includes('outline-[7px]') === tailwind,
+      island.includes('leading-[1.4]') === tailwind,
     `${projectName} generated an inconsistent Tailwind variant.`,
   );
 
@@ -402,7 +402,7 @@ async function runCombination(
     assert(
       tailwindResponse.ok &&
         hasDeclaration(tailwindOutput, 'font-size', '37px') &&
-        hasDeclaration(tailwindOutput, 'outline-width', '7px'),
+        hasDeclaration(tailwindOutput, 'line-height', '1.4'),
       `${projectName} lost route or island-only Tailwind utilities.`,
     );
   } else {

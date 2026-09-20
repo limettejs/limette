@@ -155,9 +155,7 @@ ${useTailwind ? '    tailwindcss(),\n' : ''}    limette({
 });
 `;
 
-const counterClass = useTailwind
-  ? ' class="rounded-lg bg-lime-50 p-4 outline-[7px]"'
-  : '';
+const counterClass = useTailwind ? ' class="text-lime-800 leading-[1.4]"' : '';
 const counterIslandTs = `
 /// <reference lib="dom" />
 
@@ -170,12 +168,32 @@ export class Counter extends LitElement {
   static override styles = css\`
     :host {
       display: block;
-      border: 2px solid green;
-      padding: 8px;
+      box-sizing: border-box;
+      width: 100%;
+      border: 1px solid #a3a3a3;
+      border-radius: 8px;
+      padding: 16px;
+    }
+    h2 {
+      margin: 0 0 16px;
     }
     section {
-      display: flex;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: 40px 1fr 40px;
+      align-items: center;
+      gap: 12px;
+    }
+    p {
+      margin: 0;
+      text-align: center;
+    }
+    button {
+      min-height: 36px;
+      border: 1px solid #a3a3a3;
+      border-radius: 6px;
+      background: white;
+      font: inherit;
+      cursor: pointer;
     }
   \`;
 
@@ -252,11 +270,24 @@ export default class Home extends PageComponent {
       align-items: center;
       flex-direction: column;
       text-align: center;
-      padding-top: 24px;
+      padding: 32px 16px;
       font-family: sans-serif;
     }
+    h1 {
+      margin: 0 0 24px;
+    }
     .content {
+      display: grid;
+      gap: 20px;
+      width: 100%;
       max-width: 320px;
+    }
+    .content > p {
+      margin: 0;
+    }
+    island-counter {
+      display: block;
+      width: 100%;
     }
   \`;
 
