@@ -2,18 +2,10 @@ import './ssr.ts';
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { LitElement } from 'lit';
 import type { Middleware } from './middlewares.ts';
-import type { RouteHandlers } from './handlers.ts';
+import type { RouteHandler, RouteHandlers } from './handlers.ts';
 import type { ServerComponentClass } from './components.ts';
 import type { DefaultState } from './context.ts';
-
-export type Method =
-  | 'HEAD'
-  | 'GET'
-  | 'POST'
-  | 'PATCH'
-  | 'PUT'
-  | 'DELETE'
-  | 'OPTIONS';
+import type { Method } from './methods.ts';
 
 export interface RouteConfig {
   skipInheritedLayouts: boolean; // Skip already inherited layouts
@@ -36,7 +28,20 @@ interface RouteResult<State, Platform> {
 export interface Route<State = DefaultState, Platform = unknown> {
   path: URLPattern;
   method: Method | 'ALL';
-  handlers: Middleware<State, Platform>[];
+  handlers: RouteHandler<State, Platform>[];
+}
+
+function patternIdentity(pattern: URLPattern) {
+  return [
+    pattern.protocol,
+    pattern.username,
+    pattern.password,
+    pattern.hostname,
+    pattern.port,
+    pattern.pathname,
+    pattern.search,
+    pattern.hash,
+  ].join('\u0000');
 }
 
 interface ErrorRoute<State, Platform> {
@@ -54,6 +59,7 @@ interface ErrorRouteResult<State, Platform> {
 
 export class UrlPatternRouter<State = DefaultState, Platform = unknown> {
   #routes: Route<State, Platform>[] = [];
+  #routeKeys = new Set<string>();
   #middlewares: Middleware<State, Platform>[] = [];
   #errors: ErrorRoute<State, Platform>[] = [];
 
@@ -79,18 +85,26 @@ export class UrlPatternRouter<State = DefaultState, Platform = unknown> {
   add(
     method: Method | 'ALL',
     pathname: string | URLPattern,
-    handlers: Middleware<State, Platform>[],
+    handlers: RouteHandler<State, Platform>[],
   ) {
+    const path = typeof pathname === 'string'
+      ? new URLPattern({ pathname })
+      : pathname;
+    const key = `${method}\u0000${patternIdentity(path)}`;
+    if (this.#routeKeys.has(key)) {
+      throw new Error(
+        `Duplicate route registration for ${method} ${path.pathname}.`,
+      );
+    }
+    this.#routeKeys.add(key);
     this.#routes.push({
-      path: typeof pathname === 'string'
-        ? new URLPattern({ pathname })
-        : pathname,
+      path,
       handlers,
       method,
     });
   }
 
-  match(method: Method, url: URL): RouteResult<State, Platform> {
+  match(method: string, url: URL): RouteResult<State, Platform> {
     const result: RouteResult<State, Platform> = {
       params: {},
       handlers: [],
@@ -107,10 +121,11 @@ export class UrlPatternRouter<State = DefaultState, Platform = unknown> {
       const match = route.path.exec(url);
 
       if (match !== null) {
-        if (route.method !== 'ALL') result.patternMatch = true;
+        result.patternMatch = true;
         result.pattern = route.path.pathname;
 
         if (route.method === 'ALL' || route.method === method) {
+          result.methodMatch = true;
           result.handlers.push(route.handlers);
 
           // Decode matched params
@@ -122,7 +137,6 @@ export class UrlPatternRouter<State = DefaultState, Platform = unknown> {
             continue;
           }
 
-          result.methodMatch = true;
           return result;
         }
       }

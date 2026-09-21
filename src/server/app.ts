@@ -1,7 +1,9 @@
-import { type Method, UrlPatternRouter } from './router.ts';
+import { UrlPatternRouter } from './router.ts';
 import { type Middleware, runMiddlewares } from './middlewares.ts';
 import { HttpError } from './error.ts';
 import { ContextImpl, type DefaultState } from './context.ts';
+import type { RouteHandler } from './handlers.ts';
+import type { Method } from './methods.ts';
 
 export interface AppConfig {
   readonly basePath?: string;
@@ -23,20 +25,21 @@ const DEFAULT_NOT_ALLOWED_METHOD = () => {
   throw new HttpError(405);
 };
 
-export function mergePaths(a: string, b: string) {
-  if (a === '' || a === '/' || a === '/*') return b;
-  if (b === '/') return a;
-  if (a.endsWith('/')) {
-    return a.slice(0, -1) + b;
-  } else if (!b.startsWith('/')) {
-    return a + '/' + b;
-  }
-  return a + b;
+function normalizeBasePath(basePath = '') {
+  if (!basePath || basePath === '/') return '';
+  const withLeadingSlash = basePath.startsWith('/') ? basePath : `/${basePath}`;
+  return withLeadingSlash.replace(/\/+$/, '');
+}
+
+function joinRoutePath(basePath: string, routePath: string) {
+  const normalizedRoute = routePath.replace(/^\/+/, '');
+  if (!basePath) return normalizedRoute ? `/${normalizedRoute}` : '/';
+  return normalizedRoute ? `${basePath}/${normalizedRoute}` : basePath;
 }
 
 function normalizeConfig(options?: AppConfig): ResolvedAppConfig {
   return {
-    basePath: options?.basePath || '',
+    basePath: normalizeBasePath(options?.basePath),
   };
 }
 
@@ -44,7 +47,6 @@ export class App<State = DefaultState, Platform = unknown> {
   readonly config: ResolvedAppConfig;
   #fsRoutesEnabled = false;
 
-  middlewares: Middleware<State, Platform>[] = [];
   #router = new UrlPatternRouter<State, Platform>();
 
   constructor(config?: AppConfig) {
@@ -74,40 +76,72 @@ export class App<State = DefaultState, Platform = unknown> {
     return this;
   }
 
-  get(path: string, ...middlewares: Middleware<State, Platform>[]): this {
-    return this.#addRoutes('GET', path, middlewares);
+  get(
+    path: string | URLPattern,
+    handler: RouteHandler<State, Platform>,
+    ...handlers: RouteHandler<State, Platform>[]
+  ): this {
+    return this.#addRoute('GET', path, [handler, ...handlers]);
   }
-  post(path: string, ...middlewares: Middleware<State, Platform>[]): this {
-    return this.#addRoutes('POST', path, middlewares);
+  post(
+    path: string | URLPattern,
+    handler: RouteHandler<State, Platform>,
+    ...handlers: RouteHandler<State, Platform>[]
+  ): this {
+    return this.#addRoute('POST', path, [handler, ...handlers]);
   }
-  patch(path: string, ...middlewares: Middleware<State, Platform>[]): this {
-    return this.#addRoutes('PATCH', path, middlewares);
+  patch(
+    path: string | URLPattern,
+    handler: RouteHandler<State, Platform>,
+    ...handlers: RouteHandler<State, Platform>[]
+  ): this {
+    return this.#addRoute('PATCH', path, [handler, ...handlers]);
   }
-  put(path: string, ...middlewares: Middleware<State, Platform>[]): this {
-    return this.#addRoutes('PUT', path, middlewares);
+  put(
+    path: string | URLPattern,
+    handler: RouteHandler<State, Platform>,
+    ...handlers: RouteHandler<State, Platform>[]
+  ): this {
+    return this.#addRoute('PUT', path, [handler, ...handlers]);
   }
-  delete(path: string, ...middlewares: Middleware<State, Platform>[]): this {
-    return this.#addRoutes('DELETE', path, middlewares);
+  delete(
+    path: string | URLPattern,
+    handler: RouteHandler<State, Platform>,
+    ...handlers: RouteHandler<State, Platform>[]
+  ): this {
+    return this.#addRoute('DELETE', path, [handler, ...handlers]);
   }
-  head(path: string, ...middlewares: Middleware<State, Platform>[]): this {
-    return this.#addRoutes('HEAD', path, middlewares);
+  head(
+    path: string | URLPattern,
+    handler: RouteHandler<State, Platform>,
+    ...handlers: RouteHandler<State, Platform>[]
+  ): this {
+    return this.#addRoute('HEAD', path, [handler, ...handlers]);
   }
-  options(path: string, ...middlewares: Middleware<State, Platform>[]): this {
-    return this.#addRoutes('OPTIONS', path, middlewares);
+  options(
+    path: string | URLPattern,
+    handler: RouteHandler<State, Platform>,
+    ...handlers: RouteHandler<State, Platform>[]
+  ): this {
+    return this.#addRoute('OPTIONS', path, [handler, ...handlers]);
   }
-  all(path: string, ...middlewares: Middleware<State, Platform>[]): this {
-    return this.#addRoutes('ALL', path, middlewares);
+  all(
+    path: string | URLPattern,
+    handler: RouteHandler<State, Platform>,
+    ...handlers: RouteHandler<State, Platform>[]
+  ): this {
+    return this.#addRoute('ALL', path, [handler, ...handlers]);
   }
 
-  #addRoutes(
+  #addRoute(
     method: Method | 'ALL',
     pathname: string | URLPattern,
-    middlewares: Middleware<State, Platform>[],
+    handlers: RouteHandler<State, Platform>[],
   ): this {
     const merged = typeof pathname === 'string'
-      ? mergePaths(this.config.basePath, pathname)
+      ? joinRoutePath(this.config.basePath, pathname)
       : pathname;
-    this.#router.add(method, merged, middlewares);
+    this.#router.add(method, merged, handlers);
     return this;
   }
 
@@ -116,7 +150,7 @@ export class App<State = DefaultState, Platform = unknown> {
       const url = new URL(request.url);
       // Prevent open redirect attacks
       url.pathname = url.pathname.replace(/\/+/g, '/');
-      const method = request.method.toUpperCase() as Method;
+      const method = request.method.toUpperCase();
 
       const matched = this.#router.match(method, url);
 
@@ -136,9 +170,6 @@ export class App<State = DefaultState, Platform = unknown> {
       });
 
       try {
-        if (handlers.length === 1 && handlers[0].length === 1) {
-          return await handlers[0][0](ctx);
-        }
         return await runMiddlewares(handlers, ctx);
       } catch (err) {
         // Check if we have an error page registered for the url

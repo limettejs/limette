@@ -134,7 +134,8 @@ if (await response.text() !== 'ok' || typeof serve !== 'function') process.exit(
   const runtimeTypeTest = join(runtimeDirectory, 'types.ts');
   await Deno.writeTextFile(
     runtimeTypeTest,
-    `import type {
+    `import { App } from '@limette/core';
+import type {
   AppHandler,
   Context,
   Middleware,
@@ -167,7 +168,15 @@ const appHandler = ((request, platform) =>
 
 declare const context: Context<State, Platform>;
 declare const renderContext: RenderContext<State, Platform>;
-void [middleware, routeHandler, routeHandlers, appHandler, context, renderContext];
+const app = new App<State, Platform>();
+app.get('/typed', (ctx) => {
+  ctx.state.value = ctx.platform.marker;
+  return new Response(ctx.state.value);
+});
+app.post(new URLPattern({ pathname: '/typed' }), routeHandler);
+// @ts-expect-error Route registration requires at least one handler.
+app.get('/missing-handler');
+void [middleware, routeHandler, routeHandlers, appHandler, context, renderContext, app];
 `,
   );
   await runDenoCheck(runtimeTypeTest, runtimeDirectory);

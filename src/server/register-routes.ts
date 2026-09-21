@@ -1,13 +1,42 @@
 import type { App } from './app.ts';
-import { handlersForRoute } from './handlers.ts';
+import { handlersForRoute, type RouteHandler } from './handlers.ts';
 import type { RuntimeRouteDefinition } from './route.ts';
-import type { Method } from './router.ts';
+import { type Method, METHODS } from './methods.ts';
 import type { AppWrapperComponentClass } from './ssr.ts';
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import { LitElement } from 'lit';
 import { islandComponent, type ServerComponentClass } from './components.ts';
 import type { DefaultState } from './context.ts';
 import type { Middleware } from './middlewares.ts';
+
+function registerMethod<State = DefaultState, Platform = unknown>(
+  app: App<State, Platform>,
+  method: Method,
+  path: string | URLPattern,
+  handlers: RouteHandler<State, Platform>[],
+) {
+  const [handler, ...remainingHandlers] = handlers;
+  if (!handler) {
+    throw new Error(`Cannot register ${method} ${path} without a handler.`);
+  }
+
+  switch (method) {
+    case 'GET':
+      return app.get(path, handler, ...remainingHandlers);
+    case 'POST':
+      return app.post(path, handler, ...remainingHandlers);
+    case 'PUT':
+      return app.put(path, handler, ...remainingHandlers);
+    case 'PATCH':
+      return app.patch(path, handler, ...remainingHandlers);
+    case 'DELETE':
+      return app.delete(path, handler, ...remainingHandlers);
+    case 'HEAD':
+      return app.head(path, handler, ...remainingHandlers);
+    case 'OPTIONS':
+      return app.options(path, handler, ...remainingHandlers);
+  }
+}
 
 export interface RegisterRouteDefinitionsOptions<
   State = DefaultState,
@@ -108,11 +137,14 @@ export function registerRouteDefinitions<
       .map((module) => module?.handler)
       .flat() as Middleware<State, Platform>[];
 
-    for (const [method, handler] of Object.entries(handlers)) {
-      app[method.toLocaleLowerCase() as Lowercase<Method>](
+    for (const method of METHODS) {
+      const handler = handlers[method];
+      if (!handler) continue;
+      registerMethod(
+        app,
+        method,
         preparedRoute.path,
-        ...middlewares,
-        handler,
+        [...middlewares, handler],
       );
     }
   }

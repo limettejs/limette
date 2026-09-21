@@ -2,20 +2,15 @@ import type { RuntimeRouteDefinition } from './route.ts';
 import type { Context, ContextImpl, DefaultState } from './context.ts';
 import { HttpError } from './error.ts';
 import { type AppWrapperComponentClass, renderContent } from './ssr.ts';
+import { type Method, METHODS } from './methods.ts';
 
 export type RouteHandler<State = DefaultState, Platform = unknown> = (
   ctx: Context<State, Platform>,
 ) => Response | Promise<Response>;
 
-export interface RouteHandlers<State = DefaultState, Platform = unknown> {
-  GET?: RouteHandler<State, Platform>;
-  POST?: RouteHandler<State, Platform>;
-  PUT?: RouteHandler<State, Platform>;
-  DELETE?: RouteHandler<State, Platform>;
-  PATCH?: RouteHandler<State, Platform>;
-  OPTIONS?: RouteHandler<State, Platform>;
-  HEAD?: RouteHandler<State, Platform>;
-}
+export type RouteHandlers<State = DefaultState, Platform = unknown> = {
+  [CurrentMethod in Method]?: RouteHandler<State, Platform>;
+};
 
 export function handlersForRoute<State = DefaultState, Platform = unknown>(
   route: RuntimeRouteDefinition<State, Platform>,
@@ -42,13 +37,15 @@ export function handlersForRoute<State = DefaultState, Platform = unknown>(
 
   // Register custom handlers
   if (route.routeModule?.handler) {
-    for (const [method, fn] of Object.entries(route.routeModule.handler)) {
+    for (const method of METHODS) {
+      const fn = route.routeModule.handler[method];
+      if (!fn) continue;
       const handler: RouteHandler<State, Platform> = async (ctx) => {
         const internal = ctx as ContextImpl<State, Platform>;
         internal._setRender(() => renderRoute(internal));
-        return await (fn as RouteHandler<State, Platform>)(internal);
+        return await fn(internal);
       };
-      handlers[method as keyof RouteHandlers<State, Platform>] = handler;
+      handlers[method] = handler;
     }
   }
 
