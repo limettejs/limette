@@ -2,6 +2,15 @@ import type { AppConfig } from './app.ts';
 import type { HttpError } from './error.ts';
 
 export type DefaultState = Record<string, unknown>;
+export type RedirectStatus = 301 | 302 | 303 | 307 | 308;
+
+const REDIRECT_STATUSES: ReadonlySet<number> = new Set([
+  301,
+  302,
+  303,
+  307,
+  308,
+]);
 
 export interface RenderContext<
   State = DefaultState,
@@ -24,7 +33,7 @@ export interface Context<
 
   next(): Promise<Response>;
   render(): Promise<Response>;
-  redirect(path: string, status?: number): Response;
+  redirect(location: string | URL, status?: RedirectStatus): Response;
 }
 
 interface ContextInit<State, Platform> {
@@ -103,26 +112,26 @@ export class ContextImpl<
     this.#error = error;
   }
 
-  redirect(pathOrUrl: string, status = 302): Response {
-    let location = pathOrUrl;
+  redirect(
+    location: string | URL,
+    status: RedirectStatus = 302,
+  ): Response {
+    const value = location instanceof URL ? location.href : location;
 
-    // Disallow protocol relative URLs
-    if (pathOrUrl !== '/' && pathOrUrl.startsWith('/')) {
-      let idx = pathOrUrl.indexOf('?');
-      if (idx === -1) {
-        idx = pathOrUrl.indexOf('#');
-      }
-
-      const pathname = idx > -1 ? pathOrUrl.slice(0, idx) : pathOrUrl;
-      const search = idx > -1 ? pathOrUrl.slice(idx) : '';
-
-      // Remove double slashes to prevent open redirect vulnerability.
-      location = `${pathname.replaceAll(/\/+/g, '/')}${search}`;
+    if (value.startsWith('//')) {
+      throw new TypeError(
+        `Protocol-relative redirect locations are not allowed: "${value}".`,
+      );
+    }
+    if (!REDIRECT_STATUSES.has(status)) {
+      throw new TypeError(
+        `Invalid redirect status ${status}. Expected 301, 302, 303, 307, or 308.`,
+      );
     }
 
     return new Response(null, {
       status,
-      headers: { location },
+      headers: { location: value },
     });
   }
 }

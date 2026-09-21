@@ -124,9 +124,17 @@ try {
     runtimeTest,
     `import { App } from '@limette/core';
 import { serve } from '@limette/core/node';
-const app = new App().get('/ok', () => new Response('ok'));
+const app = new App()
+  .get('/ok', () => new Response('ok'))
+  .get('/redirect', (ctx) => ctx.redirect('../login', 307));
 const response = await app.handler()(new Request('http://localhost/ok'));
-if (await response.text() !== 'ok' || typeof serve !== 'function') process.exit(1);
+const redirect = await app.handler()(new Request('http://localhost/redirect'));
+if (
+  await response.text() !== 'ok' ||
+  redirect.status !== 307 ||
+  redirect.headers.get('location') !== '../login' ||
+  typeof serve !== 'function'
+) process.exit(1);
 `,
   );
   await runNode(runtimeTest, runtimeDirectory);
@@ -139,6 +147,7 @@ import type {
   AppHandler,
   Context,
   Middleware,
+  RedirectStatus,
   RenderContext,
   RouteHandler,
   RouteHandlers,
@@ -168,6 +177,12 @@ const appHandler = ((request, platform) =>
 
 declare const context: Context<State, Platform>;
 declare const renderContext: RenderContext<State, Platform>;
+const redirectStatus: RedirectStatus = 303;
+context.redirect(new URL('https://example.com/path'), redirectStatus);
+// @ts-expect-error Unsupported redirect status.
+context.redirect('/invalid', 200);
+// @ts-expect-error Structural render context has no redirect helper.
+renderContext.redirect('/invalid');
 const app = new App<State, Platform>();
 app.get('/typed', (ctx) => {
   ctx.state.value = ctx.platform.marker;
