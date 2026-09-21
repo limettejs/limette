@@ -179,6 +179,22 @@ await assertDiscoveryError(
   ['old/[...path]/edit.ts'],
   ['old/[...path]/edit.ts', 'must be the final route segment'],
 );
+for (
+  const duplicateParams of [
+    '[id]/[id].ts',
+    '[id]/[[id]].ts',
+    '[[path]]/[...path].ts',
+  ]
+) {
+  await assertDiscoveryError(
+    [duplicateParams],
+    [
+      duplicateParams,
+      'Duplicate route parameter "',
+      duplicateParams.includes('path') ? 'path' : 'id',
+    ],
+  );
+}
 
 const classificationManifest = await manifestFor([
   'my_layout.ts',

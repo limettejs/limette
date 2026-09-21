@@ -6,6 +6,7 @@ import type { RouteHandler, RouteHandlers } from './handlers.ts';
 import type { ServerComponentClass } from './components.ts';
 import type { DefaultState } from './context.ts';
 import type { Method } from './methods.ts';
+import { HttpError } from './error.ts';
 
 export interface RouteConfig {
   skipInheritedLayouts: boolean; // Skip already inherited layouts
@@ -20,6 +21,7 @@ export interface RouteModule<State = DefaultState, Platform = unknown> {
 interface RouteResult<State, Platform> {
   params: Record<string, string>;
   handlers: Middleware<State, Platform>[][];
+  error?: HttpError;
   methodMatch: boolean;
   patternMatch: boolean;
   pattern: string | null;
@@ -42,6 +44,28 @@ function patternIdentity(pattern: URLPattern) {
     pattern.search,
     pattern.hash,
   ].join('\u0000');
+}
+
+function createParams(): Record<string, string> {
+  return Object.create(null) as Record<string, string>;
+}
+
+function decodePathnameGroups(groups: Record<string, string | undefined>) {
+  const entries: Array<[string, string]> = [];
+
+  try {
+    for (const [key, value] of Object.entries(groups)) {
+      entries.push([key, value === undefined ? '' : decodeURI(value)]);
+    }
+  } catch (cause) {
+    if (!(cause instanceof URIError)) throw cause;
+    return {
+      entries,
+      error: new HttpError(400, 'Bad Request', { cause }),
+    };
+  }
+
+  return { entries, error: undefined };
 }
 
 interface ErrorRoute<State, Platform> {
@@ -106,7 +130,7 @@ export class UrlPatternRouter<State = DefaultState, Platform = unknown> {
 
   match(method: string, url: URL): RouteResult<State, Platform> {
     const result: RouteResult<State, Platform> = {
-      params: {},
+      params: createParams(),
       handlers: [],
       methodMatch: false,
       patternMatch: false,
@@ -126,12 +150,15 @@ export class UrlPatternRouter<State = DefaultState, Platform = unknown> {
 
         if (route.method === 'ALL' || route.method === method) {
           result.methodMatch = true;
-          result.handlers.push(route.handlers);
-
-          // Decode matched params
-          for (const [key, value] of Object.entries(match.pathname.groups)) {
-            result.params[key] = value === undefined ? '' : decodeURI(value);
+          const decoded = decodePathnameGroups(match.pathname.groups);
+          if (decoded.error) {
+            result.error = decoded.error;
+            return result;
           }
+          for (const [key, value] of decoded.entries) {
+            result.params[key] = value;
+          }
+          result.handlers.push(route.handlers);
 
           if (route.method === 'ALL') {
             continue;
@@ -147,7 +174,7 @@ export class UrlPatternRouter<State = DefaultState, Platform = unknown> {
 
   matchError(url: URL): ErrorRouteResult<State, Platform> {
     const result: ErrorRouteResult<State, Platform> = {
-      params: {},
+      params: createParams(),
       handler: undefined,
       methodMatch: false,
       patternMatch: false,

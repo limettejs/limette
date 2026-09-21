@@ -177,6 +177,17 @@ function parseRouteFile(file: string, routesPath: string): RouteFile {
   const segments = fileSegments.map((segment) =>
     parseRouteSegment(segment, relativeFile)
   );
+  const parameterNames = new Set<string>();
+  for (const segment of segments) {
+    if (segment.kind === 'static') continue;
+    if (parameterNames.has(segment.name)) {
+      throw new Error(
+        `Duplicate route parameter "${segment.name}" in "${relativeFile}". ` +
+          'Each filesystem route parameter name must be unique.',
+      );
+    }
+    parameterNames.add(segment.name);
+  }
   const catchAllIndex = segments.findIndex((segment) =>
     segment.kind === 'catch-all'
   );

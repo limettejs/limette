@@ -37,6 +37,9 @@ let instanceSequence = 0;
 const observations: Observation[] = [];
 const middlewareStates: RequestState[] = [];
 const handlerStates: RequestState[] = [];
+const globalMiddlewareParams: Readonly<Record<string, string>>[] = [];
+const inheritedMiddlewareParams: Readonly<Record<string, string>>[] = [];
+const handlerParams: Readonly<Record<string, string>>[] = [];
 let failingLayoutRenders = 0;
 let errorRouteLayoutRenders = 0;
 
@@ -269,6 +272,7 @@ function componentRoute(
 const stateMiddleware = {
   handler: async (ctx: Context<RequestState, TestPlatform>) => {
     middlewareStates.push(ctx.state);
+    globalMiddlewareParams.push(ctx.params);
     ctx.state.user = `user:${ctx.url.pathname}`;
     ctx.state.requestId = ctx.params.id ?? ctx.url.pathname;
     return await ctx.next();
@@ -282,9 +286,16 @@ const normalRoute = componentRoute('item', '/items/:id', ContextPage, {
   ],
   islands: ['context-island'],
   ssrIslands: ['context-island'],
+  middlewares: [{
+    handler: async (ctx) => {
+      inheritedMiddlewareParams.push(ctx.params);
+      return await ctx.next();
+    },
+  }],
   handler: {
     GET(ctx) {
       handlerStates.push(ctx.state);
+      handlerParams.push(ctx.params);
       ctx.state.product = `product:${ctx.params.id}`;
       return ctx.render();
     },
@@ -369,6 +380,12 @@ assert(
   middlewareStates[0] === handlerStates[0],
   'Middleware and route handler received different state objects.',
 );
+assert(
+  globalMiddlewareParams[0] === inheritedMiddlewareParams[0] &&
+    inheritedMiddlewareParams[0] === handlerParams[0] &&
+    handlerParams[0].id === 'alpha',
+  'Global/inherited middleware and the route handler did not share route params.',
+);
 const normalObservations = observations.filter((entry) =>
   entry.ctx.url.pathname.endsWith('/items/alpha')
 );
@@ -379,6 +396,8 @@ for (const owner of ['app', 'outer', 'inner', 'page'] as const) {
     entries[0].instance === entries[1].instance &&
       entries[0].ctx === entries[1].ctx &&
       entries[0].ctx.state === handlerStates[0] &&
+      entries[0].ctx.params === handlerParams[0] &&
+      entries[0].ctx.params.id === 'alpha' &&
       entries[0].ctx.request === normalObservations[0].ctx.request &&
       entries[0].ctx.platform === platform,
     `${owner} did not receive the same request-local instance/context/state.`,

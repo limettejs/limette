@@ -153,8 +153,13 @@ export class App<State = DefaultState, Platform = unknown> {
       const method = request.method.toUpperCase();
 
       const matched = this.#router.match(method, url);
+      const decodingError = matched.error;
 
-      const next = matched.patternMatch && !matched.methodMatch
+      const next = decodingError
+        ? () => {
+          throw decodingError;
+        }
+        : matched.patternMatch && !matched.methodMatch
         ? DEFAULT_NOT_ALLOWED_METHOD
         : DEFAULT_NOT_FOUND;
 
