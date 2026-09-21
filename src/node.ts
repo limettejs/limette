@@ -56,7 +56,7 @@ export async function serve(
       try {
         const request = await incomingMessageToRequest(req);
         const response = await serveStatic?.(request) ??
-          await handler(request, {});
+          await handler(request);
         await writeResponseToServerResponse(response, res);
       } catch (error) {
         console.error(error);

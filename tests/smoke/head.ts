@@ -5,7 +5,7 @@ import {
   LayoutComponent,
   PageComponent,
 } from '../../src/server/components.ts';
-import { Context } from '../../src/server/context.ts';
+import { ContextImpl } from '../../src/server/context.ts';
 import type { RuntimeRouteDefinition } from '../../src/server/route.ts';
 import { renderContent } from '../../src/server/ssr.ts';
 
@@ -185,10 +185,10 @@ function route(
 
 function context(id: 'a' | 'b') {
   const url = new URL(`https://example.test/${id}`);
-  return new Context({
+  return new ContextImpl({
     request: new Request(url),
     url,
-    info: {},
+    platform: {},
     params: {},
     config: {},
     next: async () => new Response('next'),

@@ -1,42 +1,106 @@
 import type { AppConfig } from './app.ts';
+import type { HttpError } from './error.ts';
 
-export interface ContextInit<
-  TParams extends Record<string, string> = Record<string, string>,
+export type DefaultState = Record<string, unknown>;
+
+export interface RenderContext<
+  State = DefaultState,
+  Platform = unknown,
 > {
-  request: Request;
-  url: URL;
-  info: unknown;
-  params: TParams;
-  config: AppConfig;
-  next: () => Promise<Response>;
+  readonly request: Request;
+  readonly url: URL;
+  readonly params: Readonly<Record<string, string>>;
+  readonly config: Readonly<AppConfig>;
+  readonly platform: Platform;
+  readonly state: Readonly<State>;
+  readonly error: HttpError | undefined;
 }
+
 export interface Context<
-  TData = unknown,
-  TParams extends Record<string, string> = Record<string, string>,
-> extends ContextInit<TParams> {
-  data: TData;
-  error: unknown;
-  render: (data?: TData) => Promise<Response>;
+  State = DefaultState,
+  Platform = unknown,
+> extends Omit<RenderContext<State, Platform>, 'state'> {
+  readonly state: State;
+
+  next(): Promise<Response>;
+  render(): Promise<Response>;
   redirect(path: string, status?: number): Response;
 }
 
-export class Context<
-  TData = unknown,
-  TParams extends Record<string, string> = Record<string, string>,
-> implements Context<TData, TParams> {
-  declare data: TData;
-  declare error: unknown;
-  declare render: (data?: TData) => Promise<Response>;
+interface ContextInit<State, Platform> {
+  request: Request;
+  url: URL;
+  platform: Platform;
+  params: Record<string, string>;
+  config: Readonly<AppConfig>;
+  next: () => Promise<Response>;
+  state?: State;
+}
+
+/** @internal Request-local implementation used by Limette's server pipeline. */
+export class ContextImpl<
+  State = DefaultState,
+  Platform = unknown,
+> implements Context<State, Platform> {
+  readonly request: Request;
+  readonly url: URL;
+  readonly platform: Platform;
+  readonly params: Readonly<Record<string, string>>;
+  readonly config: Readonly<AppConfig>;
+  readonly state: State;
+
+  #error: HttpError | undefined;
+  #next: () => Promise<Response>;
+  #render?: () => Promise<Response>;
 
   constructor(
-    { request, url, info, params, config, next }: ContextInit<TParams>,
+    { request, url, platform, params, config, next, state }: ContextInit<
+      State,
+      Platform
+    >,
   ) {
     this.request = request;
     this.url = url;
-    this.info = info;
+    this.platform = platform;
     this.params = params;
     this.config = config;
-    this.next = next;
+    this.state = state ?? ({} as State);
+    this.#next = next;
+  }
+
+  get error() {
+    return this.#error;
+  }
+
+  next(): Promise<Response> {
+    return this.#next();
+  }
+
+  render(): Promise<Response> {
+    if (!this.#render) {
+      throw new Error('ctx.render() is unavailable for this route.');
+    }
+    return this.#render();
+  }
+
+  /** @internal */
+  _setNext(next: () => Promise<Response>) {
+    this.#next = next;
+  }
+
+  /** @internal */
+  _getNext() {
+    return this.#next;
+  }
+
+  /** @internal */
+  _setRender(render: () => Promise<Response>) {
+    this.#render = render;
+  }
+
+  /** @internal */
+  _setError(error: HttpError | undefined) {
+    this.#error = error;
   }
 
   redirect(pathOrUrl: string, status = 302): Response {
@@ -58,30 +122,7 @@ export class Context<
 
     return new Response(null, {
       status,
-      headers: {
-        location,
-      },
+      headers: { location },
     });
   }
-}
-
-type Constructor<T = Record<string, never>> = new (...args: unknown[]) => T;
-
-export function ContextMixin(
-  Base: CustomElementConstructor,
-): CustomElementConstructor & Constructor<{ ctx: Context }> {
-  return class ContextClass extends Base {
-    #ctx!: Context;
-
-    static __requiresContext = true;
-
-    get ctx() {
-      return this.#ctx;
-    }
-    set ctx(value) {
-      // Allow setting ctx only once?
-      if (this.#ctx instanceof Context) return;
-      this.#ctx = value;
-    }
-  };
 }

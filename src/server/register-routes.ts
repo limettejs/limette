@@ -6,10 +6,15 @@ import type { AppWrapperComponentClass } from './ssr.ts';
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import { LitElement } from 'lit';
 import { islandComponent, type ServerComponentClass } from './components.ts';
+import type { DefaultState } from './context.ts';
+import type { MiddlewareFn } from './middlewares.ts';
 
-export interface RegisterRouteDefinitionsOptions {
-  readonly appWrapper: AppWrapperComponentClass;
-  readonly routes: readonly RuntimeRouteDefinition[];
+export interface RegisterRouteDefinitionsOptions<
+  State = DefaultState,
+  Platform = unknown,
+> {
+  readonly appWrapper: AppWrapperComponentClass<State, Platform>;
+  readonly routes: readonly RuntimeRouteDefinition<State, Platform>[];
 }
 
 function collectIslandComponents(
@@ -34,10 +39,10 @@ function collectIslandComponents(
   return islands;
 }
 
-function prepareRoute(
-  route: RuntimeRouteDefinition,
-  appWrapper: AppWrapperComponentClass,
-): RuntimeRouteDefinition {
+function prepareRoute<State = DefaultState, Platform = unknown>(
+  route: RuntimeRouteDefinition<State, Platform>,
+  appWrapper: AppWrapperComponentClass<State, Platform>,
+): RuntimeRouteDefinition<State, Platform> {
   const renderComponents = {
     ...Object.fromEntries(
       Object.entries(collectIslandComponents([
@@ -70,9 +75,12 @@ function prepareRoute(
   return { ...route, renderComponents };
 }
 
-export function registerRouteDefinitions(
-  app: App,
-  options: RegisterRouteDefinitionsOptions,
+export function registerRouteDefinitions<
+  State = DefaultState,
+  Platform = unknown,
+>(
+  app: App<State, Platform>,
+  options: RegisterRouteDefinitionsOptions<State, Platform>,
 ): void {
   const { appWrapper, routes } = options;
 
@@ -84,17 +92,21 @@ export function registerRouteDefinitions(
 
   for (const route of routes) {
     const preparedRoute = prepareRoute(route, appWrapper);
-    const handlers = handlersForRoute(preparedRoute, appWrapper);
+    const errorRoute = preparedRoute.path.endsWith('/_error');
+    const renderedRoute = errorRoute
+      ? { ...preparedRoute, layouts: [] }
+      : preparedRoute;
+    const handlers = handlersForRoute(renderedRoute, appWrapper);
 
     // Register error pages
-    if (preparedRoute.path.endsWith('/_error') && handlers.GET) {
+    if (errorRoute && handlers.GET) {
       app.error(preparedRoute.path, handlers.GET);
       continue;
     }
 
     const middlewares = preparedRoute.middlewares
       .map((module) => module?.handler)
-      .flat();
+      .flat() as MiddlewareFn<State, Platform>[];
 
     for (const [method, handler] of Object.entries(handlers)) {
       app[method.toLocaleLowerCase() as Lowercase<Method>](

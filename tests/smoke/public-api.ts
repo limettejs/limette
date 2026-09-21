@@ -1,6 +1,7 @@
 import * as core from '../../src/mod.ts';
 import * as denoAdapter from '../../src/deno.ts';
 import * as nodeAdapter from '../../src/node.ts';
+import * as browserRuntime from '../../src/runtime/mod.ts';
 import * as serverRuntime from '../../src/server-runtime.ts';
 import * as viteIntegration from '../../src/vite/mod.ts';
 import packageJson from '../../package.json' with { type: 'json' };
@@ -42,6 +43,13 @@ assert(
     JSON.stringify(['limette']),
   `Unexpected @limette/core/vite exports: ${
     Object.keys(viteIntegration).join(', ')
+  }`,
+);
+assert(
+  JSON.stringify(Object.keys(browserRuntime).sort()) ===
+    JSON.stringify(['IS_BROWSER']),
+  `Unexpected @limette/core/runtime exports: ${
+    Object.keys(browserRuntime).join(', ')
   }`,
 );
 assert(

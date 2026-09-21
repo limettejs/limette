@@ -74,9 +74,10 @@ try {
     'Worker server artifact still contains node-fetch.',
   );
   assert(
-    !/(?:from\s*|import\s*(?:\(\s*)?|require\s*\(\s*|__require\s*\(\s*)["']node:/.test(
-      emittedSource,
-    ),
+    !/(?:from\s*|import\s*(?:\(\s*)?|require\s*\(\s*|__require\s*\(\s*)["']node:/
+      .test(
+        emittedSource,
+      ),
     'Worker server artifact contains a Node runtime import.',
   );
   assert(
@@ -121,7 +122,7 @@ try {
   ) => Response | Promise<Response>;
   type AppHandler = (
     request: Request,
-    info?: unknown,
+    platform?: unknown,
   ) => Response | Promise<Response>;
 
   const entryUrl = pathToFileURL(join(serverDir, 'entry.js'));
@@ -151,7 +152,10 @@ try {
   const backgroundTasks: Promise<unknown>[] = [];
   const workerContext: WorkerContext = {
     waitUntil(promise) {
-      assert(this === workerContext, 'Route received a different Worker context.');
+      assert(
+        this === workerContext,
+        'Route received a different Worker context.',
+      );
       backgroundTasks.push(promise);
     },
   };
@@ -198,7 +202,10 @@ try {
     metadataResponse.status === 200 && metadata.testValue === 'worker-env',
     'Worker environment metadata did not reach the route.',
   );
-  assert(envReads === 1, 'Route did not read from the original Worker environment.');
+  assert(
+    envReads === 1,
+    'Route did not read from the original Worker environment.',
+  );
   assert(
     backgroundTasks.length === 1,
     'Route did not receive the original Worker execution context.',

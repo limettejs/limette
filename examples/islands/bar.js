@@ -22,7 +22,6 @@ export class IslandBar extends LitElement {
 
   static properties = {
     name: {},
-    ctx: { type: Object, reflect: true },
     foo: { type: Object, reflect: true },
     id: { type: Number },
     count: { type: Number },

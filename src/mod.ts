@@ -1,6 +1,5 @@
 export { App } from './server/app.ts';
-export type { AppHandler } from './server/app.ts';
-export { ContextMixin } from './server/context.ts';
+export type { AppConfig, AppHandler } from './server/app.ts';
 export {
   AppComponent,
   LayoutComponent,
@@ -10,7 +9,7 @@ export {
 export { deleteCookie, getCookies, setCookie } from './server/cookies.ts';
 export type { Cookie } from './server/cookies.ts';
 export { HttpError } from './server/error.ts';
-export type { Context } from './server/context.ts';
+export type { Context, DefaultState, RenderContext } from './server/context.ts';
 export type { AppWrapperComponent } from './server/ssr.ts';
 export type { RouteConfig, RouteModule } from './server/router.ts';
 export type { Handlers } from './server/handlers.ts';

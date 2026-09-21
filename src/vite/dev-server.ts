@@ -6,7 +6,7 @@ import {
 import { loadServerModule } from './module-loader.ts';
 import { materializeDevRoutes } from './routes.ts';
 import type { DiscoverRoutesOptions } from './manifest.ts';
-import type { App } from '../server/app.ts';
+import type { App, AppHandler } from '../server/app.ts';
 import type { HotUpdateContextLike, ViteDevServerLike } from './types.ts';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
@@ -93,11 +93,7 @@ async function loadAppModule(
 
 export function createLimetteDevServer(options: LimetteDevOptions = {}) {
   let root = options.root ?? process.cwd();
-  let devHandler:
-    | Promise<
-      (request: Request, info: unknown) => Response | Promise<Response>
-    >
-    | undefined;
+  let devHandler: Promise<AppHandler> | undefined;
 
   const hasDevApp = () =>
     Boolean(options.dev?.app || options.dev?.appModule || options.dev?.loadApp);
@@ -190,7 +186,7 @@ export function createLimetteDevServer(options: LimetteDevOptions = {}) {
 
           const request = await incomingMessageToRequest(req);
           const response = await injectViteClient(
-            await handler(request, {}),
+            await handler(request),
             server,
           );
           await writeResponseToServerResponse(response, res);

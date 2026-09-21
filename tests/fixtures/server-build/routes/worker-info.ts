@@ -11,8 +11,8 @@ interface WorkerInfo {
 
 export const handler = {
   GET(ctx: Context) {
-    const info = ctx.info as WorkerInfo;
-    info.ctx.waitUntil(Promise.resolve());
-    return Response.json({ testValue: info.env.TEST_VALUE });
+    const platform = ctx.platform as WorkerInfo;
+    platform.ctx.waitUntil(Promise.resolve());
+    return Response.json({ testValue: platform.env.TEST_VALUE });
   },
 };

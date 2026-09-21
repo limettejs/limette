@@ -53,8 +53,8 @@ export async function serve(
   const serveStatic = staticFiles
     ? staticDirectoryHandler(staticFiles)
     : undefined;
-  const hostedHandler: Deno.ServeHandler = async (request, info) =>
-    await serveStatic?.(request) ?? await handler(request, info);
+  const hostedHandler: Deno.ServeHandler = async (request, platform) =>
+    await serveStatic?.(request) ?? await handler(request, platform);
 
   if (serveOptions.port) {
     const server = Deno.serve(serveOptions, hostedHandler);

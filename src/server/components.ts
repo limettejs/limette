@@ -6,7 +6,7 @@ import type { TemplateResult } from 'lit';
 import type { DirectiveResult } from 'lit/directive.js';
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { UnsafeHTMLDirective } from 'lit/directives/unsafe-html.js';
-import type { Context } from './context.ts';
+import type { DefaultState, RenderContext } from './context.ts';
 
 export type IslandComponentClass = CustomElementConstructor;
 export type IslandDefinition =
@@ -33,7 +33,6 @@ export type HeadRenderResult =
   | undefined;
 
 export interface ServerComponentClass extends CustomElementConstructor {
-  __requiresContext?: boolean;
   islands?: IslandsDefinition;
 }
 
@@ -48,24 +47,18 @@ export type AppRouteInfo = {
   file: string;
 };
 
-export abstract class ServerComponent<
-  TData = unknown,
-  TParams extends Record<string, string> = Record<string, string>,
-> extends LitElement {
-  static __requiresContext = true;
-
-  declare ctx: Context<TData, TParams>;
-
+export abstract class ServerComponent extends LitElement {
   protected override createRenderRoot() {
     return this;
   }
 }
 
 export abstract class PageComponent<
-  TData = unknown,
-  TParams extends Record<string, string> = Record<string, string>,
-> extends ServerComponent<TData, TParams> {
+  State = DefaultState,
+  Platform = unknown,
+> extends ServerComponent {
   static islands?: IslandsDefinition;
+  declare protected readonly ctx: RenderContext<State, Platform>;
 
   head(): HeadRenderResult | Promise<HeadRenderResult> {
     return nothing;
@@ -73,9 +66,10 @@ export abstract class PageComponent<
 }
 
 export abstract class LayoutComponent<
-  TData = unknown,
-  TParams extends Record<string, string> = Record<string, string>,
-> extends ServerComponent<TData, TParams> {
+  State = DefaultState,
+  Platform = unknown,
+> extends ServerComponent {
+  declare protected readonly ctx: RenderContext<State, Platform>;
   declare protected readonly outlet: unknown;
 
   head(): HeadRenderResult | Promise<HeadRenderResult> {
@@ -84,9 +78,10 @@ export abstract class LayoutComponent<
 }
 
 export abstract class AppComponent<
-  TData = unknown,
-  TParams extends Record<string, string> = Record<string, string>,
-> extends ServerComponent<TData, TParams> {
+  State = DefaultState,
+  Platform = unknown,
+> extends ServerComponent {
+  declare protected readonly ctx: RenderContext<State, Platform>;
   declare protected readonly outlet: unknown;
   declare assets: AppAssets;
   declare route: AppRouteInfo;

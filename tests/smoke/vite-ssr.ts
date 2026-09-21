@@ -1,4 +1,4 @@
-import { Context } from '../../src/server/context.ts';
+import { ContextImpl } from '../../src/server/context.ts';
 import { renderContent } from '../../src/server/ssr.ts';
 import type { AppWrapperComponentClass } from '../../src/server/ssr.ts';
 import { discoverRoutes } from '../../src/vite/manifest.ts';
@@ -19,10 +19,10 @@ const AppWrapper = (await loadExampleFile(manifest.appFile))
   .default as AppWrapperComponentClass;
 const request = new Request('http://localhost/');
 const url = new URL(request.url);
-const ctx = new Context({
+const ctx = new ContextImpl({
   request,
   url,
-  info: undefined,
+  platform: undefined,
   params: {},
   config: {},
   next: () => Promise.resolve(new Response('Not found', { status: 404 })),

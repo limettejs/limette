@@ -1,21 +1,19 @@
 import { type Method, UrlPatternRouter } from './router.ts';
 import { type MiddlewareFn, runMiddlewares } from './middlewares.ts';
 import { HttpError } from './error.ts';
-import { Context } from './context.ts';
-
-// TODO: context on client side
+import { ContextImpl, type DefaultState } from './context.ts';
 
 export interface AppConfig {
-  basePath?: string;
+  readonly basePath?: string;
 }
 
 interface ResolvedAppConfig {
-  basePath: string;
+  readonly basePath: string;
 }
 
-export type AppHandler = (
+export type AppHandler<Platform = unknown> = (
   request: Request,
-  info?: unknown,
+  platform?: Platform,
 ) => Response | Promise<Response>;
 
 const DEFAULT_NOT_FOUND = () => {
@@ -42,18 +40,18 @@ function normalizeConfig(options?: AppConfig): ResolvedAppConfig {
   };
 }
 
-export class App {
-  config: ResolvedAppConfig;
+export class App<State = DefaultState, Platform = unknown> {
+  readonly config: ResolvedAppConfig;
   #fsRoutesEnabled = false;
 
-  middlewares: MiddlewareFn[] = [];
-  #router = new UrlPatternRouter();
+  middlewares: MiddlewareFn<State, Platform>[] = [];
+  #router = new UrlPatternRouter<State, Platform>();
 
   constructor(config?: AppConfig) {
     this.config = normalizeConfig(config);
   }
 
-  use(middleware: MiddlewareFn): this {
+  use(middleware: MiddlewareFn<State, Platform>): this {
     this.#router.addMiddleware(middleware);
     return this;
   }
@@ -68,37 +66,40 @@ export class App {
     return this.#fsRoutesEnabled;
   }
 
-  error(pathname: string | URLPattern, middleware: MiddlewareFn): this {
+  error(
+    pathname: string | URLPattern,
+    middleware: MiddlewareFn<State, Platform>,
+  ): this {
     this.#router.addError(pathname, middleware);
     return this;
   }
 
-  get(path: string, ...middlewares: MiddlewareFn[]): this {
+  get(path: string, ...middlewares: MiddlewareFn<State, Platform>[]): this {
     return this.#addRoutes('GET', path, middlewares);
   }
-  post(path: string, ...middlewares: MiddlewareFn[]): this {
+  post(path: string, ...middlewares: MiddlewareFn<State, Platform>[]): this {
     return this.#addRoutes('POST', path, middlewares);
   }
-  patch(path: string, ...middlewares: MiddlewareFn[]): this {
+  patch(path: string, ...middlewares: MiddlewareFn<State, Platform>[]): this {
     return this.#addRoutes('PATCH', path, middlewares);
   }
-  put(path: string, ...middlewares: MiddlewareFn[]): this {
+  put(path: string, ...middlewares: MiddlewareFn<State, Platform>[]): this {
     return this.#addRoutes('PUT', path, middlewares);
   }
-  delete(path: string, ...middlewares: MiddlewareFn[]): this {
+  delete(path: string, ...middlewares: MiddlewareFn<State, Platform>[]): this {
     return this.#addRoutes('DELETE', path, middlewares);
   }
-  head(path: string, ...middlewares: MiddlewareFn[]): this {
+  head(path: string, ...middlewares: MiddlewareFn<State, Platform>[]): this {
     return this.#addRoutes('HEAD', path, middlewares);
   }
-  all(path: string, ...middlewares: MiddlewareFn[]): this {
+  all(path: string, ...middlewares: MiddlewareFn<State, Platform>[]): this {
     return this.#addRoutes('ALL', path, middlewares);
   }
 
   #addRoutes(
     method: Method | 'ALL',
     pathname: string | URLPattern,
-    middlewares: MiddlewareFn[],
+    middlewares: MiddlewareFn<State, Platform>[],
   ): this {
     const merged = typeof pathname === 'string'
       ? mergePaths(this.config.basePath, pathname)
@@ -107,8 +108,8 @@ export class App {
     return this;
   }
 
-  handler(): AppHandler {
-    return async (request: Request, info: unknown = {}) => {
+  handler(): AppHandler<Platform> {
+    return async (request: Request, platform = undefined as Platform) => {
       const url = new URL(request.url);
       // Prevent open redirect attacks
       url.pathname = url.pathname.replace(/\/+/g, '/');
@@ -122,10 +123,10 @@ export class App {
 
       const { params, handlers } = matched;
 
-      const ctx = new Context({
+      const ctx = new ContextImpl<State, Platform>({
         request,
         url,
-        info,
+        platform,
         params,
         config: this.config,
         next,
@@ -141,11 +142,12 @@ export class App {
         const errorRoute = this.#router.matchError(url);
 
         if (errorRoute.handler) {
-          if (err instanceof HttpError) {
-            ctx.error = err;
-          }
+          const error = err instanceof HttpError
+            ? err
+            : new HttpError(500, undefined, { cause: err });
+          ctx._setError(error);
           try {
-            console.error(err);
+            if (error.status >= 500) console.error(err);
             return await runMiddlewares([[errorRoute.handler]], ctx);
           } catch (e) {
             console.error(e);

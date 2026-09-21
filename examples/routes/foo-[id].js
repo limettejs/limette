@@ -15,8 +15,8 @@ export default class Params extends PageComponent {
   render() {
     return html`
       <h1>Params</h1>
-      <p>SSR content with params: ${JSON.stringify(this.ctx)}</p>
-      <island-bar .ctx=${this.ctx} .foo=${this.foo}></island-bar>
+      <p>SSR content with params: ${JSON.stringify(this.ctx.params)}</p>
+      <island-bar .foo=${this.foo}></island-bar>
       <a href="/">To home</a>
     `;
   }

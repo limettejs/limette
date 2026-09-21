@@ -4,6 +4,7 @@ import type { LitElement } from 'lit';
 import type { MiddlewareFn } from './middlewares.ts';
 import type { Handlers } from './handlers.ts';
 import type { ServerComponentClass } from './components.ts';
+import type { DefaultState } from './context.ts';
 
 export type Method = 'HEAD' | 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
@@ -11,49 +12,49 @@ export interface RouteConfig {
   skipInheritedLayouts: boolean; // Skip already inherited layouts
 }
 
-export interface RouteModule {
+export interface RouteModule<State = DefaultState, Platform = unknown> {
   config: RouteConfig;
-  handler: Handlers;
+  handler: Handlers<State, Platform>;
   default: ServerComponentClass | typeof LitElement;
 }
 
-interface RouteResult {
+interface RouteResult<State, Platform> {
   params: Record<string, string>;
-  handlers: MiddlewareFn[][];
+  handlers: MiddlewareFn<State, Platform>[][];
   methodMatch: boolean;
   patternMatch: boolean;
   pattern: string | null;
 }
 
-export interface Route {
+export interface Route<State = DefaultState, Platform = unknown> {
   path: URLPattern;
   method: Method | 'ALL';
-  handlers: MiddlewareFn[];
+  handlers: MiddlewareFn<State, Platform>[];
 }
 
-interface ErrorRoute {
+interface ErrorRoute<State, Platform> {
   path: URLPattern;
-  handler: MiddlewareFn;
+  handler: MiddlewareFn<State, Platform>;
 }
 
-interface ErrorRouteResult {
+interface ErrorRouteResult<State, Platform> {
   params: Record<string, string>;
-  handler: MiddlewareFn | undefined;
+  handler: MiddlewareFn<State, Platform> | undefined;
   methodMatch: boolean;
   patternMatch: boolean;
   pattern: string | null;
 }
 
-export class UrlPatternRouter {
-  #routes: Route[] = [];
-  #middlewares: MiddlewareFn[] = [];
-  #errors: ErrorRoute[] = [];
+export class UrlPatternRouter<State = DefaultState, Platform = unknown> {
+  #routes: Route<State, Platform>[] = [];
+  #middlewares: MiddlewareFn<State, Platform>[] = [];
+  #errors: ErrorRoute<State, Platform>[] = [];
 
-  addMiddleware(fn: MiddlewareFn) {
+  addMiddleware(fn: MiddlewareFn<State, Platform>) {
     this.#middlewares.push(fn);
   }
 
-  addError(pathname: string | URLPattern, fn: MiddlewareFn) {
+  addError(pathname: string | URLPattern, fn: MiddlewareFn<State, Platform>) {
     let path = pathname;
 
     if (typeof pathname === 'string' && pathname.endsWith('/_error')) {
@@ -71,7 +72,7 @@ export class UrlPatternRouter {
   add(
     method: Method | 'ALL',
     pathname: string | URLPattern,
-    handlers: MiddlewareFn[],
+    handlers: MiddlewareFn<State, Platform>[],
   ) {
     this.#routes.push({
       path: typeof pathname === 'string'
@@ -82,8 +83,8 @@ export class UrlPatternRouter {
     });
   }
 
-  match(method: Method, url: URL): RouteResult {
-    const result: RouteResult = {
+  match(method: Method, url: URL): RouteResult<State, Platform> {
+    const result: RouteResult<State, Platform> = {
       params: {},
       handlers: [],
       methodMatch: false,
@@ -123,8 +124,8 @@ export class UrlPatternRouter {
     return result;
   }
 
-  matchError(url: URL): ErrorRouteResult {
-    const result: ErrorRouteResult = {
+  matchError(url: URL): ErrorRouteResult<State, Platform> {
+    const result: ErrorRouteResult<State, Platform> = {
       params: {},
       handler: undefined,
       methodMatch: false,

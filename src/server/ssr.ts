@@ -6,7 +6,7 @@ import { html } from 'lit';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { collectResult } from '@lit-labs/ssr/lib/render-result.js';
 import { DOMParser } from 'linkedom';
-import type { Context } from './context.ts';
+import type { Context, DefaultState, RenderContext } from './context.ts';
 import type { RuntimeRouteDefinition } from './route.ts';
 import { LimetteElementRenderer } from './rendering/limette-element-renderer.ts';
 import type {
@@ -17,12 +17,14 @@ import type {
 
 import type { LayoutComponent, LayoutModule } from './layouts.ts';
 
-export interface AppWrapperComponentClass {
-  new (): AppWrapperComponent;
+export interface AppWrapperComponentClass<
+  State = DefaultState,
+  Platform = unknown,
+> {
+  new (): AppWrapperComponent<State, Platform>;
 }
 
-export interface AppWrapperComponent {
-  ctx: Context;
+export interface AppWrapperComponent<State = DefaultState, Platform = unknown> {
   assets?: AppAssets;
   route?: AppRouteInfo;
   head?(): HeadRenderResult | Promise<HeadRenderResult>;
@@ -180,10 +182,13 @@ function processShadowRootsAndHead(
   return doc.documentElement.outerHTML;
 }
 
-export async function bootstrapContent(
-  AppWrapper: AppWrapperComponentClass,
-  route: RuntimeRouteDefinition,
-  ctx: Context,
+export async function bootstrapContent<
+  State = DefaultState,
+  Platform = unknown,
+>(
+  AppWrapper: AppWrapperComponentClass<State, Platform>,
+  route: RuntimeRouteDefinition<State, Platform>,
+  ctx: Context<State, Platform>,
 ) {
   const routeModule = route.routeModule;
   const routeConfig = routeModule?.config;
@@ -201,7 +206,7 @@ export async function bootstrapContent(
    * When a route uses skipInheritedLayouts, no layout will be used.
    * When a layout uses skipInheritedLayouts, only that layout is used.
    */
-  let layouts: LayoutComponent[] = [];
+  let layouts: LayoutComponent<State, Platform>[] = [];
   if (route.layouts.length > 0 && routeConfig?.skipInheritedLayouts !== true) {
     // Check if the inherited layouts should be skipped, in which case we only
     // render the last layout in the chain
@@ -210,20 +215,14 @@ export async function bootstrapContent(
 
     const renderedLayouts = await renderLayout({
       component: component,
-      layouts: !skipInheritedLayouts
+      layouts: (!skipInheritedLayouts
         ? route.layouts
-        : ([route.layouts.at(-1)] as LayoutModule[]),
+        : [route.layouts.at(-1)]) as LayoutModule<State, Platform>[],
       ctx: ctx,
     });
     component = renderedLayouts.component;
     layouts = renderedLayouts.layouts;
   }
-
-  const ctxStr = `<script type="text/json" id="_lmt_ctx">${
-    JSON.stringify(
-      ctx,
-    )
-  }</script>`;
 
   const documentStylePaths = [
     ...route.assets.styles,
@@ -235,14 +234,11 @@ export async function bootstrapContent(
     )
   );
   const scripts = route.assets.scripts.length
-    ? [
-      unsafeHTML(ctxStr),
-      ...route.assets.scripts.map((path) =>
-        html`
-          <script type="module" src="${path}"></script>
-        `
-      ),
-    ]
+    ? route.assets.scripts.map((path) =>
+      html`
+        <script type="module" src="${path}"></script>
+      `
+    )
     : [];
   const assets = { styles, scripts };
   const routeInfo = {
@@ -252,10 +248,13 @@ export async function bootstrapContent(
   };
 
   const appWrapper = new AppWrapper();
-  appWrapper.ctx = ctx;
+  (appWrapper as AppWrapperComponent<State, Platform> & {
+    ctx: RenderContext<State, Platform>;
+  }).ctx = ctx;
   appWrapper.assets = assets;
   appWrapper.route = routeInfo;
-  (appWrapper as AppWrapperComponent & { outlet: unknown }).outlet = component;
+  (appWrapper as AppWrapperComponent<State, Platform> & { outlet: unknown })
+    .outlet = component;
 
   const content = await appWrapper.render();
   const appHead: HeadRenderResult | Promise<HeadRenderResult> | undefined =
@@ -271,25 +270,31 @@ export async function bootstrapContent(
   };
 }
 
-async function renderLayout({
+async function renderLayout<State = DefaultState, Platform = unknown>({
   component,
   layouts,
   ctx,
 }: {
   component: unknown;
-  layouts: readonly LayoutModule[];
-  ctx: Context;
+  layouts: readonly LayoutModule<State, Platform>[];
+  ctx: Context<State, Platform>;
 }) {
   if (layouts.length === 0) return { component, layouts: [] };
 
   let result: unknown = component;
-  const instances: LayoutComponent[] = new Array(layouts.length);
+  const instances: LayoutComponent<State, Platform>[] = new Array(
+    layouts.length,
+  );
   for (let index = layouts.length - 1; index >= 0; index--) {
     const LayoutModule = layouts[index];
     const LayoutComponent = LayoutModule.default;
     const layout = new LayoutComponent();
-    layout.ctx = ctx;
-    (layout as LayoutComponent & { outlet: unknown }).outlet = result;
+    (layout as LayoutComponent<State, Platform> & {
+      ctx: RenderContext<State, Platform>;
+      outlet: unknown;
+    }).ctx = ctx;
+    (layout as LayoutComponent<State, Platform> & { outlet: unknown }).outlet =
+      result;
     instances[index] = layout;
     result = await layout.render();
   }
@@ -297,13 +302,13 @@ async function renderLayout({
   return { component: result, layouts: instances };
 }
 
-export async function renderContent(
-  AppWrapper: AppWrapperComponentClass,
-  route: RuntimeRouteDefinition,
-  ctx: Context,
+export async function renderContent<State = DefaultState, Platform = unknown>(
+  AppWrapper: AppWrapperComponentClass<State, Platform>,
+  route: RuntimeRouteDefinition<State, Platform>,
+  ctx: Context<State, Platform>,
 ) {
   const bootstrap = await bootstrapContent(
-    AppWrapper as AppWrapperComponentClass,
+    AppWrapper,
     route,
     ctx,
   );

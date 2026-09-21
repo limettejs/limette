@@ -1,16 +1,20 @@
-import type { Context } from "./context.ts";
+import type { Context, ContextImpl, DefaultState } from './context.ts';
 
-export type MiddlewareFn = (ctx: Context) => Response | Promise<Response>;
+export type MiddlewareFn<State = DefaultState, Platform = unknown> = (
+  ctx: Context<State, Platform>,
+) => Response | Promise<Response>;
 
-export interface MiddlewareModule {
-  handler: MiddlewareFn | MiddlewareFn[];
+export interface MiddlewareModule<State = DefaultState, Platform = unknown> {
+  handler:
+    | MiddlewareFn<State, Platform>
+    | MiddlewareFn<State, Platform>[];
 }
 
-export function runMiddlewares(
-  middlewares: MiddlewareFn[][],
-  ctx: Context
+export function runMiddlewares<State = DefaultState, Platform = unknown>(
+  middlewares: MiddlewareFn<State, Platform>[][],
+  ctx: ContextImpl<State, Platform>,
 ): Promise<Response> {
-  let fn = ctx.next;
+  let fn = ctx._getNext();
   let i = middlewares.length;
   while (i--) {
     const stack = middlewares[i];
@@ -19,13 +23,8 @@ export function runMiddlewares(
       const local = fn;
       const next = stack[j];
       fn = async () => {
-        ctx.next = local;
-        try {
-          return await next(ctx);
-        } catch (err) {
-          ctx.error = err;
-          throw err;
-        }
+        ctx._setNext(local);
+        return await next(ctx);
       };
     }
   }
