@@ -21,9 +21,34 @@ export type AppHandler<Platform = unknown> = (
 const DEFAULT_NOT_FOUND = () => {
   throw new HttpError(404);
 };
-const DEFAULT_NOT_ALLOWED_METHOD = () => {
-  throw new HttpError(405);
-};
+
+function methodNotAllowed(allow: string) {
+  return () => {
+    throw new HttpError(405, undefined, { headers: { allow } });
+  };
+}
+
+function applyErrorHeaders(response: Response, error: HttpError): Response {
+  if (!error.options?.headers) return response;
+
+  const headers = new Headers(response.headers);
+  new Headers(error.options.headers).forEach((value, key) => {
+    headers.set(key, value);
+  });
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+function withoutBody(response: Response): Response {
+  return new Response(null, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+}
 
 function normalizeBasePath(basePath = '') {
   if (!basePath || basePath === '/') return '';
@@ -154,13 +179,16 @@ export class App<State = DefaultState, Platform = unknown> {
 
       const matched = this.#router.match(method, url);
       const decodingError = matched.error;
+      const allow = matched.allowedMethods.join(', ');
 
       const next = decodingError
         ? () => {
           throw decodingError;
         }
-        : matched.patternMatch && !matched.methodMatch
-        ? DEFAULT_NOT_ALLOWED_METHOD
+        : method === 'OPTIONS' && matched.allowedMethods.length > 0
+        ? async () => new Response(null, { status: 204, headers: { allow } })
+        : matched.allowedMethods.length > 0
+        ? methodNotAllowed(allow)
         : DEFAULT_NOT_FOUND;
 
       const { params, handlers } = matched;
@@ -174,8 +202,9 @@ export class App<State = DefaultState, Platform = unknown> {
         next,
       });
 
+      let response: Response;
       try {
-        return await runMiddlewares(handlers, ctx);
+        response = await runMiddlewares(handlers, ctx);
       } catch (err) {
         // Check if we have an error page registered for the url
         const errorRoute = this.#router.matchError(url);
@@ -187,25 +216,31 @@ export class App<State = DefaultState, Platform = unknown> {
           ctx._setError(error);
           try {
             if (error.status >= 500) console.error(err);
-            return await runMiddlewares([[errorRoute.handler]], ctx);
+            response = applyErrorHeaders(
+              await runMiddlewares([[errorRoute.handler]], ctx),
+              error,
+            );
           } catch (e) {
             console.error(e);
-            return new Response('Internal server error', { status: 500 });
+            response = new Response('Internal server error', { status: 500 });
           }
-        }
-
-        if (err instanceof HttpError) {
+        } else if (err instanceof HttpError) {
           if (err.status >= 500) {
             // deno-lint-ignore no-console
             console.error(err);
           }
-          return new Response(err.message, { status: err.status });
+          response = new Response(err.message, {
+            status: err.status,
+            headers: err.options?.headers,
+          });
+        } else {
+          // deno-lint-ignore no-console
+          console.error(err);
+          response = new Response('Internal server error', { status: 500 });
         }
-
-        // deno-lint-ignore no-console
-        console.error(err);
-        return new Response('Internal server error', { status: 500 });
       }
+
+      return method === 'HEAD' ? withoutBody(response) : response;
     };
   }
 }

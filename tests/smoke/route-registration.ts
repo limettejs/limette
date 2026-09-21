@@ -113,6 +113,96 @@ assert(
   'ALL did not accept an unsupported incoming request method.',
 );
 
+const methodFirstApp = new App<TestState, TestPlatform>();
+methodFirstApp.error('/*', (ctx) =>
+  new Response(`error:${ctx.error?.status}`, {
+    status: ctx.error?.status,
+  }));
+methodFirstApp.get('/users/new', () => new Response('GET static'));
+methodFirstApp.post(
+  '/users/:id',
+  (ctx) => new Response(`POST dynamic:${ctx.params.id}`),
+);
+assert(
+  (await request(methodFirstApp, '/users/new', 'POST')).text ===
+    'POST dynamic:new',
+  'An incompatible static route claimed a method-first match.',
+);
+const notAllowed = await request(methodFirstApp, '/users/new', 'DELETE');
+assert(
+  notAllowed.response.status === 405 &&
+    notAllowed.response.headers.get('allow') ===
+      'GET, HEAD, POST, OPTIONS' &&
+    notAllowed.text === 'error:405',
+  'A path match did not produce 405 with the complete Allow header.',
+);
+assert(
+  (await request(methodFirstApp, '/missing', 'DELETE')).response.status === 404,
+  'A missing pathname did not produce 404.',
+);
+
+const headApp = new App<TestState, TestPlatform>();
+headApp.get(
+  '/explicit',
+  () => new Response('GET body', { headers: { 'x-method': 'GET' } }),
+);
+headApp.head(
+  '/explicit',
+  () => new Response('HEAD body', { headers: { 'x-method': 'HEAD' } }),
+);
+headApp.get('/fallback', (ctx) =>
+  new Response('GET body', {
+    headers: { 'x-request-method': ctx.request.method },
+  }));
+const explicitHead = await request(headApp, '/explicit', 'HEAD');
+assert(
+  explicitHead.response.headers.get('x-method') === 'HEAD' &&
+    explicitHead.text === '',
+  'An explicit HEAD route did not win over GET with an empty final body.',
+);
+const fallbackHead = await request(headApp, '/fallback', 'HEAD');
+assert(
+  fallbackHead.response.headers.get('x-request-method') === 'HEAD' &&
+    fallbackHead.text === '',
+  'GET fallback did not receive the original HEAD request with an empty body.',
+);
+const missingHead = await request(headApp, '/missing', 'HEAD');
+assert(
+  missingHead.response.status === 404 && missingHead.text === '',
+  'A final HEAD error response retained a body.',
+);
+
+const optionsCalls: string[] = [];
+const optionsApp = new App<TestState, TestPlatform>();
+optionsApp.get('/explicit', () => new Response('GET'));
+optionsApp.options(
+  '/explicit',
+  () =>
+    new Response('explicit OPTIONS', { headers: { 'x-options': 'explicit' } }),
+);
+optionsApp.all('/automatic', async (ctx) => {
+  optionsCalls.push('all:before');
+  const response = await ctx.next();
+  optionsCalls.push('all:after');
+  return response;
+});
+optionsApp.get('/automatic', () => new Response('GET'));
+optionsApp.post('/automatic', () => new Response('POST'));
+const explicitOptions = await request(optionsApp, '/explicit', 'OPTIONS');
+assert(
+  explicitOptions.text === 'explicit OPTIONS' &&
+    explicitOptions.response.headers.get('x-options') === 'explicit',
+  'An explicit OPTIONS route was replaced by automatic handling.',
+);
+const automaticOptions = await request(optionsApp, '/automatic', 'OPTIONS');
+assert(
+  automaticOptions.response.status === 204 &&
+    automaticOptions.response.headers.get('allow') ===
+      'GET, HEAD, POST, OPTIONS' &&
+    optionsCalls.join(',') === 'all:before,all:after',
+  'Automatic OPTIONS did not run through ALL or produce the expected Allow.',
+);
+
 const chainCalls: string[] = [];
 const chainApp = new App<TestState, TestPlatform>();
 chainApp.get(

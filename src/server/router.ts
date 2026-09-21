@@ -5,7 +5,7 @@ import type { Middleware } from './middlewares.ts';
 import type { RouteHandler, RouteHandlers } from './handlers.ts';
 import type { ServerComponentClass } from './components.ts';
 import type { DefaultState } from './context.ts';
-import type { Method } from './methods.ts';
+import { METHODS, type Method } from './methods.ts';
 import { HttpError } from './error.ts';
 
 export interface RouteConfig {
@@ -21,11 +21,18 @@ export interface RouteModule<State = DefaultState, Platform = unknown> {
 interface RouteResult<State, Platform> {
   params: Record<string, string>;
   handlers: Middleware<State, Platform>[][];
+  allowedMethods: Method[];
   error?: HttpError;
   methodMatch: boolean;
   patternMatch: boolean;
   pattern: string | null;
 }
+
+const ALLOW_METHOD_ORDER: readonly Method[] = [
+  'GET',
+  'HEAD',
+  ...METHODS.filter((method) => method !== 'GET' && method !== 'HEAD'),
+];
 
 export interface Route<State = DefaultState, Platform = unknown> {
   path: URLPattern;
@@ -128,10 +135,11 @@ export class UrlPatternRouter<State = DefaultState, Platform = unknown> {
     });
   }
 
-  match(method: string, url: URL): RouteResult<State, Platform> {
+  #createResult(): RouteResult<State, Platform> {
     const result: RouteResult<State, Platform> = {
       params: createParams(),
       handlers: [],
+      allowedMethods: [],
       methodMatch: false,
       patternMatch: false,
       pattern: null,
@@ -141,33 +149,88 @@ export class UrlPatternRouter<State = DefaultState, Platform = unknown> {
       result.handlers.push(this.#middlewares);
     }
 
-    for (const route of this.#routes) {
+    return result;
+  }
+
+  #findExactMatch(method: Method, url: URL) {
+    for (let index = 0; index < this.#routes.length; index++) {
+      const route = this.#routes[index];
+      if (route.method !== method) continue;
+      if (route.path.exec(url) !== null) return index;
+    }
+  }
+
+  #matchCompatible(
+    method: string,
+    url: URL,
+    selectedIndex?: number,
+  ): RouteResult<State, Platform> {
+    const result = this.#createResult();
+
+    for (let index = 0; index < this.#routes.length; index++) {
+      if (selectedIndex !== undefined && index > selectedIndex) break;
+      const route = this.#routes[index];
+      if (
+        route.method !== 'ALL' &&
+        (selectedIndex === undefined
+          ? route.method !== method
+          : index !== selectedIndex)
+      ) {
+        continue;
+      }
       const match = route.path.exec(url);
 
       if (match !== null) {
         result.patternMatch = true;
         result.pattern = route.path.pathname;
-
-        if (route.method === 'ALL' || route.method === method) {
-          result.methodMatch = true;
-          const decoded = decodePathnameGroups(match.pathname.groups);
-          if (decoded.error) {
-            result.error = decoded.error;
-            return result;
-          }
-          for (const [key, value] of decoded.entries) {
-            result.params[key] = value;
-          }
-          result.handlers.push(route.handlers);
-
-          if (route.method === 'ALL') {
-            continue;
-          }
-
+        const decoded = decodePathnameGroups(match.pathname.groups);
+        if (decoded.error) {
+          result.error = decoded.error;
           return result;
         }
+        for (const [key, value] of decoded.entries) {
+          result.params[key] = value;
+        }
+        result.handlers.push(route.handlers);
+
+        if (route.method === 'ALL') continue;
+        result.methodMatch = true;
+        return result;
       }
     }
+
+    return result;
+  }
+
+  match(method: string, url: URL): RouteResult<State, Platform> {
+    let result: RouteResult<State, Platform>;
+
+    if (method === 'HEAD') {
+      const selectedIndex = this.#findExactMatch('HEAD', url) ??
+        this.#findExactMatch('GET', url);
+      result = selectedIndex === undefined
+        ? this.#matchCompatible(method, url)
+        : this.#matchCompatible(method, url, selectedIndex);
+    } else {
+      result = this.#matchCompatible(method, url);
+    }
+
+    if (result.methodMatch || result.error) return result;
+
+    const allowed = new Set<Method>();
+    for (const route of this.#routes) {
+      if (route.method === 'ALL') continue;
+      if (route.path.exec(url) === null) continue;
+      result.patternMatch = true;
+      result.pattern ??= route.path.pathname;
+      allowed.add(route.method);
+    }
+
+    if (allowed.has('GET')) allowed.add('HEAD');
+    if (allowed.size > 0) allowed.add('OPTIONS');
+    result.allowedMethods = ALLOW_METHOD_ORDER.filter((method) =>
+      allowed.has(method)
+    );
 
     return result;
   }

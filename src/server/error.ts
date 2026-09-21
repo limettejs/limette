@@ -139,7 +139,7 @@ export class HttpError {
   constructor(
     public status: number,
     message: string = getMessage(status),
-    public options?: ErrorOptions
+    public options?: ErrorOptions & { headers?: HeadersInit }
   ) {
     this.status = status;
     this.message = message;
