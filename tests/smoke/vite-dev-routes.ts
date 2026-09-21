@@ -24,6 +24,18 @@ const cssOnlyRoute = cssRoutes.find((route) => route.path === '/about');
 if (!cssHomeRoute || !cssOnlyRoute) {
   throw new Error('Expected CSS development fixture routes.');
 }
+const staticUserIndex = cssRoutes.findIndex((route) =>
+  route.path === '/users/new'
+);
+const dynamicUserIndex = cssRoutes.findIndex((route) =>
+  route.path === '/users/:id'
+);
+if (
+  staticUserIndex === -1 || dynamicUserIndex === -1 ||
+  staticUserIndex >= dynamicUserIndex
+) {
+  throw new Error('Vite dev routes lost filesystem specificity ordering.');
+}
 if (
   cssHomeRoute.assets.scripts.length !== 1 ||
   cssHomeRoute.assets.styles.length !== 0

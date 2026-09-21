@@ -67,6 +67,17 @@ try {
     throw new Error('Expected dev SSR to render route head metadata.');
   }
 
+  const staticConflictResponse = await fetch(`${origin}/foo/bar`);
+  const staticConflictHtml = await staticConflictResponse.text();
+  if (
+    !staticConflictResponse.ok || !staticConflictHtml.includes('Foo/Bar') ||
+    staticConflictHtml.includes('<h1>Params</h1>')
+  ) {
+    throw new Error(
+      'Vite dev routing did not prefer /foo/bar over /foo/:id.',
+    );
+  }
+
   for (let i = 0; i < 20; i++) {
     const repeatedResponse = await fetch(`${origin}/`);
     const repeatedHtml = await repeatedResponse.text();

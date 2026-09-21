@@ -595,6 +595,15 @@ try {
       userHtml.includes('data-server-layout'),
     'Dynamic generated route lost middleware or layout behavior.',
   );
+  const newUserResponse = await serverModule.handler(
+    new Request('http://localhost/users/new'),
+  );
+  const newUserHtml = await newUserResponse.text();
+  assert(
+    newUserResponse.status === 200 && newUserHtml.includes('New user') &&
+      !newUserHtml.includes('User new'),
+    'Generated production routing did not prefer a static segment over a dynamic segment.',
+  );
   const sharedIslandResponse = await serverModule.handler(
     new Request('http://localhost/shared-island'),
   );

@@ -1,6 +1,6 @@
 import { PageComponent } from '@limette/core';
 import { html } from 'lit';
-import { IslandBar } from '../islands/bar.js';
+import { IslandBar } from '../../islands/bar.js';
 
 export default class Params extends PageComponent {
   static islands = {
