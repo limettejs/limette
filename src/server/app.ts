@@ -1,5 +1,5 @@
 import { type Method, UrlPatternRouter } from './router.ts';
-import { type MiddlewareFn, runMiddlewares } from './middlewares.ts';
+import { type Middleware, runMiddlewares } from './middlewares.ts';
 import { HttpError } from './error.ts';
 import { ContextImpl, type DefaultState } from './context.ts';
 
@@ -44,14 +44,14 @@ export class App<State = DefaultState, Platform = unknown> {
   readonly config: ResolvedAppConfig;
   #fsRoutesEnabled = false;
 
-  middlewares: MiddlewareFn<State, Platform>[] = [];
+  middlewares: Middleware<State, Platform>[] = [];
   #router = new UrlPatternRouter<State, Platform>();
 
   constructor(config?: AppConfig) {
     this.config = normalizeConfig(config);
   }
 
-  use(middleware: MiddlewareFn<State, Platform>): this {
+  use(middleware: Middleware<State, Platform>): this {
     this.#router.addMiddleware(middleware);
     return this;
   }
@@ -68,38 +68,41 @@ export class App<State = DefaultState, Platform = unknown> {
 
   error(
     pathname: string | URLPattern,
-    middleware: MiddlewareFn<State, Platform>,
+    middleware: Middleware<State, Platform>,
   ): this {
     this.#router.addError(pathname, middleware);
     return this;
   }
 
-  get(path: string, ...middlewares: MiddlewareFn<State, Platform>[]): this {
+  get(path: string, ...middlewares: Middleware<State, Platform>[]): this {
     return this.#addRoutes('GET', path, middlewares);
   }
-  post(path: string, ...middlewares: MiddlewareFn<State, Platform>[]): this {
+  post(path: string, ...middlewares: Middleware<State, Platform>[]): this {
     return this.#addRoutes('POST', path, middlewares);
   }
-  patch(path: string, ...middlewares: MiddlewareFn<State, Platform>[]): this {
+  patch(path: string, ...middlewares: Middleware<State, Platform>[]): this {
     return this.#addRoutes('PATCH', path, middlewares);
   }
-  put(path: string, ...middlewares: MiddlewareFn<State, Platform>[]): this {
+  put(path: string, ...middlewares: Middleware<State, Platform>[]): this {
     return this.#addRoutes('PUT', path, middlewares);
   }
-  delete(path: string, ...middlewares: MiddlewareFn<State, Platform>[]): this {
+  delete(path: string, ...middlewares: Middleware<State, Platform>[]): this {
     return this.#addRoutes('DELETE', path, middlewares);
   }
-  head(path: string, ...middlewares: MiddlewareFn<State, Platform>[]): this {
+  head(path: string, ...middlewares: Middleware<State, Platform>[]): this {
     return this.#addRoutes('HEAD', path, middlewares);
   }
-  all(path: string, ...middlewares: MiddlewareFn<State, Platform>[]): this {
+  options(path: string, ...middlewares: Middleware<State, Platform>[]): this {
+    return this.#addRoutes('OPTIONS', path, middlewares);
+  }
+  all(path: string, ...middlewares: Middleware<State, Platform>[]): this {
     return this.#addRoutes('ALL', path, middlewares);
   }
 
   #addRoutes(
     method: Method | 'ALL',
     pathname: string | URLPattern,
-    middlewares: MiddlewareFn<State, Platform>[],
+    middlewares: Middleware<State, Platform>[],
   ): this {
     const merged = typeof pathname === 'string'
       ? mergePaths(this.config.basePath, pathname)

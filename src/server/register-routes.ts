@@ -7,7 +7,7 @@ import type { AppWrapperComponentClass } from './ssr.ts';
 import { LitElement } from 'lit';
 import { islandComponent, type ServerComponentClass } from './components.ts';
 import type { DefaultState } from './context.ts';
-import type { MiddlewareFn } from './middlewares.ts';
+import type { Middleware } from './middlewares.ts';
 
 export interface RegisterRouteDefinitionsOptions<
   State = DefaultState,
@@ -106,7 +106,7 @@ export function registerRouteDefinitions<
 
     const middlewares = preparedRoute.middlewares
       .map((module) => module?.handler)
-      .flat() as MiddlewareFn<State, Platform>[];
+      .flat() as Middleware<State, Platform>[];
 
     for (const [method, handler] of Object.entries(handlers)) {
       app[method.toLocaleLowerCase() as Lowercase<Method>](

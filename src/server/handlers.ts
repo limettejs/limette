@@ -1,24 +1,27 @@
 import type { RuntimeRouteDefinition } from './route.ts';
-import type { ContextImpl, DefaultState } from './context.ts';
+import type { Context, ContextImpl, DefaultState } from './context.ts';
 import { HttpError } from './error.ts';
-import type { MiddlewareFn } from './middlewares.ts';
 import { type AppWrapperComponentClass, renderContent } from './ssr.ts';
 
-export interface Handlers<State = DefaultState, Platform = unknown> {
-  GET?: MiddlewareFn<State, Platform>;
-  POST?: MiddlewareFn<State, Platform>;
-  PUT?: MiddlewareFn<State, Platform>;
-  DELETE?: MiddlewareFn<State, Platform>;
-  PATCH?: MiddlewareFn<State, Platform>;
-  OPTIONS?: MiddlewareFn<State, Platform>;
-  HEAD?: MiddlewareFn<State, Platform>;
+export type RouteHandler<State = DefaultState, Platform = unknown> = (
+  ctx: Context<State, Platform>,
+) => Response | Promise<Response>;
+
+export interface RouteHandlers<State = DefaultState, Platform = unknown> {
+  GET?: RouteHandler<State, Platform>;
+  POST?: RouteHandler<State, Platform>;
+  PUT?: RouteHandler<State, Platform>;
+  DELETE?: RouteHandler<State, Platform>;
+  PATCH?: RouteHandler<State, Platform>;
+  OPTIONS?: RouteHandler<State, Platform>;
+  HEAD?: RouteHandler<State, Platform>;
 }
 
 export function handlersForRoute<State = DefaultState, Platform = unknown>(
   route: RuntimeRouteDefinition<State, Platform>,
   AppWrapper: AppWrapperComponentClass<State, Platform>,
 ) {
-  const handlers: Handlers<State, Platform> = {};
+  const handlers: RouteHandlers<State, Platform> = {};
 
   const renderRoute = async (ctx: ContextImpl<State, Platform>) => {
     if (!route.routeModule?.default) {
@@ -40,18 +43,18 @@ export function handlersForRoute<State = DefaultState, Platform = unknown>(
   // Register custom handlers
   if (route.routeModule?.handler) {
     for (const [method, fn] of Object.entries(route.routeModule.handler)) {
-      const handler: MiddlewareFn<State, Platform> = async (ctx) => {
+      const handler: RouteHandler<State, Platform> = async (ctx) => {
         const internal = ctx as ContextImpl<State, Platform>;
         internal._setRender(() => renderRoute(internal));
-        return await (fn as MiddlewareFn<State, Platform>)(internal);
+        return await (fn as RouteHandler<State, Platform>)(internal);
       };
-      handlers[method as keyof Handlers<State, Platform>] = handler;
+      handlers[method as keyof RouteHandlers<State, Platform>] = handler;
     }
   }
 
   // Default behaviour if no GET handler is provided
   if (route.routeModule?.default && !route.routeModule?.handler?.GET) {
-    const handler: MiddlewareFn<State, Platform> = async (ctx) => {
+    const handler: RouteHandler<State, Platform> = async (ctx) => {
       const internal = ctx as ContextImpl<State, Platform>;
       internal._setRender(() => renderRoute(internal));
       return await internal.render();

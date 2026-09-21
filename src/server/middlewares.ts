@@ -1,17 +1,17 @@
 import type { Context, ContextImpl, DefaultState } from './context.ts';
 
-export type MiddlewareFn<State = DefaultState, Platform = unknown> = (
+export type Middleware<State = DefaultState, Platform = unknown> = (
   ctx: Context<State, Platform>,
 ) => Response | Promise<Response>;
 
 export interface MiddlewareModule<State = DefaultState, Platform = unknown> {
   handler:
-    | MiddlewareFn<State, Platform>
-    | MiddlewareFn<State, Platform>[];
+    | Middleware<State, Platform>
+    | Middleware<State, Platform>[];
 }
 
 export function runMiddlewares<State = DefaultState, Platform = unknown>(
-  middlewares: MiddlewareFn<State, Platform>[][],
+  middlewares: Middleware<State, Platform>[][],
   ctx: ContextImpl<State, Platform>,
 ): Promise<Response> {
   let fn = ctx._getNext();

@@ -46,6 +46,18 @@ async function runNode(path: string, cwd: string) {
   }
 }
 
+async function runDenoCheck(path: string, cwd: string) {
+  const output = await new Deno.Command(Deno.execPath(), {
+    args: ['check', '--node-modules-dir=manual', path],
+    cwd,
+    stdout: 'piped',
+    stderr: 'piped',
+  }).output();
+  if (!output.success) {
+    throw new Error(new TextDecoder().decode(output.stderr));
+  }
+}
+
 function dependencyVersions(
   tree: { dependencies?: Record<string, unknown> },
   names: ReadonlySet<string>,
@@ -118,6 +130,47 @@ if (await response.text() !== 'ok' || typeof serve !== 'function') process.exit(
 `,
   );
   await runNode(runtimeTest, runtimeDirectory);
+
+  const runtimeTypeTest = join(runtimeDirectory, 'types.ts');
+  await Deno.writeTextFile(
+    runtimeTypeTest,
+    `import type {
+  AppHandler,
+  Context,
+  Middleware,
+  RenderContext,
+  RouteHandler,
+  RouteHandlers,
+} from '@limette/core';
+
+interface State { value?: string }
+interface Platform { marker: string }
+
+const middleware = ((ctx) => {
+  ctx.state.value = ctx.platform.marker;
+  return ctx.next();
+}) satisfies Middleware<State, Platform>;
+
+const routeHandler = ((ctx) => ctx.render()) satisfies RouteHandler<State, Platform>;
+const routeHandlers = {
+  GET(ctx) {
+    ctx.state.value = ctx.platform.marker;
+    return ctx.render();
+  },
+  POST() {
+    return new Response('POST');
+  },
+} satisfies RouteHandlers<State, Platform>;
+
+const appHandler = ((request, platform) =>
+  new Response(request.method + platform?.marker)) satisfies AppHandler<Platform>;
+
+declare const context: Context<State, Platform>;
+declare const renderContext: RenderContext<State, Platform>;
+void [middleware, routeHandler, routeHandlers, appHandler, context, renderContext];
+`,
+  );
+  await runDenoCheck(runtimeTypeTest, runtimeDirectory);
 
   await command([
     'install',

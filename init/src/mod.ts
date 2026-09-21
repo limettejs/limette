@@ -314,10 +314,10 @@ export default class Home extends PageComponent {
 `;
 
 const fooRouteTs = `
-import { PageComponent, type Handlers } from "@limette/core";
+import { PageComponent, type RouteHandlers } from "@limette/core";
 import { html, css } from "lit";
 
-export const handler: Handlers = {
+export const handler: RouteHandlers = {
   POST(_ctx) {
     return new Response("Response for POST request!");
   },

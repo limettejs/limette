@@ -12,8 +12,8 @@ export { HttpError } from './server/error.ts';
 export type { Context, DefaultState, RenderContext } from './server/context.ts';
 export type { AppWrapperComponent } from './server/ssr.ts';
 export type { RouteConfig, RouteModule } from './server/router.ts';
-export type { Handlers } from './server/handlers.ts';
-export type { MiddlewareFn } from './server/middlewares.ts';
+export type { RouteHandler, RouteHandlers } from './server/handlers.ts';
+export type { Middleware } from './server/middlewares.ts';
 export type { LayoutConfig, LayoutModule } from './server/layouts.ts';
 export type {
   AppAssets,

@@ -1,12 +1,19 @@
 import './ssr.ts';
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { LitElement } from 'lit';
-import type { MiddlewareFn } from './middlewares.ts';
-import type { Handlers } from './handlers.ts';
+import type { Middleware } from './middlewares.ts';
+import type { RouteHandlers } from './handlers.ts';
 import type { ServerComponentClass } from './components.ts';
 import type { DefaultState } from './context.ts';
 
-export type Method = 'HEAD' | 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
+export type Method =
+  | 'HEAD'
+  | 'GET'
+  | 'POST'
+  | 'PATCH'
+  | 'PUT'
+  | 'DELETE'
+  | 'OPTIONS';
 
 export interface RouteConfig {
   skipInheritedLayouts: boolean; // Skip already inherited layouts
@@ -14,13 +21,13 @@ export interface RouteConfig {
 
 export interface RouteModule<State = DefaultState, Platform = unknown> {
   config: RouteConfig;
-  handler: Handlers<State, Platform>;
+  handler: RouteHandlers<State, Platform>;
   default: ServerComponentClass | typeof LitElement;
 }
 
 interface RouteResult<State, Platform> {
   params: Record<string, string>;
-  handlers: MiddlewareFn<State, Platform>[][];
+  handlers: Middleware<State, Platform>[][];
   methodMatch: boolean;
   patternMatch: boolean;
   pattern: string | null;
@@ -29,17 +36,17 @@ interface RouteResult<State, Platform> {
 export interface Route<State = DefaultState, Platform = unknown> {
   path: URLPattern;
   method: Method | 'ALL';
-  handlers: MiddlewareFn<State, Platform>[];
+  handlers: Middleware<State, Platform>[];
 }
 
 interface ErrorRoute<State, Platform> {
   path: URLPattern;
-  handler: MiddlewareFn<State, Platform>;
+  handler: Middleware<State, Platform>;
 }
 
 interface ErrorRouteResult<State, Platform> {
   params: Record<string, string>;
-  handler: MiddlewareFn<State, Platform> | undefined;
+  handler: Middleware<State, Platform> | undefined;
   methodMatch: boolean;
   patternMatch: boolean;
   pattern: string | null;
@@ -47,14 +54,14 @@ interface ErrorRouteResult<State, Platform> {
 
 export class UrlPatternRouter<State = DefaultState, Platform = unknown> {
   #routes: Route<State, Platform>[] = [];
-  #middlewares: MiddlewareFn<State, Platform>[] = [];
+  #middlewares: Middleware<State, Platform>[] = [];
   #errors: ErrorRoute<State, Platform>[] = [];
 
-  addMiddleware(fn: MiddlewareFn<State, Platform>) {
+  addMiddleware(fn: Middleware<State, Platform>) {
     this.#middlewares.push(fn);
   }
 
-  addError(pathname: string | URLPattern, fn: MiddlewareFn<State, Platform>) {
+  addError(pathname: string | URLPattern, fn: Middleware<State, Platform>) {
     let path = pathname;
 
     if (typeof pathname === 'string' && pathname.endsWith('/_error')) {
@@ -72,7 +79,7 @@ export class UrlPatternRouter<State = DefaultState, Platform = unknown> {
   add(
     method: Method | 'ALL',
     pathname: string | URLPattern,
-    handlers: MiddlewareFn<State, Platform>[],
+    handlers: Middleware<State, Platform>[],
   ) {
     this.#routes.push({
       path: typeof pathname === 'string'

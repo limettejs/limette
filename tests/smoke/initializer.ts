@@ -227,6 +227,8 @@ async function runCombination(
       appWrapper.includes('${this.outlet}') &&
       fooRoute.includes('override head()') &&
       fooRoute.includes('<title>Foo</title>') &&
+      fooRoute.includes('type RouteHandlers') &&
+      fooRoute.includes('handler: RouteHandlers') &&
       !appWrapper.includes('<lmt-head') &&
       !fooRoute.includes('<lmt-head'),
     `${projectName} does not use the structural head() API.`,
