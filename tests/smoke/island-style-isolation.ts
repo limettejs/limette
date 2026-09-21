@@ -2,10 +2,7 @@ import { css, html, LitElement } from 'lit';
 import { AppComponent, PageComponent } from '../../src/server/components.ts';
 import { Context } from '../../src/server/context.ts';
 import type { RuntimeRouteDefinition } from '../../src/server/route.ts';
-import {
-  type AppWrapperComponentClass,
-  renderContent,
-} from '../../src/server/ssr.ts';
+import { renderContent } from '../../src/server/ssr.ts';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -45,7 +42,7 @@ class TestApp extends AppComponent {
       <!DOCTYPE html>
       <html>
         <head>${this.assets.styles}</head>
-        <body>${this.page}</body>
+        <body>${this.outlet}</body>
       </html>
     `;
   }
@@ -99,7 +96,7 @@ function context(id: 'a' | 'b') {
 
 async function renderRoute(definition: RuntimeRouteDefinition, id: 'a' | 'b') {
   return await renderContent(
-    TestApp as unknown as AppWrapperComponentClass,
+    TestApp,
     definition,
     context(id),
   );

@@ -198,6 +198,10 @@ async function runCombination(
     join(projectRoot, 'islands/counter.ts'),
   );
   const route = await Deno.readTextFile(join(projectRoot, 'routes/index.ts'));
+  const appWrapper = await Deno.readTextFile(
+    join(projectRoot, 'routes/_app.ts'),
+  );
+  const fooRoute = await Deno.readTextFile(join(projectRoot, 'routes/foo.ts'));
   assert(
     viteConfig.includes('limette({') &&
       viteConfig.includes('app: "./app.ts"'),
@@ -218,6 +222,16 @@ async function runCombination(
     `${projectName} lost its counter interactions.`,
   );
   assert(
+    appWrapper.includes('override head()') &&
+      appWrapper.includes('<title>Limette</title>') &&
+      appWrapper.includes('${this.outlet}') &&
+      fooRoute.includes('override head()') &&
+      fooRoute.includes('<title>Foo</title>') &&
+      !appWrapper.includes('<lmt-head') &&
+      !fooRoute.includes('<lmt-head'),
+    `${projectName} does not use the structural head() API.`,
+  );
+  assert(
     await exists(join(projectRoot, 'tailwind.css')) === tailwind &&
       viteConfig.includes('@tailwindcss/vite') === tailwind &&
       viteConfig.includes('tailwind: "./tailwind.css"') === tailwind &&
@@ -225,12 +239,16 @@ async function runCombination(
     `${projectName} generated an inconsistent Tailwind variant.`,
   );
 
-  const obsoleteText = `${JSON.stringify(manifest)}\n${viteConfig}\n${island}`;
+  const obsoleteText = `${
+    JSON.stringify(manifest)
+  }\n${viteConfig}\n${island}\n${appWrapper}\n${route}\n${fooRoute}`;
   for (
     const obsolete of [
       'npm:vite',
       'clientEntryInputs',
       'App.listen',
+      'this.page',
+      'this.child',
       '_limette',
     ]
   ) {
@@ -378,7 +396,13 @@ async function runCombination(
   assert(
     production.body.includes('island-counter') &&
       production.body.includes('Hello,') &&
-      production.body.includes('Count:'),
+      production.body.includes('Count:') &&
+      production.body.includes('<title>Limette</title>') &&
+      production.body.includes(
+        '<meta name="description" content="A Limette application">',
+      ) &&
+      !production.body.includes('<lmt-head') &&
+      !production.body.includes(' key='),
     `${projectName} returned an unexpected production SSR response.`,
   );
   const scriptUrl = production.body.match(

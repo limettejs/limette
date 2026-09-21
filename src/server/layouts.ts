@@ -1,7 +1,5 @@
-// @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
-import type { TemplateResult } from 'lit';
 import type { Context } from './context.ts';
-import type { IslandsDefinition, ServerRenderResult } from './components.ts';
+import type { HeadRenderResult, IslandsDefinition } from './components.ts';
 
 export interface LayoutConfig {
   skipInheritedLayouts: boolean; // Skip already inherited layouts
@@ -14,17 +12,11 @@ export interface LayoutModule {
 
 export interface LayoutComponentClass {
   new (): LayoutComponent;
-  ctx: Context;
   islands?: IslandsDefinition;
-  render(
-    component?: ServerRenderResult,
-  ): TemplateResult | Promise<TemplateResult>;
 }
 
 export interface LayoutComponent {
   ctx: Context;
-  child?: ServerRenderResult;
-  render(
-    component?: ServerRenderResult,
-  ): TemplateResult | Promise<TemplateResult>;
+  head?(): HeadRenderResult | Promise<HeadRenderResult>;
+  render(): unknown;
 }

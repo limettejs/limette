@@ -8,7 +8,7 @@ export default class TailwindApp extends AppComponent {
       <html>
         <head>${this.assets.styles}</head>
         <body class="bg-[#abcdef]">
-                ${this.page}${this.assets.scripts}
+                ${this.outlet}${this.assets.scripts}
               </body>
       </html>
     `;

@@ -26,7 +26,7 @@ try {
         };
 
         render() {
-          return html\`\${this.page}\`;
+          return html\`\${this.outlet}\`;
         }
       }
     `,
@@ -48,7 +48,7 @@ try {
         } satisfies IslandsDefinition;
 
         render() {
-          return html\`\${this.child}\`;
+          return html\`\${this.outlet}\`;
         }
       }
     `,

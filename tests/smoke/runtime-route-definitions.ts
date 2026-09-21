@@ -10,8 +10,6 @@ import type { RuntimeRouteDefinition } from '../../src/server/route.ts';
 import type { RouteModule } from '../../src/server/router.ts';
 import type { Context } from '../../src/server/context.ts';
 import type { MiddlewareModule } from '../../src/server/middlewares.ts';
-import type { AppWrapperComponentClass } from '../../src/server/ssr.ts';
-import type { LayoutComponentClass } from '../../src/server/layouts.ts';
 import type { IslandsDefinition } from '../../src/mod.ts';
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -49,7 +47,7 @@ class TestAppWrapper extends AppComponent {
         </head>
         <body>
           <p id="route-file">${this.route.file}</p>
-          ${this.page} ${this.assets.scripts}
+          ${this.outlet} ${this.assets.scripts}
         </body>
       </html>
     `;
@@ -72,7 +70,7 @@ const secondMiddleware: MiddlewareModule = {
 
 const routeApp = new App();
 registerRouteDefinitions(routeApp, {
-  appWrapper: TestAppWrapper as unknown as AppWrapperComponentClass,
+  appWrapper: TestAppWrapper,
   routes: [
     handlerRoute(
       '/about',
@@ -105,7 +103,7 @@ assert(
 
 const suppliedOrderApp = new App();
 registerRouteDefinitions(suppliedOrderApp, {
-  appWrapper: TestAppWrapper as unknown as AppWrapperComponentClass,
+  appWrapper: TestAppWrapper,
   routes: [
     handlerRoute('/:id', (ctx) => new Response(`first:${ctx.params.id}`)),
     handlerRoute('/about', () => new Response('second:static')),
@@ -148,13 +146,13 @@ class RuntimeBoundaryPage extends PageComponent {
 
 class InnerLayout extends LayoutComponent {
   override render() {
-    return html`<section data-layout="inner">${this.child}</section>`;
+    return html`<section data-layout="inner">${this.outlet}</section>`;
   }
 }
 
 class OuterLayout extends LayoutComponent {
   override render() {
-    return html`<section data-layout="outer">${this.child}</section>`;
+    return html`<section data-layout="outer">${this.outlet}</section>`;
   }
 }
 
@@ -181,11 +179,11 @@ function componentRoute(
     layouts: [
       {
         config: { skipInheritedLayouts: false },
-        default: OuterLayout as unknown as LayoutComponentClass,
+        default: OuterLayout,
       },
       {
         config: { skipInheritedLayouts: false },
-        default: InnerLayout as unknown as LayoutComponentClass,
+        default: InnerLayout,
       },
     ],
     middlewares: [],
@@ -201,7 +199,7 @@ function componentRoute(
 
 const renderApp = new App();
 registerRouteDefinitions(renderApp, {
-  appWrapper: TestAppWrapper as unknown as AppWrapperComponentClass,
+  appWrapper: TestAppWrapper,
   routes: [
     componentRoute('/without-island', {
       styles: ['/assets/without-island.css'],
@@ -252,9 +250,11 @@ assert(
   'The document stylesheet leaked into island shadow rendering.',
 );
 assert(
-  islandHtml.indexOf('data-layout="outer"') <
-    islandHtml.indexOf('data-layout="inner"'),
-  'Layouts did not render in inherited order.',
+  islandHtml.indexOf('data-layout="outer"') >= 0 &&
+    islandHtml.indexOf('data-layout="outer"') <
+      islandHtml.indexOf('data-layout="inner"') &&
+    islandHtml.indexOf('data-layout="inner"') < islandHtml.indexOf('<main>'),
+  'App outlet did not preserve the outer → inner → page composition order.',
 );
 assert(
   islandHtml.includes('./routes/with-island.ts'),

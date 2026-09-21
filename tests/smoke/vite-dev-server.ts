@@ -63,6 +63,9 @@ try {
   if (!initialRouteTag) {
     throw new Error('Expected SSR output to contain a Limette route tag.');
   }
+  if (!html.includes('<title>Home</title>')) {
+    throw new Error('Expected dev SSR to render route head metadata.');
+  }
 
   for (let i = 0; i < 20; i++) {
     const repeatedResponse = await fetch(`${origin}/`);
@@ -130,7 +133,7 @@ try {
   const updatedHomeRoute = originalHomeRoute.replace(
     'SSR content',
     'SSR content changed by Vite dev smoke',
-  );
+  ).replace('<title>Home</title>', '<title>Updated home</title>');
 
   if (updatedHomeRoute === originalHomeRoute) {
     throw new Error('Expected home route fixture to contain SSR content.');
@@ -147,7 +150,8 @@ try {
 
     if (
       updatedResponse.ok &&
-      updatedHtml.includes('SSR content changed by Vite dev smoke')
+      updatedHtml.includes('SSR content changed by Vite dev smoke') &&
+      updatedHtml.includes('<title>Updated home</title>')
     ) {
       break;
     }
@@ -157,6 +161,9 @@ try {
 
   if (!updatedHtml.includes('SSR content changed by Vite dev smoke')) {
     throw new Error('Expected changed server route code to be reloaded.');
+  }
+  if (!updatedHtml.includes('<title>Updated home</title>')) {
+    throw new Error('Expected changed route head() code to be reloaded.');
   }
 
   if (routeTag(updatedHtml) !== initialRouteTag) {

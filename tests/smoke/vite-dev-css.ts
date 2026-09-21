@@ -9,8 +9,10 @@ const port = 5180;
 const origin = `http://127.0.0.1:${port}`;
 const cssPath = join(fixtureRoot, 'styles/about.css');
 const routePath = join(fixtureRoot, 'routes/about.ts');
+const layoutPath = join(fixtureRoot, 'routes/_layout.ts');
 const originalCss = await Deno.readTextFile(cssPath);
 const originalRoute = await Deno.readTextFile(routePath);
+const originalLayout = await Deno.readTextFile(layoutPath);
 const command = viteCommand([
   '--config',
   `${fixtureRoot}/vite.config.ts`,
@@ -33,6 +35,7 @@ const stderr = new Response(child.stderr).text();
 let socket: WebSocket | undefined;
 let cssChanged = false;
 let routeChanged = false;
+let layoutChanged = false;
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -187,6 +190,25 @@ try {
     ),
   ]);
 
+  const changedLayout = originalLayout.replace(
+    'data-server-layout',
+    'data-server-layout-updated',
+  );
+  assert(changedLayout !== originalLayout, 'Layout fixture did not change.');
+  await Deno.writeTextFile(layoutPath, changedLayout);
+  layoutChanged = true;
+  let changedLayoutHtml = '';
+  for (let attempt = 0; attempt < 50; attempt++) {
+    changedLayoutHtml = await (await fetch(`${origin}/about`)).text();
+    if (changedLayoutHtml.includes('data-server-layout-updated')) break;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  assert(
+    changedLayoutHtml.includes('data-server-layout-updated') &&
+      changedLayoutHtml.includes('Generated about after full reload'),
+    'Edited layout did not render freshly around its current outlet.',
+  );
+
   const homeHtml = await (await fetch(`${origin}/`)).text();
   const entryPath = homeHtml.match(
     /<script type="module" src="([^" ]*\/@limette\/client-entry\/[^"]+)"/,
@@ -214,6 +236,7 @@ try {
 } finally {
   if (cssChanged) await Deno.writeTextFile(cssPath, originalCss);
   if (routeChanged) await Deno.writeTextFile(routePath, originalRoute);
+  if (layoutChanged) await Deno.writeTextFile(layoutPath, originalLayout);
   socket?.close();
   try {
     child.kill('SIGTERM');

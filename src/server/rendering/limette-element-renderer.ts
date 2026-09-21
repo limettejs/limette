@@ -4,6 +4,7 @@ import { LitElementRenderer } from '@lit-labs/ssr/lib/lit-element-renderer.js';
 import type { RenderInfo, RenderResult } from '@lit-labs/ssr';
 import type { RuntimeRouteDefinition } from '../route.ts';
 import type { Context } from '../context.ts';
+import type { HeadRenderResult } from '../components.ts';
 
 type LmtShadowRootMode = 'open' | 'closed' | 'disabled';
 interface ContextLitElement extends LitElement {
@@ -23,8 +24,13 @@ function* renderRouteStyle(
 export const LimetteElementRenderer = (
   route: RuntimeRouteDefinition,
   ctx: Context,
+  onRouteHead?: (
+    result: HeadRenderResult | Promise<HeadRenderResult>,
+  ) => void,
 ) =>
   class LimetteElementRenderer extends LitElementRenderer {
+    static routeHeadCollected = false;
+
     constructor(tagName: string) {
       super(tagName);
 
@@ -89,6 +95,19 @@ export const LimetteElementRenderer = (
       // Inject context for every server-rendered component instance.
       if (!isIsland || ssrIsland) {
         (this.element as ContextLitElement).ctx = ctx;
+      }
+
+      if (
+        this.tagName === `lmt-route-${route.tagName}` &&
+        !LimetteElementRenderer.routeHeadCollected
+      ) {
+        LimetteElementRenderer.routeHeadCollected = true;
+        const structuralElement = this.element as ContextLitElement & {
+          head?: () => HeadRenderResult | Promise<HeadRenderResult>;
+        };
+        if (structuralElement.head) {
+          onRouteHead?.(structuralElement.head());
+        }
       }
 
       const shadow = super.renderShadow(renderInfo);

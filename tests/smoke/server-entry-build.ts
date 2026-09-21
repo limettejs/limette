@@ -496,6 +496,13 @@ try {
   );
   assert(homeHtml.includes('Generated home'), 'Generated home did not render.');
   assert(
+    homeHtml.includes('<title>Generated home title</title>') &&
+      homeHtml.includes(
+        '<meta name="description" content="Generated app description">',
+      ),
+    'Generated production entry did not merge structural head metadata.',
+  );
+  assert(
     homeHtml.includes('data-server-layout'),
     'Home layout did not render.',
   );
@@ -575,6 +582,13 @@ try {
   assert(
     userResponse.status === 200 && userHtml.includes('alice'),
     'Dynamic generated route did not receive route params.',
+  );
+  assert(
+    userHtml.includes('<title>User profile</title>') &&
+      userHtml.includes(
+        '<meta name="description" content="Profile for alice">',
+      ),
+    'Dynamic route head() did not receive request params.',
   );
   assert(
     userResponse.headers.get('x-server-middleware') === 'applied' &&

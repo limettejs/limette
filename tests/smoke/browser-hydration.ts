@@ -76,8 +76,8 @@ async function verifyBfcacheRecovery(
   const routePath = join(fixtureRoot, 'routes/index.ts');
   const originalRoute = await Deno.readTextFile(routePath);
   const changedRoute = originalRoute.replace(
-    'Generated home',
-    'Generated home after BFCache',
+    '<h1>Generated home</h1>',
+    '<h1>Generated home after BFCache</h1>',
   );
   assert(
     changedRoute !== originalRoute,

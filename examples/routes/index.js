@@ -7,6 +7,10 @@ export default class Home extends PageComponent {
     'island-foo': IslandFoo,
   };
 
+  head() {
+    return html`<title>Home</title>`;
+  }
+
   render() {
     return html`
       <section class="p-6">

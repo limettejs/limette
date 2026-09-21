@@ -1,5 +1,5 @@
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
-import { LitElement } from 'lit';
+import { LitElement, nothing } from 'lit';
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { TemplateResult } from 'lit';
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
@@ -26,6 +26,11 @@ export function islandComponent(
 export type ServerRenderResult =
   | TemplateResult
   | DirectiveResult<typeof UnsafeHTMLDirective>;
+export type HeadRenderResult =
+  | TemplateResult
+  | typeof nothing
+  | null
+  | undefined;
 
 export interface ServerComponentClass extends CustomElementConstructor {
   __requiresContext?: boolean;
@@ -61,20 +66,32 @@ export abstract class PageComponent<
   TParams extends Record<string, string> = Record<string, string>,
 > extends ServerComponent<TData, TParams> {
   static islands?: IslandsDefinition;
+
+  head(): HeadRenderResult | Promise<HeadRenderResult> {
+    return nothing;
+  }
 }
 
 export abstract class LayoutComponent<
   TData = unknown,
   TParams extends Record<string, string> = Record<string, string>,
 > extends ServerComponent<TData, TParams> {
-  declare child: ServerRenderResult;
+  declare protected readonly outlet: unknown;
+
+  head(): HeadRenderResult | Promise<HeadRenderResult> {
+    return nothing;
+  }
 }
 
 export abstract class AppComponent<
   TData = unknown,
   TParams extends Record<string, string> = Record<string, string>,
 > extends ServerComponent<TData, TParams> {
-  declare page: ServerRenderResult;
+  declare protected readonly outlet: unknown;
   declare assets: AppAssets;
   declare route: AppRouteInfo;
+
+  head(): HeadRenderResult | Promise<HeadRenderResult> {
+    return nothing;
+  }
 }

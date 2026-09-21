@@ -18,6 +18,10 @@ export default class HomePage extends PageComponent {
     'test-client-only': ShorthandClientOnly,
   };
 
+  override head() {
+    return html`<title>Generated home title</title>`;
+  }
+
   override render() {
     return html`
       <main>
