@@ -7,7 +7,3 @@ export class TestStatus extends LitElement {
     return html`<p>Status</p>`;
   }
 }
-
-if (!customElements.get('test-status')) {
-  customElements.define('test-status', TestStatus);
-}

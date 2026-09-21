@@ -124,10 +124,22 @@ try {
   const aboutRoute = routeManifest.routes.find((route) =>
     route.path === '/about'
   );
-  assert(homeRoute && aboutRoute, 'Missing CSS fixture routes.');
+  const csrRoute = routeManifest.routes.find((route) =>
+    route.path === '/csr-islands'
+  );
+  assert(homeRoute && aboutRoute && csrRoute, 'Missing CSS fixture routes.');
   const homeAssets = fixtureRootAssets.get(homeRoute.id);
   const aboutAssets = fixtureRootAssets.get(aboutRoute.id);
-  assert(homeAssets && aboutAssets, 'Missing resolved CSS fixture assets.');
+  const csrAssets = fixtureRootAssets.get(csrRoute.id);
+  assert(
+    homeAssets && aboutAssets && csrAssets,
+    'Missing resolved CSS fixture assets.',
+  );
+  assert(
+    csrRoute.islandImports.length === 2 &&
+      csrRoute.islandImports.every((island) => island.ssr === false),
+    'Shorthand or omitted island SSR did not default to false.',
+  );
   for (
     const styleImport of [
       '/styles/app.css',
@@ -288,6 +300,121 @@ try {
     await exists(join(clientDir, homeEntry.file)),
     'Client manifest entry does not reference an emitted client file.',
   );
+  const homeEntrySource = await Deno.readTextFile(
+    join(clientDir, homeEntry.file),
+  );
+  assert(
+    homeEntrySource.includes('customElements') &&
+      homeEntrySource.includes('test-counter') &&
+      homeEntrySource.includes('test-status'),
+    'The production client entry did not register route-declared islands.',
+  );
+  const browserRegistration = await new Deno.Command('node', {
+    cwd: repositoryRoot,
+    args: [
+      '--input-type=module',
+      '--eval',
+      `
+        import { parseHTML } from 'linkedom';
+        const { window } = parseHTML('<html><body></body></html>');
+        for (const name of [
+          'window', 'document', 'customElements', 'HTMLElement', 'Element',
+          'Document', 'ShadowRoot', 'Event', 'CustomEvent', 'Node',
+          'MutationObserver', 'CSSStyleSheet'
+        ]) {
+          if (window[name] !== undefined) globalThis[name] = window[name];
+        }
+        const appendChild = document.head.appendChild;
+        document.head.appendChild = function (node) {
+          const result = appendChild.call(this, node);
+          if (node.tagName === 'LINK') {
+            queueMicrotask(() => node.dispatchEvent(new Event('load')));
+          }
+          return result;
+        };
+        await import(${
+        JSON.stringify(pathToFileURL(join(clientDir, homeEntry.file)).href)
+      });
+        if (!customElements.get('test-counter')) {
+          throw new Error('The emitted client entry did not register test-counter.');
+        }
+        const counter = document.createElement('test-counter');
+        document.body.append(counter);
+        await counter.updateComplete;
+        if (!counter.shadowRoot || counter.count !== 0) {
+          throw new Error('The registered island did not upgrade.');
+        }
+        counter.count++;
+        await counter.updateComplete;
+        if (counter.count !== 1) {
+          throw new Error('The upgraded island did not update.');
+        }
+      `,
+    ],
+    stdout: 'piped',
+    stderr: 'piped',
+  }).output();
+  assert(
+    browserRegistration.success,
+    `The production island did not register and upgrade:\n${
+      new TextDecoder().decode(browserRegistration.stderr)
+    }`,
+  );
+  const csrEntry = Object.values(clientManifest).find((chunk) =>
+    chunk.isEntry && chunk.name === `limette-route-${csrRoute.id}`
+  );
+  assert(csrEntry, 'Client build did not emit the CSR-only route entry.');
+  const csrBrowserRegistration = await new Deno.Command('node', {
+    cwd: repositoryRoot,
+    args: [
+      '--input-type=module',
+      '--eval',
+      `
+        import { parseHTML } from 'linkedom';
+        const { window } = parseHTML('<html><body></body></html>');
+        for (const name of [
+          'window', 'document', 'customElements', 'HTMLElement', 'Element',
+          'Document', 'ShadowRoot', 'Event', 'CustomEvent', 'Node',
+          'MutationObserver', 'CSSStyleSheet'
+        ]) {
+          if (window[name] !== undefined) globalThis[name] = window[name];
+        }
+        const appendChild = document.head.appendChild;
+        document.head.appendChild = function (node) {
+          const result = appendChild.call(this, node);
+          if (node.tagName === 'LINK') {
+            queueMicrotask(() => node.dispatchEvent(new Event('load')));
+          }
+          return result;
+        };
+        globalThis.__limetteClientOnlyRenders = 0;
+        await import(${
+        JSON.stringify(pathToFileURL(join(clientDir, csrEntry.file)).href)
+      });
+        for (const tagName of [
+          'shorthand-client-only', 'descriptor-client-only'
+        ]) {
+          if (!customElements.get(tagName)) {
+            throw new Error('The CSR client entry did not register ' + tagName + '.');
+          }
+          const element = document.createElement(tagName);
+          document.body.append(element);
+          await element.updateComplete;
+        }
+        if (globalThis.__limetteClientOnlyRenders !== 2) {
+          throw new Error('CSR-only islands did not render on the client.');
+        }
+      `,
+    ],
+    stdout: 'piped',
+    stderr: 'piped',
+  }).output();
+  assert(
+    csrBrowserRegistration.success,
+    `CSR-only islands did not register and render on the client:\n${
+      new TextDecoder().decode(csrBrowserRegistration.stderr)
+    }`,
+  );
   const expectedScriptUrl = homeAssets.scripts[0];
   const expectedStyleUrls = homeAssets.styles;
   assert(
@@ -394,6 +521,10 @@ try {
   const counterShadow = islandShadow('test-counter');
   const statusShadow = islandShadow('test-status');
   assert(
+    counterShadow.includes('Count:') && statusShadow.includes('Status'),
+    'An explicitly SSR-enabled island did not render its implementation.',
+  );
+  assert(
     counterStyles.every((url) => counterShadow.includes(url)) &&
       statusStyles.every((url) => statusShadow.includes(url)),
     'An island shadow root lost one of its associated stylesheets.',
@@ -449,6 +580,46 @@ try {
     userResponse.headers.get('x-server-middleware') === 'applied' &&
       userHtml.includes('data-server-layout'),
     'Dynamic generated route lost middleware or layout behavior.',
+  );
+  const sharedIslandResponse = await serverModule.handler(
+    new Request('http://localhost/shared-island'),
+  );
+  const sharedIslandHtml = await sharedIslandResponse.text();
+  assert(
+    sharedIslandResponse.status === 200 &&
+      sharedIslandHtml.includes('Count') &&
+      sharedIslandHtml.includes('test-counter'),
+    'A shared island failed when registered by more than one route.',
+  );
+  const serverExecutionState = globalThis as typeof globalThis & {
+    __limetteClientOnlyRenders?: number;
+  };
+  serverExecutionState.__limetteClientOnlyRenders = 0;
+  const csrResponse = await serverModule.handler(
+    new Request('http://localhost/csr-islands'),
+  );
+  const csrHtml = await csrResponse.text();
+  assert(
+    csrResponse.status === 200 &&
+      csrHtml.includes('<shorthand-client-only') &&
+      csrHtml.includes('<descriptor-client-only'),
+    'CSR-only island hosts were not rendered.',
+  );
+  assert(
+    /<shorthand-client-only[^>]*\bssr(?:="")?/.test(csrHtml),
+    'The legacy-named ssr attribute was not preserved as an ordinary attribute.',
+  );
+  assert(
+    !csrHtml.includes('Client-only implementation') &&
+      serverExecutionState.__limetteClientOnlyRenders === 0,
+    'A CSR-only island implementation executed during SSR.',
+  );
+  assert(
+    csrAssets.styles.every((url) => csrHtml.includes(url)) &&
+      Object.values(csrAssets.islandStyles).flat().every((url) =>
+        csrHtml.includes(url)
+      ),
+    'CSR-only islands lost their document or shadow-root styles.',
   );
 } finally {
   for (const { source, hidden } of hiddenSources.reverse()) {

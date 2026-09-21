@@ -38,6 +38,8 @@ const manifest: LimetteRouteManifest = {
       islandImports: [{
         tagName: 'test-"island"',
         local: 'TestIsland',
+        exportName: 'TestIsland',
+        ssr: true,
         sourceFile: 'routes/island.ts',
         moduleSpecifier: '../islands/test.ts',
         resolvedImport: '/islands/test.ts',
@@ -112,6 +114,7 @@ assert(
 assert(
   first.includes('scripts: ["/assets/island \\"quoted\\".js"]') &&
     first.includes('islands: ["test-\\"island\\""]') &&
+    first.includes('ssrIslands: ["test-\\"island\\""]') &&
     first.includes(
       'islandStyles: {"test-\\"island\\"":["/assets/island shadow \\"quoted\\".css"]}',
     ),

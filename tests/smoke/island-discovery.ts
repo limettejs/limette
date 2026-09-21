@@ -42,7 +42,9 @@ try {
 
       export default class RootLayout extends LayoutComponent {
         static islands = {
-          'layout-island': LayoutIsland,
+          'layout-island': {
+            component: LayoutIsland,
+          },
         } satisfies IslandsDefinition;
 
         render() {
@@ -83,7 +85,10 @@ try {
 
       export class ServerCard extends ServerComponent {
         static islands = {
-          'card-island': CardIsland,
+          'card-island': {
+            component: CardIsland,
+            ssr: true,
+          },
         };
 
         render() {
@@ -215,10 +220,34 @@ try {
     unsupportedError = error instanceof Error ? error.message : String(error);
   }
   await Deno.remove(unsupportedRoute);
+  const dynamicSsrRoute = join(root, 'routes/dynamic-ssr.ts');
+  await Deno.writeTextFile(
+    dynamicSsrRoute,
+    `import { AppIsland } from '../islands/app.js';
+     const enabled = true;
+     export default class Unsupported {
+       static islands = {
+         'dynamic-ssr-island': { component: AppIsland, ssr: enabled },
+       };
+     }`,
+  );
+  let dynamicSsrError = '';
+  try {
+    await discoverRoutes({ root, resolve });
+  } catch (error) {
+    dynamicSsrError = error instanceof Error ? error.message : String(error);
+  }
+  await Deno.remove(dynamicSsrRoute);
   await vite.close();
 
   if (!unsupportedError.includes('Unable to statically analyze')) {
     throw new Error('Dynamic static island maps did not fail clearly.');
+  }
+  if (
+    !dynamicSsrError.includes('Unable to statically analyze "ssr"') ||
+    !dynamicSsrError.includes('boolean literal')
+  ) {
+    throw new Error('Dynamic island SSR policy did not fail clearly.');
   }
   const homeRoute = manifest.routes.find((route) => route.path === '/');
 
@@ -233,6 +262,38 @@ try {
   const islandImports = homeRoute.islandImports.map((islandImport) =>
     islandImport.resolvedImport
   );
+
+  for (
+    const [tagName, exportName] of [
+      ['app-island', 'AppIsland'],
+      ['card-island', 'CardIsland'],
+      ['star-island', 'default'],
+    ] as const
+  ) {
+    const island = homeRoute.islandImports.find((entry) =>
+      entry.tagName === tagName
+    );
+    if (island?.exportName !== exportName) {
+      throw new Error(
+        `Expected ${tagName} to use export ${exportName}; found ${island?.exportName}.`,
+      );
+    }
+  }
+
+  const policies = new Map(
+    homeRoute.islandImports.map((island) => [island.tagName, island.ssr]),
+  );
+  if (
+    policies.get('app-island') !== false ||
+    policies.get('layout-island') !== false ||
+    policies.get('card-island') !== true
+  ) {
+    throw new Error(`Unexpected discovered SSR policies: ${
+      JSON.stringify([
+        ...policies,
+      ])
+    }`);
+  }
 
   for (
     const expectedImport of [

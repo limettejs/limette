@@ -29,13 +29,13 @@ if (!customElements.get('shared-style-island')) {
 
 class RouteA extends PageComponent {
   override render() {
-    return html`<shared-style-island ssr></shared-style-island>`;
+    return html`<shared-style-island></shared-style-island>`;
   }
 }
 
 class RouteB extends PageComponent {
   override render() {
-    return html`<shared-style-island ssr></shared-style-island>`;
+    return html`<shared-style-island></shared-style-island>`;
   }
 }
 
@@ -68,6 +68,7 @@ function route(
     layouts: [],
     middlewares: [],
     islands: ['shared-style-island'],
+    ssrIslands: ['shared-style-island'],
     assets: {
       scripts: [],
       styles: [`/assets/page-${id}.css`],

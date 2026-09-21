@@ -46,6 +46,27 @@ async function runNode(path: string, cwd: string) {
   }
 }
 
+function dependencyVersions(
+  tree: { dependencies?: Record<string, unknown> },
+  names: ReadonlySet<string>,
+  found = new Map<string, Set<string>>(),
+) {
+  for (const [name, value] of Object.entries(tree.dependencies ?? {})) {
+    if (!value || typeof value !== 'object') continue;
+    const dependency = value as {
+      version?: string;
+      dependencies?: Record<string, unknown>;
+    };
+    if (names.has(name) && dependency.version) {
+      const versions = found.get(name) ?? new Set<string>();
+      versions.add(dependency.version);
+      found.set(name, versions);
+    }
+    dependencyVersions(dependency, names, found);
+  }
+  return found;
+}
+
 try {
   await Deno.mkdir(packageDirectory, { recursive: true });
   const packOutput = await command([
@@ -107,6 +128,27 @@ if (await response.text() !== 'ok' || typeof serve !== 'function') process.exit(
     archive,
     'vite@^8.0.0',
   ], viteDirectory);
+  const litPackages = new Set([
+    'lit',
+    'lit-html',
+    'lit-element',
+    '@lit/reactive-element',
+    '@lit-labs/ssr',
+    '@lit-labs/ssr-client',
+  ]);
+  const installedTree = JSON.parse(
+    await command(['ls', '--all', '--json'], viteDirectory),
+  ) as { dependencies?: Record<string, unknown> };
+  const installedVersions = dependencyVersions(installedTree, litPackages);
+  for (const name of litPackages) {
+    const versions = installedVersions.get(name);
+    assert(
+      versions?.size === 1,
+      `Packed Vite consumer resolved incompatible ${name} versions: ${
+        versions ? [...versions].join(', ') : 'missing'
+      }.`,
+    );
+  }
   const viteTest = join(viteDirectory, 'test.mjs');
   await Deno.writeTextFile(
     viteTest,

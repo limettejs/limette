@@ -12,6 +12,7 @@ import type { Context } from '../../src/server/context.ts';
 import type { MiddlewareModule } from '../../src/server/middlewares.ts';
 import type { AppWrapperComponentClass } from '../../src/server/ssr.ts';
 import type { LayoutComponentClass } from '../../src/server/layouts.ts';
+import type { IslandsDefinition } from '../../src/mod.ts';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -33,6 +34,7 @@ function handlerRoute(
     layouts: [],
     middlewares,
     islands: [],
+    ssrIslands: [],
     assets: { scripts: [], styles: [], islandStyles: {} },
   };
 }
@@ -128,6 +130,13 @@ if (!customElements.get('runtime-boundary-island')) {
 }
 
 class RuntimeBoundaryPage extends PageComponent {
+  static override islands = {
+    'runtime-boundary-island': {
+      component: RuntimeBoundaryIsland,
+      ssr: true,
+    },
+  } satisfies IslandsDefinition;
+
   override render() {
     return html`
       <main>
@@ -153,6 +162,7 @@ function componentRoute(
   path: string,
   options: {
     islands?: readonly string[];
+    ssrIslands?: readonly string[];
     scripts?: readonly string[];
     styles?: readonly string[];
     islandStyles?: Readonly<Record<string, readonly string[]>>;
@@ -180,6 +190,7 @@ function componentRoute(
     ],
     middlewares: [],
     islands: options.islands ?? [],
+    ssrIslands: options.ssrIslands ?? [],
     assets: {
       scripts: options.scripts ?? [],
       styles: options.styles ?? [],
@@ -197,6 +208,7 @@ registerRouteDefinitions(renderApp, {
     }),
     componentRoute('/with-island', {
       islands: ['runtime-boundary-island'],
+      ssrIslands: ['runtime-boundary-island'],
       scripts: ['/assets/with-island.js'],
       styles: ['/assets/with-island.css'],
       islandStyles: {

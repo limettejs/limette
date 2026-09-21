@@ -9,7 +9,20 @@ import type { UnsafeHTMLDirective } from 'lit/directives/unsafe-html.js';
 import type { Context } from './context.ts';
 
 export type IslandComponentClass = CustomElementConstructor;
-export type IslandsDefinition = Record<string, IslandComponentClass>;
+export type IslandDefinition =
+  | IslandComponentClass
+  | {
+    component: IslandComponentClass;
+    ssr?: boolean;
+  };
+export type IslandsDefinition = Record<string, IslandDefinition>;
+
+/** @internal */
+export function islandComponent(
+  definition: IslandDefinition,
+): IslandComponentClass {
+  return typeof definition === 'function' ? definition : definition.component;
+}
 export type ServerRenderResult =
   | TemplateResult
   | DirectiveResult<typeof UnsafeHTMLDirective>;

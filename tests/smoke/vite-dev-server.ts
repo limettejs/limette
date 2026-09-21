@@ -85,6 +85,13 @@ try {
   if (viteClientScripts.length !== 1) {
     throw new Error('Expected exactly one Vite development client script.');
   }
+  if (
+    (html.match(/data-limette-bfcache-recovery/g) ?? []).length !== 1 ||
+    !html.includes('event.persisted') ||
+    !html.includes('location.reload()')
+  ) {
+    throw new Error('Expected exactly one development BFCache recovery hook.');
+  }
 
   if (!scriptPath?.startsWith('/@limette/client-entry/')) {
     throw new Error('Expected SSR output to include a same-origin Vite entry.');

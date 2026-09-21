@@ -8,6 +8,7 @@ export type ViteManifestChunk = {
   file: string;
   css?: string[];
   imports?: string[];
+  dynamicImports?: string[];
   isEntry?: boolean;
   name?: string;
   src?: string;
@@ -51,7 +52,12 @@ function collectImportedAssets({
     styles.add(css);
   }
 
-  for (const importKey of chunk.imports ?? []) {
+  for (
+    const importKey of [
+      ...(chunk.imports ?? []),
+      ...(chunk.dynamicImports ?? []),
+    ]
+  ) {
     if (seen.has(importKey)) continue;
     seen.add(importKey);
 

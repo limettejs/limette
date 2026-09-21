@@ -20,6 +20,7 @@ export type {
   AppAssets,
   AppRouteInfo,
   IslandComponentClass,
+  IslandDefinition,
   IslandsDefinition,
   ServerRenderResult,
 } from './server/components.ts';

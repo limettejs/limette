@@ -221,10 +221,6 @@ export class Counter extends LitElement {
     \`;
   }
 }
-
-if (!customElements.get("island-counter")) {
-  customElements.define("island-counter", Counter);
-}
 `;
 
 const _appRouteTs = `
@@ -261,7 +257,10 @@ import { Counter } from "../islands/counter.ts";
 
 export default class Home extends PageComponent {
   static override islands = {
-    "island-counter": Counter,
+    "island-counter": {
+      component: Counter,
+      ssr: true,
+    },
   };
 
   static override styles = css\`

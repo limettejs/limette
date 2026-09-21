@@ -282,15 +282,30 @@ export function limette(options: LimetteOptions) {
           ? [
             `import '@limette/core/runtime/ssr-client/lit-element-hydrate-support.ts';`,
             `import '@limette/core/runtime/ssr-client/lit-element-hydrate-support-patch.ts';`,
-            ...route.islandImports.map((islandImport) =>
-              `import ${JSON.stringify(islandImport.resolvedImport)};`
-            ),
           ]
           : []),
       ];
 
+      const islandLoads = route.islandImports.map((islandImport, index) =>
+        `const islandModule${index} = await import(${
+          JSON.stringify(islandImport.resolvedImport)
+        });`
+      );
+      const registrations = route.islandImports.flatMap((island, index) => [
+        `const islandConstructor${index} = islandModule${index}[${
+          JSON.stringify(island.exportName)
+        }];`,
+        `if (!customElements.get(${JSON.stringify(island.tagName)})) {`,
+        `  customElements.define(${
+          JSON.stringify(island.tagName)
+        }, islandConstructor${index});`,
+        `}`,
+      ]);
+
       return [
         ...imports,
+        ...islandLoads,
+        ...registrations,
         `export const routeId = ${JSON.stringify(route.id)};`,
         `export const routePath = ${JSON.stringify(route.path)};`,
         `export const islandImports = ${

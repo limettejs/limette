@@ -6,6 +6,8 @@ import { parseSync } from 'vite';
 export type IslandImport = {
   tagName: string;
   local: string;
+  exportName: string;
+  ssr: boolean;
   sourceFile: string;
   moduleSpecifier: string;
   resolvedImport: string;
@@ -25,12 +27,16 @@ export type ResolveModule = (
 ) => ModuleResolution | Promise<ModuleResolution>;
 
 type AstNode = { type: string; [key: string]: unknown };
-type ImportBinding = { local: string; moduleSpecifier: string };
+type ImportBinding = {
+  local: string;
+  exportName: string;
+  moduleSpecifier: string;
+};
 type SourceReference = { moduleSpecifier: string; typeOnly: boolean };
 type ParsedModule = {
   bindings: ImportBinding[];
   references: SourceReference[];
-  islandEntries: Array<{ tagName: string; local: string }>;
+  islandEntries: Array<{ tagName: string; local: string; ssr: boolean }>;
 };
 type ResolvedReference = { importId: string; localFile?: string };
 
@@ -78,6 +84,14 @@ function identifierName(node: unknown) {
     : undefined;
 }
 
+function booleanValue(node: unknown) {
+  return isNode(node) &&
+      (node.type === 'BooleanLiteral' || node.type === 'Literal') &&
+      typeof node.value === 'boolean'
+    ? node.value
+    : undefined;
+}
+
 function walk(node: unknown, visit: (node: AstNode) => void) {
   if (!isNode(node)) return;
   visit(node);
@@ -112,7 +126,7 @@ function parseIslandEntries(property: AstNode, file: string) {
         'Use an object literal whose values are imported island classes.',
     );
   }
-  const entries: Array<{ tagName: string; local: string }> = [];
+  const entries: Array<{ tagName: string; local: string; ssr: boolean }> = [];
   for (const entry of expression.properties as unknown[] ?? []) {
     if (
       !isNode(entry) || entry.type !== 'Property' || entry.computed ||
@@ -124,14 +138,53 @@ function parseIslandEntries(property: AstNode, file: string) {
       );
     }
     const tagName = stringValue(entry.key) ?? identifierName(entry.key);
-    const local = identifierName(unwrapExpression(entry.value));
+    const value = unwrapExpression(entry.value);
+    let local = identifierName(value);
+    let ssr = false;
+
+    if (isNode(value) && value.type === 'ObjectExpression') {
+      local = undefined;
+      let hasComponent = false;
+      for (const option of value.properties as unknown[] ?? []) {
+        if (
+          !isNode(option) || option.type !== 'Property' || option.computed ||
+          option.kind !== 'init'
+        ) {
+          throw new Error(
+            `Unable to statically analyze island descriptor "${tagName}" in ${file}. ` +
+              'Computed keys, spreads, and methods are not supported.',
+          );
+        }
+        const optionName = stringValue(option.key) ??
+          identifierName(option.key);
+        if (optionName === 'component') {
+          local = identifierName(unwrapExpression(option.value));
+          hasComponent = true;
+        } else if (optionName === 'ssr') {
+          const configuredSsr = booleanValue(unwrapExpression(option.value));
+          if (configuredSsr === undefined) {
+            throw new Error(
+              `Unable to statically analyze "ssr" for island "${tagName}" in ${file}. ` +
+                'Use the boolean literal true or false.',
+            );
+          }
+          ssr = configuredSsr;
+        } else {
+          throw new Error(
+            `Unable to statically analyze island descriptor "${tagName}" in ${file}. ` +
+              'Only "component" and "ssr" are supported.',
+          );
+        }
+      }
+      if (!hasComponent) local = undefined;
+    }
     if (!tagName || !local) {
       throw new Error(
         `Unable to statically analyze an island entry in ${file}. ` +
-          'Use a string or identifier tag name and an imported class identifier.',
+          'Use an imported class identifier or { component: ImportedClass, ssr: true }.',
       );
     }
-    entries.push({ tagName, local });
+    entries.push({ tagName, local, ssr });
   }
   return entries;
 }
@@ -164,7 +217,11 @@ function parseModule(file: string, code: string): ParsedModule {
 
   const bindings: ImportBinding[] = [];
   const references: SourceReference[] = [];
-  const islandEntries: Array<{ tagName: string; local: string }> = [];
+  const islandEntries: Array<{
+    tagName: string;
+    local: string;
+    ssr: boolean;
+  }> = [];
   for (const statement of result.program.body as unknown as AstNode[]) {
     if (statement.type === 'ImportDeclaration') {
       const moduleSpecifier = stringValue(statement.source);
@@ -175,7 +232,15 @@ function parseModule(file: string, code: string): ParsedModule {
       for (const specifier of statement.specifiers as AstNode[] ?? []) {
         if (specifier.importKind === 'type') continue;
         const local = identifierName(specifier.local);
-        if (local) bindings.push({ local, moduleSpecifier });
+        const exportName = specifier.type === 'ImportDefaultSpecifier'
+          ? 'default'
+          : specifier.type === 'ImportSpecifier'
+          ? identifierName(specifier.imported) ??
+            stringValue(specifier.imported)
+          : undefined;
+        if (local && exportName) {
+          bindings.push({ local, exportName, moduleSpecifier });
+        }
       }
       continue;
     }
@@ -372,6 +437,8 @@ async function discoverIslandImportsForFileInternal({
     imports.push({
       tagName: islandEntry.tagName,
       local: islandEntry.local,
+      exportName: binding.exportName,
+      ssr: islandEntry.ssr,
       sourceFile: sourceKey,
       moduleSpecifier: binding.moduleSpecifier,
       resolvedImport: resolved.importId,

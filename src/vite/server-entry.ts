@@ -93,6 +93,13 @@ export function generateServerEntry(
       `    islands: ${
         jsLiteral(route.islandImports.map((island) => island.tagName))
       },`,
+      `    ssrIslands: ${
+        jsLiteral(
+          route.islandImports.filter((island) => island.ssr).map((island) =>
+            island.tagName
+          ),
+        )
+      },`,
       '    assets: {',
       `      scripts: ${jsLiteral(routeAssets?.scripts ?? [])},`,
       `      styles: ${jsLiteral(routeAssets?.styles ?? [])},`,

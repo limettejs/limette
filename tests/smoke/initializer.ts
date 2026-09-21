@@ -197,14 +197,25 @@ async function runCombination(
   const island = await Deno.readTextFile(
     join(projectRoot, 'islands/counter.ts'),
   );
+  const route = await Deno.readTextFile(join(projectRoot, 'routes/index.ts'));
   assert(
     viteConfig.includes('limette({') &&
       viteConfig.includes('app: "./app.ts"'),
     `${projectName} is missing the Limette Vite configuration.`,
   );
   assert(
-    island.includes('if (!customElements.get("island-counter"))'),
-    `${projectName} lost the HMR-safe island registration guard.`,
+    !island.includes('customElements.define'),
+    `${projectName} still manually registers its island.`,
+  );
+  assert(
+    route.includes('component: Counter') && route.includes('ssr: true') &&
+      !route.includes('<island-counter ssr'),
+    `${projectName} does not use the explicit static-islands SSR policy.`,
+  );
+  assert(
+    island.includes('@click=${() => this.count--}') &&
+      island.includes('@click=${() => this.count++}'),
+    `${projectName} lost its counter interactions.`,
   );
   assert(
     await exists(join(projectRoot, 'tailwind.css')) === tailwind &&
@@ -365,7 +376,9 @@ async function runCombination(
     (response, body) => response.ok && body.includes('This is SSR content.'),
   );
   assert(
-    production.body.includes('island-counter'),
+    production.body.includes('island-counter') &&
+      production.body.includes('Hello,') &&
+      production.body.includes('Count:'),
     `${projectName} returned an unexpected production SSR response.`,
   );
   const scriptUrl = production.body.match(

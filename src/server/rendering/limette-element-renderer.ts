@@ -28,7 +28,10 @@ export const LimetteElementRenderer = (
     constructor(tagName: string) {
       super(tagName);
 
-      const RenderComponent = route.renderComponents?.[tagName];
+      const RenderComponent = !route.islands.includes(tagName) ||
+          route.ssrIslands.includes(tagName)
+        ? route.renderComponents?.[tagName]
+        : undefined;
       if (RenderComponent) {
         // CustomElementRegistry#define reads this during registration, which
         // finalizes Lit's reactive property metadata. Development constructors
@@ -39,7 +42,10 @@ export const LimetteElementRenderer = (
     }
 
     override connectedCallback(): void {
-      if (!this.element.hasAttribute('ssr')) {
+      if (
+        route.islands.includes(this.tagName) &&
+        !route.ssrIslands.includes(this.tagName)
+      ) {
         this.element.setAttribute('skip-hydration', '');
       }
 
@@ -53,23 +59,25 @@ export const LimetteElementRenderer = (
      */
     override renderShadow(renderInfo: RenderInfo): RenderResult {
       // A component is an island if it's included in route.islands.
-      const isIsland = route.islands.includes(this.tagName) ||
-        this.element.hasAttribute('island');
+      const isIsland = route.islands.includes(this.tagName);
+      const ssrIsland = route.ssrIslands.includes(this.tagName);
       const islandStyles = route.assets.islandStyles[this.tagName] ?? [];
       const shadowStyles = [
         ...(route.assets.tailwindStyle ? [route.assets.tailwindStyle] : []),
         ...(isIsland ? islandStyles : []),
       ];
 
-      // Islands are CSR'ed, so we can't render them in light DOM
+      // Island shadow roots stay encapsulated whether they are CSR-only or
+      // explicitly opted into SSR. Structural components render in light DOM.
       if (!isIsland) {
         (this.shadowRootOptions.mode as LmtShadowRootMode) = 'disabled';
       } else {
         this.shadowRootOptions.mode = 'open';
       }
 
-      // Partial SSR islands render only their external styles.
-      if (isIsland && !this.element.hasAttribute('ssr')) {
+      // CSR-only islands expose their host and external styles without
+      // invoking the application component implementation on the server.
+      if (isIsland && !ssrIsland) {
         if (shadowStyles.length === 0) {
           // @ts-expect-error: LitElementRenderer actually accepts undefined as a returned value
           return;
@@ -79,13 +87,12 @@ export const LimetteElementRenderer = (
       }
 
       // Inject context for every server-rendered component instance.
-      if (!isIsland || (isIsland && this.element.hasAttribute('ssr'))) {
+      if (!isIsland || ssrIsland) {
         (this.element as ContextLitElement).ctx = ctx;
       }
 
       const shadow = super.renderShadow(renderInfo);
-      return shadowStyles.length > 0 &&
-          (!isIsland || this.element.hasAttribute('ssr'))
+      return shadowStyles.length > 0 && (!isIsland || ssrIsland)
         ? renderRouteStyle(shadowStyles, shadow)
         : shadow;
     }

@@ -12,7 +12,10 @@ import type { RuntimeRouteDefinition } from '../server/route.ts';
 import type { LayoutModule } from '../server/layouts.ts';
 import type { MiddlewareModule } from '../server/middlewares.ts';
 import type { RouteModule } from '../server/router.ts';
-import type { IslandsDefinition } from '../server/components.ts';
+import {
+  islandComponent,
+  type IslandsDefinition,
+} from '../server/components.ts';
 import { tailwindEntryDevPath, tailwindSourceVersion } from './tailwind.ts';
 
 export type LoadViteDevRoutesOptions = DiscoverRoutesOptions & {
@@ -49,13 +52,17 @@ function clientStyleDevPath(styleImport: string) {
 function islandComponentsFor(
   components: readonly unknown[],
 ) {
-  const islands: IslandsDefinition = {};
+  const islands: Record<string, CustomElementConstructor> = {};
 
   for (const component of components) {
-    Object.assign(
-      islands,
-      (component as { islands?: IslandsDefinition } | undefined)?.islands,
-    );
+    for (
+      const [tagName, definition] of Object.entries(
+        (component as { islands?: IslandsDefinition } | undefined)?.islands ??
+          {},
+      )
+    ) {
+      islands[tagName] = islandComponent(definition);
+    }
   }
 
   return islands;
@@ -124,11 +131,11 @@ export async function loadViteDevRoutes(
         ),
         devIslandStyles(route, options),
         options.tailwind
-            ? tailwindSourceVersion({
-              root: options.root ?? process.cwd(),
-              route,
-              tailwindFile: options.tailwind,
-            })
+          ? tailwindSourceVersion({
+            root: options.root ?? process.cwd(),
+            route,
+            tailwindFile: options.tailwind,
+          })
           : undefined,
       ]);
       const clientEntryPath = route.islandImports.length
@@ -156,6 +163,9 @@ export async function loadViteDevRoutes(
         islands: route.islandImports.map((islandImport) =>
           islandImport.tagName
         ),
+        ssrIslands: route.islandImports
+          .filter((islandImport) => islandImport.ssr)
+          .map((islandImport) => islandImport.tagName),
         renderComponents: {
           ...islandComponentsFor([
             ...layouts.map((layout) => layout.default),

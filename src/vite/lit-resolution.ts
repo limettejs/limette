@@ -7,6 +7,16 @@ type Alias = {
   replacement: string;
 };
 
+const PACKAGE_ENTRIES: Readonly<Record<string, string>> = {
+  'lit': 'index.js',
+  'lit-html': 'lit-html.js',
+  'lit-element': 'lit-element.js',
+  '@lit/reactive-element': 'reactive-element.js',
+  '@lit-labs/ssr': 'index.js',
+  '@lit-labs/ssr-client': 'index.js',
+  '@lit-labs/ssr-dom-shim': 'index.js',
+};
+
 function packageName(specifier: string) {
   const segments = specifier.split('/');
   return specifier.startsWith('@')
@@ -82,11 +92,16 @@ function packageRootFromRoot(
   }
 }
 
-function addPackageAlias(aliases: Alias[], root: string, specifier: string) {
+function addPackageAlias(
+  aliases: Alias[],
+  root: string,
+  specifier: string,
+) {
   const aliasSources: Record<string, string[]> = {
     'lit-html': ['lit', '@lit-labs/ssr'],
     'lit-element': ['lit'],
     '@lit/reactive-element': ['lit', 'lit-element', '@lit-labs/ssr'],
+    '@lit-labs/ssr-client': ['@lit-labs/ssr'],
     '@lit-labs/ssr-dom-shim': ['@lit-labs/ssr', '@lit-labs/ssr-client'],
   };
   const fromSpecifiers = aliasSources[specifier] ?? [];
@@ -98,7 +113,7 @@ function addPackageAlias(aliases: Alias[], root: string, specifier: string) {
     aliases.push(
       {
         find: new RegExp(`^${pattern}$`),
-        replacement: resolveFromPackages(root, specifier, fromSpecifiers),
+        replacement: resolve(packageRoot, PACKAGE_ENTRIES[specifier]!),
       },
       {
         find: new RegExp(`^${pattern}/(.*)$`),
@@ -121,6 +136,7 @@ function litAliases(root: string) {
       'lit-element',
       '@lit/reactive-element',
       '@lit-labs/ssr',
+      '@lit-labs/ssr-client',
       '@lit-labs/ssr-dom-shim',
     ]
   ) {

@@ -19,6 +19,8 @@ const routes: LimetteRouteManifest = {
       islandImports: [{
         tagName: 'test-island',
         local: 'TestIsland',
+        exportName: 'TestIsland',
+        ssr: true,
         sourceFile: 'routes/index.ts',
         moduleSpecifier: '../islands/test.ts',
         resolvedImport: '/islands/test.ts',

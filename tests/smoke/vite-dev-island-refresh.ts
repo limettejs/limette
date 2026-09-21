@@ -9,12 +9,18 @@ const islandPath = join(fixtureRoot, 'islands/status.ts');
 const originalIsland = await Deno.readTextFile(islandPath);
 const islandCssPath = join(fixtureRoot, 'islands/status.css');
 const originalIslandCss = await Deno.readTextFile(islandCssPath);
+const csrIslandPath = join(fixtureRoot, 'islands/client-only.ts');
+const originalCsrIsland = await Deno.readTextFile(csrIslandPath);
 const before = 'Status</p>';
 const after = 'Status changed by Vite island refresh</p>';
 const changedIsland = originalIsland.replace(before, after);
 const changedIslandCss = originalIslandCss.replace(
   'fixture-source: status-island',
   'fixture-source: status-island-hmr',
+);
+const changedCsrIsland = originalCsrIsland.replace(
+  'Client count:',
+  'Changed client count:',
 );
 const port = 5181;
 const origin = `http://127.0.0.1:${port}`;
@@ -40,18 +46,19 @@ const stderr = new Response(child.stderr).text();
 let socket: WebSocket | undefined;
 let islandChanged = false;
 let islandCssChanged = false;
+let csrIslandChanged = false;
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
-async function waitForPage(expected: string) {
+async function waitForPage(expected: string, path = '/') {
   let lastStatus = 0;
   let lastHtml = '';
 
   for (let attempt = 0; attempt < 60; attempt++) {
     try {
-      const response = await fetch(`${origin}/`);
+      const response = await fetch(`${origin}${path}`);
       lastStatus = response.status;
       lastHtml = await response.text();
       if (response.ok && lastHtml.includes(expected)) return lastHtml;
@@ -82,6 +89,15 @@ function islandStyleUrls(html: string) {
 
 try {
   const initialHtml = await waitForPage(before);
+  const initialCsrHtml = await waitForPage(
+    '<shorthand-client-only',
+    '/csr-islands',
+  );
+  assert(
+    !initialCsrHtml.includes('Client count:') &&
+      initialCsrHtml.includes('<descriptor-client-only'),
+    'A default or omitted-policy island deep-rendered in Vite dev.',
+  );
   assert(
     (initialHtml.match(/src="\/@vite\/client"/g) ?? []).length === 1,
     'The island route did not load exactly one Vite client.',
@@ -103,9 +119,18 @@ try {
 
   const entryResponse = await fetch(`${origin}${clientEntry}`);
   assert(entryResponse.ok, 'The Vite island client entry did not load.');
+  const entryCode = await entryResponse.text();
   assert(
-    !(await entryResponse.text()).includes('/@vite/client'),
+    !entryCode.includes('/@vite/client'),
     'The island entry retained a duplicate Vite client import.',
+  );
+  const hydrationIndex = entryCode.indexOf('lit-element-hydrate-support');
+  const islandIndex = entryCode.indexOf('/islands/status.ts');
+  const registrationIndex = entryCode.indexOf('customElements.define');
+  assert(
+    hydrationIndex !== -1 && islandIndex > hydrationIndex &&
+      registrationIndex > islandIndex && entryCode.includes('test-status'),
+    'The dev client entry did not install hydration support before registering islands.',
   );
   const islandResponse = await fetch(`${origin}/islands/status.ts`);
   assert(islandResponse.ok, 'The island client module did not load.');
@@ -129,6 +154,11 @@ try {
   const fullReload = new Promise<void>((resolve) => {
     resolveFullReload = resolve;
   });
+  let resolveCsrFullReload!: () => void;
+  const csrFullReload = new Promise<void>((resolve) => {
+    resolveCsrFullReload = resolve;
+  });
+  let fullReloadCount = 0;
   let resolveCssUpdate!: () => void;
   const cssUpdate = new Promise<void>((resolve) => {
     resolveCssUpdate = resolve;
@@ -142,7 +172,11 @@ try {
       type?: string;
       updates?: Array<{ path?: string; acceptedPath?: string }>;
     };
-    if (message.type === 'full-reload') resolveFullReload();
+    if (message.type === 'full-reload') {
+      fullReloadCount++;
+      if (fullReloadCount === 1) resolveFullReload();
+      if (fullReloadCount === 2) resolveCsrFullReload();
+    }
     if (
       message.type === 'update' &&
       message.updates?.some((update) =>
@@ -219,10 +253,49 @@ try {
       )
     ),
   ]);
+
+  assert(
+    changedCsrIsland !== originalCsrIsland,
+    'CSR island refresh fixture did not change.',
+  );
+  await Deno.writeTextFile(csrIslandPath, changedCsrIsland);
+  csrIslandChanged = true;
+  let updatedCsrModule = '';
+  for (let attempt = 0; attempt < 50; attempt++) {
+    updatedCsrModule = await (
+      await fetch(`${origin}/islands/client-only.ts`)
+    ).text();
+    if (updatedCsrModule.includes('Changed client count:')) break;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  assert(
+    updatedCsrModule.includes('Changed client count:'),
+    'Vite continued serving the stale CSR-only island constructor.',
+  );
+  const updatedCsrHtml = await waitForPage(
+    '<shorthand-client-only',
+    '/csr-islands',
+  );
+  assert(
+    !updatedCsrHtml.includes('Changed client count:'),
+    'A refreshed CSR-only island began deep-rendering on the server.',
+  );
+  await Promise.race([
+    csrFullReload,
+    new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error('The CSR island update did not reload.')),
+        5_000,
+      )
+    ),
+  ]);
 } finally {
   if (islandChanged) await Deno.writeTextFile(islandPath, originalIsland);
   if (islandCssChanged) {
     await Deno.writeTextFile(islandCssPath, originalIslandCss);
+  }
+  if (csrIslandChanged) {
+    await Deno.writeTextFile(csrIslandPath, originalCsrIsland);
   }
   socket?.close();
   try {
@@ -232,5 +305,12 @@ try {
   }
   await child.status;
   const errors = await stderr;
+  assert(
+    !errors.includes('already has "test-status" defined') &&
+      !errors.includes('already has "test-counter" defined') &&
+      !errors.includes('already has "shorthand-client-only" defined') &&
+      !errors.includes('already has "descriptor-client-only" defined'),
+    `Vite dev repeated an island registration:\n${errors}`,
+  );
   if (errors) console.error(errors);
 }

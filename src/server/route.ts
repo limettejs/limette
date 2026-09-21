@@ -11,6 +11,7 @@ export interface RuntimeRouteDefinition {
   readonly layouts: readonly LayoutModule[];
   readonly middlewares: readonly MiddlewareModule[];
   readonly islands: readonly string[];
+  readonly ssrIslands: readonly string[];
   /** @internal Fresh request-scoped constructors used by Vite development SSR. */
   readonly renderComponents?: Record<string, CustomElementConstructor>;
   readonly assets: {

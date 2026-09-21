@@ -5,7 +5,3 @@ export class TailwindIsland extends LitElement {
     return html`<section class="outline-[7px]">Island utility</section>`;
   }
 }
-
-if (!customElements.get('tailwind-island')) {
-  customElements.define('tailwind-island', TailwindIsland);
-}

@@ -31,6 +31,16 @@ function viteClientPath(base: string) {
   return `${normalizedBase}@vite/client`;
 }
 
+const bfcacheRecoveryScript = `<script data-limette-bfcache-recovery>(() => {
+  let reloading = false;
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted && !reloading) {
+      reloading = true;
+      location.reload();
+    }
+  });
+})();</script>`;
+
 async function injectViteClient(
   response: Response,
   server: ViteDevServerLike,
@@ -44,15 +54,14 @@ async function injectViteClient(
   const hasViteClient =
     /<script\b[^>]*\bsrc=["'][^"']*\/@vite\/client(?:[?"'])/i
       .test(html);
+  const devScripts = `${bfcacheRecoveryScript}${
+    hasViteClient ? '' : `<script type="module" src="${clientPath}"></script>`
+  }`;
   const injected = html.replace(
     /<\/head\s*>/i,
-    `<script type="module" src="${clientPath}"></script></head>`,
+    `${devScripts}</head>`,
   );
-  const output = hasViteClient
-    ? html
-    : injected === html
-    ? `<script type="module" src="${clientPath}"></script>${html}`
-    : injected;
+  const output = injected === html ? `${devScripts}${html}` : injected;
   const headers = new Headers(response.headers);
   headers.delete('content-length');
 
