@@ -38,6 +38,50 @@ function registerMethod<State = DefaultState, Platform = unknown>(
   }
 }
 
+function isMiddleware<State = DefaultState, Platform = unknown>(
+  value: unknown,
+): value is Middleware<State, Platform> {
+  return typeof value === 'function';
+}
+
+function normalizeMiddlewareModules<
+  State = DefaultState,
+  Platform = unknown,
+>(
+  modules: readonly unknown[],
+  routeFile: string,
+): Middleware<State, Platform>[] {
+  const normalized: Middleware<State, Platform>[] = [];
+
+  for (const [moduleIndex, middlewareModule] of modules.entries()) {
+    if (
+      !middlewareModule || typeof middlewareModule !== 'object' ||
+      !('handler' in middlewareModule)
+    ) {
+      throw new TypeError(
+        `Invalid filesystem middleware for route "${routeFile}" at index ${moduleIndex}: ` +
+          'expected a module exporting "handler" as a function or array of functions.',
+      );
+    }
+
+    const exported = middlewareModule.handler;
+    const handlers = Array.isArray(exported) ? exported : [exported];
+
+    for (const [handlerIndex, handler] of handlers.entries()) {
+      if (!isMiddleware<State, Platform>(handler)) {
+        throw new TypeError(
+          `Invalid filesystem middleware for route "${routeFile}" at index ${moduleIndex}` +
+            `${Array.isArray(exported) ? `, handler ${handlerIndex}` : ''}: ` +
+            'expected "handler" to contain only functions.',
+        );
+      }
+      normalized.push(handler);
+    }
+  }
+
+  return normalized;
+}
+
 export interface RegisterRouteDefinitionsOptions<
   State = DefaultState,
   Platform = unknown,
@@ -133,9 +177,10 @@ export function registerRouteDefinitions<
       continue;
     }
 
-    const middlewares = preparedRoute.middlewares
-      .map((module) => module?.handler)
-      .flat() as Middleware<State, Platform>[];
+    const middlewares = normalizeMiddlewareModules<State, Platform>(
+      preparedRoute.middlewares,
+      preparedRoute.file,
+    );
 
     for (const method of METHODS) {
       const handler = handlers[method];

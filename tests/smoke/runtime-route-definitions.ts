@@ -56,10 +56,16 @@ class TestAppWrapper extends AppComponent {
 
 const calls: string[] = [];
 const firstMiddleware: MiddlewareModule = {
-  handler: async (ctx) => {
-    calls.push('first');
-    return await ctx.next();
-  },
+  handler: [
+    async (ctx) => {
+      calls.push('first-a');
+      return await ctx.next();
+    },
+    async (ctx) => {
+      calls.push('first-b');
+      return await ctx.next();
+    },
+  ],
 };
 const secondMiddleware: MiddlewareModule = {
   handler: async (ctx) => {
@@ -89,8 +95,34 @@ const staticResponse = await routeApp.handler()(
 );
 assert(await staticResponse.text() === 'static', 'Static route was shadowed.');
 assert(
-  calls.join(',') === 'first,second,static',
+  calls.join(',') === 'first-a,first-b,second,static',
   `Unexpected middleware order: ${calls.join(',')}`,
+);
+
+let invalidMiddlewareError = '';
+try {
+  registerRouteDefinitions(new App(), {
+    appWrapper: TestAppWrapper,
+    routes: [
+      handlerRoute(
+        '/invalid-middleware',
+        () => new Response('unreachable'),
+        [{
+          handler: [() => new Response('valid'), 'invalid'],
+        } as unknown as MiddlewareModule],
+      ),
+    ],
+  });
+} catch (error) {
+  invalidMiddlewareError = error instanceof Error
+    ? error.message
+    : String(error);
+}
+assert(
+  invalidMiddlewareError.includes('Invalid filesystem middleware') &&
+    invalidMiddlewareError.includes('./routes/invalid-middleware.ts') &&
+    invalidMiddlewareError.includes('only functions'),
+  `Invalid middleware did not fail clearly: ${invalidMiddlewareError}`,
 );
 
 const dynamicResponse = await routeApp.handler()(
