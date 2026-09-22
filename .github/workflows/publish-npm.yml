@@ -1,0 +1,66 @@
+name: Publish npm
+
+on:
+  release:
+    types: [published]
+
+concurrency:
+  group: npm-publish-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Check out release
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Validate package and release
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          node --input-type=module <<'EOF'
+          import { readFile } from 'node:fs/promises';
+
+          const packageJson = JSON.parse(await readFile('package.json', 'utf8'));
+          const expectedTag = `v${packageJson.version}`;
+
+          if (packageJson.name !== 'limette') {
+            throw new Error(
+              `Expected package name "limette", received ${JSON.stringify(packageJson.name)}.`,
+            );
+          }
+
+          if (process.env.RELEASE_TAG !== expectedTag) {
+            throw new Error(
+              `Release tag ${JSON.stringify(process.env.RELEASE_TAG)} does not match ${expectedTag}.`,
+            );
+          }
+          EOF
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Verify release
+        run: npm run test:release
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
