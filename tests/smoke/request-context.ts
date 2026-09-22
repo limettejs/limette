@@ -188,6 +188,7 @@ class ErrorPage extends PageComponent<RequestState, TestPlatform> {
     return html`
       <main
         data-error
+        data-boundary="root"
         data-status="${this.ctx.error?.status}"
         data-state="${this.ctx.state.user}"
         data-param="${this.ctx.params.id ?? ''}"
@@ -195,6 +196,21 @@ class ErrorPage extends PageComponent<RequestState, TestPlatform> {
       >
         ${this.ctx.error?.message}
       </main>
+    `;
+  }
+}
+
+class AdminErrorPage extends FailureTargetPage {
+  override render() {
+    return html`
+      <main
+        data-error
+        data-boundary="admin"
+        data-status="${this.ctx.error?.status}"
+        data-state="${this.ctx.state.user}"
+        data-param="${this.ctx.params.id ?? ''}"
+        data-platform="${this.ctx.platform.marker}"
+      ></main>
     `;
   }
 }
@@ -341,7 +357,24 @@ registerRouteDefinitions(app, {
         handler: throwingHandler('trigger failing error page'),
       },
     ),
+    componentRoute('admin-root-failure', '/admin', FailureTargetPage, {
+      handler: throwingHandler(new HttpError(418)),
+    }),
+    componentRoute(
+      'admin-user-failure',
+      '/admin/users/:id',
+      FailureTargetPage,
+      { handler: throwingHandler(new HttpError(418)) },
+    ),
+    componentRoute('other-failure', '/other', FailureTargetPage, {
+      handler: throwingHandler(new HttpError(418)),
+    }),
     errorRoute,
+    componentRoute('admin/_error', '/admin/_error', AdminErrorPage, {
+      layouts: [
+        { config: { skipInheritedLayouts: false }, default: ErrorRouteLayout },
+      ],
+    }),
   ],
 });
 
@@ -472,6 +505,52 @@ assert(
   notFoundResponse.status === 404 &&
     (await notFoundResponse.text()).includes('data-status="404"'),
   '404 did not use the shared error page.',
+);
+
+const adminChildResponse = await handler(
+  new Request('https://example.test/base/admin/users/alice'),
+  platform,
+);
+const adminChildHtml = await adminChildResponse.text();
+assert(
+  adminChildResponse.status === 418 &&
+    adminChildHtml.includes('data-boundary="admin"') &&
+    adminChildHtml.includes('data-param="alice"') &&
+    adminChildHtml.includes('data-state="user:/base/admin/users/alice"') &&
+    adminChildHtml.includes('data-platform="opaque-platform"'),
+  'A nested error did not use its nearest boundary with original context.',
+);
+
+const adminRootResponse = await handler(
+  new Request('https://example.test/base/admin'),
+  platform,
+);
+assert(
+  adminRootResponse.status === 418 &&
+    (await adminRootResponse.text()).includes('data-boundary="admin"'),
+  'A nested error boundary did not include its directory root.',
+);
+
+const siblingResponse = await handler(
+  new Request('https://example.test/base/other'),
+  platform,
+);
+const siblingHtml = await siblingResponse.text();
+assert(
+  siblingResponse.status === 418 &&
+    siblingHtml.includes('data-boundary="root"') &&
+    !siblingHtml.includes('data-boundary="admin"'),
+  'A sibling route did not fall back to the root error boundary.',
+);
+
+const prefixCollisionResponse = await handler(
+  new Request('https://example.test/base/administrator'),
+  platform,
+);
+assert(
+  prefixCollisionResponse.status === 404 &&
+    (await prefixCollisionResponse.text()).includes('data-boundary="root"'),
+  'The /admin error boundary incorrectly matched /administrator.',
 );
 
 const ordinaryResponse = await handler(

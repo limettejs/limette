@@ -99,16 +99,10 @@ export class UrlPatternRouter<State = DefaultState, Platform = unknown> {
   }
 
   addError(pathname: string | URLPattern, fn: Middleware<State, Platform>) {
-    let path = pathname;
-
-    if (typeof pathname === 'string' && pathname.endsWith('/_error')) {
-      path = pathname.substring(0, pathname.length - 7) + '/*';
-    }
-
     this.#errors.push({
-      path: typeof path === 'string'
-        ? new URLPattern({ pathname: path })
-        : path,
+      path: typeof pathname === 'string'
+        ? new URLPattern({ pathname })
+        : pathname,
       handler: fn,
     });
   }

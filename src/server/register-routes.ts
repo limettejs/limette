@@ -82,6 +82,23 @@ function normalizeMiddlewareModules<
   return normalized;
 }
 
+const ERROR_ROUTE_SUFFIX = '/_error';
+
+function filesystemErrorScope(path: string, basePath: string) {
+  const directory = path.slice(0, -ERROR_ROUTE_SUFFIX.length);
+  if (!directory) return new URLPattern({ pathname: '{/*}?' });
+
+  const scopedDirectory = `${basePath}${directory}`;
+  return new URLPattern({
+    pathname: `${scopedDirectory}{/*}?`,
+  });
+}
+
+function filesystemErrorDepth(path: string) {
+  return path.slice(0, -ERROR_ROUTE_SUFFIX.length).split('/').filter(Boolean)
+    .length;
+}
+
 export interface RegisterRouteDefinitionsOptions<
   State = DefaultState,
   Platform = unknown,
@@ -163,9 +180,16 @@ export function registerRouteDefinitions<
     );
   }
 
-  for (const route of routes) {
+  const errorRoutes: Array<{
+    depth: number;
+    order: number;
+    path: URLPattern;
+    handler: RouteHandler<State, Platform>;
+  }> = [];
+
+  for (const [order, route] of routes.entries()) {
     const preparedRoute = prepareRoute(route, appWrapper);
-    const errorRoute = preparedRoute.path.endsWith('/_error');
+    const errorRoute = preparedRoute.path.endsWith(ERROR_ROUTE_SUFFIX);
     const renderedRoute = errorRoute
       ? { ...preparedRoute, layouts: [] }
       : preparedRoute;
@@ -173,7 +197,12 @@ export function registerRouteDefinitions<
 
     // Register error pages
     if (errorRoute && handlers.GET) {
-      app.error(preparedRoute.path, handlers.GET);
+      errorRoutes.push({
+        depth: filesystemErrorDepth(preparedRoute.path),
+        order,
+        path: filesystemErrorScope(preparedRoute.path, app.config.basePath),
+        handler: handlers.GET,
+      });
       continue;
     }
 
@@ -192,5 +221,12 @@ export function registerRouteDefinitions<
         [...middlewares, handler],
       );
     }
+  }
+
+  errorRoutes.sort((left, right) =>
+    right.depth - left.depth || left.order - right.order
+  );
+  for (const errorRoute of errorRoutes) {
+    app.error(errorRoute.path, errorRoute.handler);
   }
 }
