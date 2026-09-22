@@ -39,7 +39,7 @@ jobs:
           import { readFile } from 'node:fs/promises';
 
           const packageJson = JSON.parse(await readFile('package.json', 'utf8'));
-          const expectedTag = `v${packageJson.version}`;
+          const expectedTag = `${packageJson.version}`;
 
           if (packageJson.name !== 'limette') {
             throw new Error(

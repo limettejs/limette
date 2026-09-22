@@ -7,11 +7,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-### Added
+## [0.3.0] - 2026-09-22
 
 ### Changed
 
-### Fixed
+- Vite-native dev and production builds
+- Runtime-neutral Request → Response core
+- Node, Deno, and Worker support
+- New routing and filesystem route architecture
+- Explicit SSR/islands model
+- New Context/RenderContext API
+- Tailwind v4 integration
+- npm package renamed to limette
+- Vitest-based specification suite
+- npm publishing with provenance
 
 ## [0.2.3] - 2025-06-28
 
