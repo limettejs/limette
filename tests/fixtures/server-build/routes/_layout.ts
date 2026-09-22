@@ -1,4 +1,4 @@
-import { LayoutComponent } from '@limette/core';
+import { LayoutComponent } from 'limette';
 import { html } from 'lit';
 import '../styles/layout.css';
 import '../shared/theme.ts';

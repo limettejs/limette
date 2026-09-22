@@ -43,9 +43,9 @@ const neutralForbidden = [
 ];
 const coreGraph = await moduleGraph('src/mod.ts');
 const serverRuntimeGraph = await moduleGraph('src/server-runtime.ts');
-assertMissing('@limette/core', coreGraph, neutralForbidden);
+assertMissing('limette', coreGraph, neutralForbidden);
 assertMissing(
-  '@limette/core/internal/server-runtime',
+  'limette/internal/server-runtime',
   serverRuntimeGraph,
   neutralForbidden,
 );
@@ -57,14 +57,14 @@ assert(
     nodeGraph.includes('"node:path"'),
   'The Node adapter graph is missing its expected host dependencies.',
 );
-assertMissing('@limette/core/node', nodeGraph, [
+assertMissing('limette/node', nodeGraph, [
   '/src/deno.ts',
   '/src/vite/',
   'npm:vite',
 ]);
 
 const denoGraph = await moduleGraph('src/deno.ts');
-assertMissing('@limette/core/deno', denoGraph, [
+assertMissing('limette/deno', denoGraph, [
   '"node:',
   '/src/node.ts',
   '/src/vite/',
@@ -78,7 +78,7 @@ assert(
     viteGraph.includes('"node:path"'),
   'The Vite integration graph is missing its expected build dependencies.',
 );
-assertMissing('@limette/core/vite', viteGraph, [
+assertMissing('limette/vite', viteGraph, [
   '/src/node.ts',
   '/src/deno.ts',
 ]);

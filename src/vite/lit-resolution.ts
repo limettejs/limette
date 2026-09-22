@@ -161,7 +161,7 @@ export function litResolution(root: string) {
     },
     ssr: {
       noExternal: [
-        '@limette/core',
+        'limette',
         '@lit-labs/ssr',
         '@lit-labs/ssr-client',
         '@lit/reactive-element',

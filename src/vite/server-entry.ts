@@ -4,7 +4,7 @@ import { routeTagName } from './routes.ts';
 
 export const SERVER_ENTRY_MODULE_ID = 'virtual:limette/server-entry';
 export const RESOLVED_SERVER_ENTRY_MODULE_ID = `\0${SERVER_ENTRY_MODULE_ID}`;
-export const SERVER_RUNTIME_MODULE_ID = '@limette/core/internal/server-runtime';
+export const SERVER_RUNTIME_MODULE_ID = 'limette/internal/server-runtime';
 
 export interface ServerEntryRouteAssets {
   readonly scripts: readonly string[];

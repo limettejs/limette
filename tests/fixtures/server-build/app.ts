@@ -1,3 +1,3 @@
-import { App } from '@limette/core';
+import { App } from 'limette';
 
 export const app = new App().fsRoutes();

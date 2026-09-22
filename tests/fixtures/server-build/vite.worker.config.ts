@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url';
 import type { EnvironmentOptions, ViteBuilder } from 'vite';
 import { limette } from '../../../src/vite/plugin.ts';
 
-const serverRuntimeModule = '@limette/core/internal/server-runtime';
+const serverRuntimeModule = 'limette/internal/server-runtime';
 const serverRuntimeSource = fileURLToPath(
   new URL('../../../src/server-runtime.ts', import.meta.url),
 );

@@ -273,7 +273,7 @@ try {
   ) + await Deno.readTextFile(join(deploymentDir, 'deno-runner.ts')) +
     await Deno.readTextFile(join(deploymentDir, 'node-runner.mjs'));
   assert(
-    !runtimeSource.includes('@limette/core/vite') &&
+    !runtimeSource.includes('limette/vite') &&
       !/from\s*["']vite["']|import\s*\(\s*["']vite["']\s*\)/.test(
         runtimeSource,
       ),

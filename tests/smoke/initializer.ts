@@ -161,7 +161,7 @@ async function runCombination(
     `${projectName} has invalid scripts.`,
   );
   assert(
-    manifest.dependencies['@limette/core'] && manifest.dependencies.lit &&
+    manifest.dependencies.limette && manifest.dependencies.lit &&
       manifest.devDependencies.vite,
     `${projectName} is missing core application dependencies.`,
   );
@@ -248,7 +248,7 @@ async function runCombination(
       DENO_DIR: denoCache,
     });
   } else {
-    manifest.dependencies['@limette/core'] = `file:${archive}`;
+    manifest.dependencies.limette = `file:${archive}`;
     await Deno.writeTextFile(
       packagePath,
       `${JSON.stringify(manifest, null, 2)}\n`,
@@ -475,7 +475,7 @@ try {
   );
   const localCore = join(
     packedConsumer,
-    'node_modules/@limette/core',
+    'node_modules/limette',
   );
 
   for (const combination of combinations) {

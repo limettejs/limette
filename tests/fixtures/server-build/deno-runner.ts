@@ -1,4 +1,4 @@
-import { serve } from '@limette/core/deno';
+import { serve } from 'limette/deno';
 // @ts-ignore Generated into the isolated deployment before this runner starts.
 import handler from './server/entry.js';
 

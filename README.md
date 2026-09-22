@@ -25,8 +25,7 @@ deno run -A jsr:@limette/init
 
 The initializer creates an application using `new App().fsRoutes()`, a Vite
 configuration with `limette({ app: "./app.ts" })`, and a Deno production
-launcher. Node applications can use the equivalent `@limette/core/node`
-adapter.
+launcher. Node applications can use the equivalent `limette/node` adapter.
 
 ## Start the Vite development server
 

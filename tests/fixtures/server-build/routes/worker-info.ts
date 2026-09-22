@@ -1,4 +1,4 @@
-import type { Context } from '@limette/core';
+import type { Context } from 'limette';
 
 interface WorkerInfo {
   env: {

@@ -15,8 +15,8 @@ try {
   await writeFile(
     'routes/_app.ts',
     `
-      import { AppComponent } from '@limette/core';
-      import type { IslandsDefinition } from '@limette/core';
+      import { AppComponent } from 'limette';
+      import type { IslandsDefinition } from 'limette';
       import { html } from 'lit';
       import { AppIsland } from '../islands/app.js';
 
@@ -35,8 +35,8 @@ try {
   await writeFile(
     'routes/_layout.ts',
     `
-      import { LayoutComponent } from '@limette/core';
-      import type { IslandsDefinition } from '@limette/core';
+      import { LayoutComponent } from 'limette';
+      import type { IslandsDefinition } from 'limette';
       import { html } from 'lit';
       import { LayoutIsland } from '../islands/layout.js';
 
@@ -57,7 +57,7 @@ try {
   await writeFile(
     'routes/index.ts',
     `
-      import { PageComponent } from '@limette/core';
+      import { PageComponent } from 'limette';
       import { html } from 'lit';
       import {
         ServerCard,
@@ -79,7 +79,7 @@ try {
   await writeFile(
     'shared/server-card.js',
     `
-      import { ServerComponent } from '@limette/core';
+      import { ServerComponent } from 'limette';
       import { html } from 'lit';
       import { CardIsland } from './island-barrel.js';
 
@@ -158,7 +158,7 @@ try {
   await writeFile('islands/card.css', '.card {}');
   await writeFile('styles/page-shared.css', '.page-shared {}');
   await writeFile(
-    'node_modules/.vite/deps/@limette_core.js',
+    'node_modules/.vite/deps/limette.js',
     `export class CompiledFrameworkCode {
        static islands = createRuntimeIslandMap();
      }`,
@@ -176,9 +176,9 @@ try {
     logLevel: 'silent',
     resolve: {
       alias: {
-        '@limette/core': join(
+        'limette': join(
           root,
-          'node_modules/.vite/deps/@limette_core.js',
+          'node_modules/.vite/deps/limette.js',
         ),
         '@shared': join(root, 'shared'),
       },

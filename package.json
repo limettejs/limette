@@ -1,8 +1,16 @@
 {
-  "name": "@limette/core",
-  "version": "0.2.3",
+  "name": "limette",
+  "version": "0.3.0",
   "description": "A full-stack framework for Lit Web Components.",
+  "keywords": [
+    "lit",
+    "web-components",
+    "ssr",
+    "islands",
+    "vite"
+  ],
   "type": "module",
+  "types": "./dist/index.d.mts",
   "license": "MIT",
   "homepage": "https://limette.dev",
   "repository": {
@@ -93,9 +101,6 @@
     "README.md",
     "LICENSE"
   ],
-  "publishConfig": {
-    "access": "public"
-  },
   "peerDependencies": {
     "lit": "^3.2.1",
     "vite": "^8.0.0"

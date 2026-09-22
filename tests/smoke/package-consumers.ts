@@ -58,6 +58,18 @@ async function runDenoCheck(path: string, cwd: string) {
   }
 }
 
+async function runDeno(path: string, cwd: string) {
+  const output = await new Deno.Command(Deno.execPath(), {
+    args: ['run', '-A', '--node-modules-dir=manual', path],
+    cwd,
+    stdout: 'piped',
+    stderr: 'piped',
+  }).output();
+  if (!output.success) {
+    throw new Error(new TextDecoder().decode(output.stderr));
+  }
+}
+
 function dependencyVersions(
   tree: { dependencies?: Record<string, unknown> },
   names: ReadonlySet<string>,
@@ -122,8 +134,8 @@ try {
   const runtimeTest = join(runtimeDirectory, 'test.mjs');
   await Deno.writeTextFile(
     runtimeTest,
-    `import { App } from '@limette/core';
-import { serve } from '@limette/core/node';
+    `import { App } from 'limette';
+import { serve } from 'limette/node';
 const app = new App()
   .get('/ok', () => new Response('ok'))
   .get('/redirect', (ctx) => ctx.redirect('../login', 307));
@@ -139,10 +151,24 @@ if (
   );
   await runNode(runtimeTest, runtimeDirectory);
 
+  const denoRuntimeTest = join(runtimeDirectory, 'deno-test.ts');
+  await Deno.writeTextFile(
+    denoRuntimeTest,
+    `import { App } from 'limette';
+import { serve } from 'limette/deno';
+const app = new App().get('/ok', () => new Response('deno-ok'));
+const response = await app.handler()(new Request('http://localhost/ok'));
+if (await response.text() !== 'deno-ok' || typeof serve !== 'function') {
+  Deno.exit(1);
+}
+`,
+  );
+  await runDeno(denoRuntimeTest, runtimeDirectory);
+
   const runtimeTypeTest = join(runtimeDirectory, 'types.ts');
   await Deno.writeTextFile(
     runtimeTypeTest,
-    `import { App } from '@limette/core';
+    `import { App } from 'limette';
 import type {
   AppHandler,
   Context,
@@ -151,7 +177,7 @@ import type {
   RenderContext,
   RouteHandler,
   RouteHandlers,
-} from '@limette/core';
+} from 'limette';
 
 interface State { value?: string }
 interface Platform { marker: string }
@@ -204,6 +230,7 @@ void [middleware, routeHandler, routeHandlers, appHandler, context, renderContex
     '--no-fund',
     archive,
     'vite@^8.0.0',
+    'typescript@^6.0.3',
   ], viteDirectory);
   const litPackages = new Set([
     'lit',
@@ -229,12 +256,92 @@ void [middleware, routeHandler, routeHandlers, appHandler, context, renderContex
   const viteTest = join(viteDirectory, 'test.mjs');
   await Deno.writeTextFile(
     viteTest,
-    `import { limette } from '@limette/core/vite';
+    `import { limette } from 'limette/vite';
 const plugin = limette({ app: './app.ts' });
 if (plugin.name !== 'limette') process.exit(1);
 `,
   );
   await runNode(viteTest, viteDirectory);
+
+  await Deno.writeTextFile(
+    join(viteDirectory, 'app.ts'),
+    `import { App } from 'limette';
+export const app = new App().fsRoutes();
+`,
+  );
+  await Deno.writeTextFile(
+    join(viteDirectory, 'vite.config.ts'),
+    `import { defineConfig } from 'vite';
+import { limette } from 'limette/vite';
+export default defineConfig({ plugins: [limette({ app: './app.ts' })] });
+`,
+  );
+  await Deno.mkdir(join(viteDirectory, 'routes'), { recursive: true });
+  await Deno.writeTextFile(
+    join(viteDirectory, 'routes/_app.ts'),
+    `import { AppComponent } from 'limette';
+import { html } from 'lit';
+export default class extends AppComponent {
+  render() {
+    return html\`<!doctype html><html><head>\${this.assets.styles}</head><body>\${this.outlet}\${this.assets.scripts}</body></html>\`;
+  }
+}
+`,
+  );
+  await Deno.writeTextFile(
+    join(viteDirectory, 'routes/index.ts'),
+    `import { PageComponent } from 'limette';
+import { html } from 'lit';
+import './index.css';
+export default class extends PageComponent {
+  render() { return html\`<h1>Packed Vite consumer</h1>\`; }
+}
+`,
+  );
+  await Deno.writeTextFile(
+    join(viteDirectory, 'routes/index.css'),
+    'h1 { color: green; }\n',
+  );
+  await command(['exec', 'vite', '--', 'build'], viteDirectory);
+  await Deno.stat(join(viteDirectory, 'dist/server/entry.js'));
+
+  const viteRuntimeTest = join(viteDirectory, 'vite-runtime.mjs');
+  await Deno.writeTextFile(
+    viteRuntimeTest,
+    `import handler from './dist/server/entry.js';
+const response = await handler(new Request('http://localhost/'));
+if (!response.ok || !(await response.text()).includes('Packed Vite consumer')) {
+  process.exit(1);
+}
+`,
+  );
+  await runNode(viteRuntimeTest, viteDirectory);
+
+  const typescriptTest = join(viteDirectory, 'types.ts');
+  await Deno.writeTextFile(
+    typescriptTest,
+    `import { App, type AppHandler } from 'limette';
+import { serve as nodeServe } from 'limette/node';
+import { serve as denoServe } from 'limette/deno';
+import { limette } from 'limette/vite';
+const handler = new App().handler() satisfies AppHandler;
+void [handler, nodeServe, denoServe, limette];
+`,
+  );
+  await command([
+    'exec',
+    'tsc',
+    '--',
+    '--noEmit',
+    '--target',
+    'ES2022',
+    '--module',
+    'NodeNext',
+    '--moduleResolution',
+    'NodeNext',
+    '--skipLibCheck',
+    typescriptTest,
+  ], viteDirectory);
 } finally {
   await Deno.remove(temporaryRoot, { recursive: true });
 }

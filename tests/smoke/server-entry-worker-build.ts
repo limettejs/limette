@@ -85,8 +85,8 @@ try {
     'Worker server artifact contains a Deno runtime reference.',
   );
   assert(
-    !runtimeSpecifierPattern('@limette/core').test(emittedSource),
-    'Worker server artifact externalized @limette/core.',
+    !runtimeSpecifierPattern('limette').test(emittedSource),
+    'Worker server artifact externalized limette.',
   );
   for (
     const forbidden of [

@@ -1,4 +1,4 @@
-import { LayoutComponent } from '@limette/core';
+import { LayoutComponent } from 'limette';
 import { html } from 'lit';
 
 export default class TailwindLayout extends LayoutComponent {

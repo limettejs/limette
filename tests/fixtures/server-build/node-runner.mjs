@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { serve } from '@limette/core/node';
+import { serve } from 'limette/node';
 import handler from './server/entry.js';
 
 const port = Number(process.argv[2]);

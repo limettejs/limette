@@ -9,7 +9,7 @@
     "start:deno": "deno run -A main.deno.js"
   },
   "dependencies": {
-    "@limette/core": "file:..",
+    "limette": "file:..",
     "lit": "^3.2.1"
   },
   "devDependencies": {

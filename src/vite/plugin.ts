@@ -101,9 +101,9 @@ export function limette(options: LimetteOptions) {
               alias: {
                 [SERVER_RUNTIME_MODULE_ID]: serverRuntimePath(),
               },
-              external: ['@limette/core'],
+              external: ['limette'],
               noExternal: resolution.ssr.noExternal.filter((dependency) =>
-                dependency !== '@limette/core'
+                dependency !== 'limette'
               ),
             },
             build: {
@@ -280,8 +280,8 @@ export function limette(options: LimetteOptions) {
         ),
         ...(route.islandImports.length
           ? [
-            `import '@limette/core/runtime/ssr-client/lit-element-hydrate-support.ts';`,
-            `import '@limette/core/runtime/ssr-client/lit-element-hydrate-support-patch.ts';`,
+            `import 'limette/runtime/ssr-client/lit-element-hydrate-support.ts';`,
+            `import 'limette/runtime/ssr-client/lit-element-hydrate-support-patch.ts';`,
           ]
           : []),
       ];

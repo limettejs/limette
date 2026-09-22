@@ -1,4 +1,4 @@
-import { AppComponent } from '@limette/core';
+import { AppComponent } from 'limette';
 import { html } from 'lit';
 
 export default class TailwindApp extends AppComponent {

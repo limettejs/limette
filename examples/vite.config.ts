@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
-import { limette } from '@limette/core/vite';
+import { limette } from 'limette/vite';
 
 export default defineConfig({
   plugins: [

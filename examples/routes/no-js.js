@@ -1,4 +1,4 @@
-import { PageComponent } from '@limette/core';
+import { PageComponent } from 'limette';
 import { html } from 'lit';
 
 export default class NoJS extends PageComponent {

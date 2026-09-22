@@ -1,4 +1,4 @@
-import type { Context } from '@limette/core';
+import type { Context } from 'limette';
 
 export const handler = async (ctx: Context) => {
   const response = await ctx.next();

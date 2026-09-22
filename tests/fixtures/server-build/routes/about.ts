@@ -1,4 +1,4 @@
-import { PageComponent } from '@limette/core';
+import { PageComponent } from 'limette';
 import { html } from 'lit';
 import '../styles/about.css';
 

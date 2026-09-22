@@ -14,34 +14,30 @@ function assert(condition: unknown, message: string): asserts condition {
 describe('public module surfaces', () => {
   it('exports the current core and runtime entry points', () => {
     for (const name of ['App', 'HttpError', 'PageComponent']) {
-      assert(name in core, `@limette/core is missing ${name}.`);
+      assert(name in core, `limette is missing ${name}.`);
     }
 
     assert(
       JSON.stringify(Object.keys(nodeAdapter).sort()) ===
         JSON.stringify(['serve']),
-      `Unexpected @limette/core/node exports: ${
-        Object.keys(nodeAdapter).join(', ')
-      }`,
+      `Unexpected limette/node exports: ${Object.keys(nodeAdapter).join(', ')}`,
     );
     assert(
       JSON.stringify(Object.keys(denoAdapter).sort()) ===
         JSON.stringify(['serve']),
-      `Unexpected @limette/core/deno exports: ${
-        Object.keys(denoAdapter).join(', ')
-      }`,
+      `Unexpected limette/deno exports: ${Object.keys(denoAdapter).join(', ')}`,
     );
     assert(
       JSON.stringify(Object.keys(viteIntegration).sort()) ===
         JSON.stringify(['limette']),
-      `Unexpected @limette/core/vite exports: ${
+      `Unexpected limette/vite exports: ${
         Object.keys(viteIntegration).join(', ')
       }`,
     );
     assert(
       JSON.stringify(Object.keys(browserRuntime).sort()) ===
         JSON.stringify(['IS_BROWSER']),
-      `Unexpected @limette/core/runtime exports: ${
+      `Unexpected limette/runtime exports: ${
         Object.keys(browserRuntime).join(', ')
       }`,
     );

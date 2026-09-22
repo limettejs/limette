@@ -1,4 +1,4 @@
-import { PageComponent } from '@limette/core';
+import { PageComponent } from 'limette';
 import { html } from 'lit';
 import { TailwindIsland } from '../islands/tailwind-island.ts';
 import { sharedClass } from '../shared/classes.ts';
