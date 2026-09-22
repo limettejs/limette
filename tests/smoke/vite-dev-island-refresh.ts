@@ -42,14 +42,90 @@ const command = viteCommand([
   stderr: 'piped',
 });
 const child = command.spawn();
-const stderr = new Response(child.stderr).text();
+const stderr = captureText(child.stderr);
 let socket: WebSocket | undefined;
 let islandChanged = false;
 let islandCssChanged = false;
 let csrIslandChanged = false;
+const recentHmrMessages: string[] = [];
+const fullReloadWaiters: Array<() => void> = [];
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
+}
+
+function captureText(stream: ReadableStream<Uint8Array>) {
+  const reader = stream.getReader();
+  let output = '';
+  const complete = (async () => {
+    const decoder = new TextDecoder();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        output += decoder.decode(value, { stream: true });
+      }
+      output += decoder.decode();
+      return output;
+    } finally {
+      reader.releaseLock();
+    }
+  })();
+  return { complete, current: () => output };
+}
+
+function hmrDiagnostics() {
+  const messages = recentHmrMessages.length
+    ? recentHmrMessages.join(', ')
+    : '(none)';
+  const errors = stderr.current().trim();
+  return `Recent HMR messages: ${messages}` +
+    (errors ? `\nVite stderr:\n${errors}` : '');
+}
+
+function waitForNextFullReload(description: string) {
+  let resolveReload!: () => void;
+  const reload = new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      const index = fullReloadWaiters.indexOf(resolveReload);
+      if (index !== -1) fullReloadWaiters.splice(index, 1);
+      reject(
+        new Error(
+          `${description} did not trigger a full reload within 15 seconds.\n` +
+            hmrDiagnostics(),
+        ),
+      );
+    }, 15_000);
+    resolveReload = () => {
+      clearTimeout(timeout);
+      resolve();
+    };
+  });
+  fullReloadWaiters.push(resolveReload);
+  return reload;
+}
+
+async function waitForHmrEvent(promise: Promise<void>, description: string) {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(
+          () =>
+            reject(
+              new Error(
+                `${description} did not arrive within 15 seconds.\n` +
+                  hmrDiagnostics(),
+              ),
+            ),
+          15_000,
+        );
+      }),
+    ]);
+  } finally {
+    if (timeout !== undefined) clearTimeout(timeout);
+  }
 }
 
 async function waitForPage(expected: string, path = '/') {
@@ -97,6 +173,29 @@ try {
     !initialCsrHtml.includes('Client count:') &&
       initialCsrHtml.includes('<descriptor-client-only'),
     'A default or omitted-policy island deep-rendered in Vite dev.',
+  );
+  const csrClientEntry = initialCsrHtml.match(
+    /<script type="module" src="([^" ]*\/@limette\/client-entry\/[^" ]+)"/,
+  )?.[1];
+  assert(csrClientEntry, 'The CSR island route did not emit a client entry.');
+  const csrEntryResponse = await fetch(`${origin}${csrClientEntry}`);
+  assert(csrEntryResponse.ok, 'The CSR island client entry did not load.');
+  const csrEntryCode = await csrEntryResponse.text();
+  assert(
+    csrEntryCode.includes('/islands/client-only.ts'),
+    'The CSR island client entry did not reference its island module.',
+  );
+  const initialCsrModuleResponse = await fetch(
+    `${origin}/islands/client-only.ts`,
+  );
+  assert(
+    initialCsrModuleResponse.ok,
+    'The CSR island client module did not load.',
+  );
+  const initialCsrModule = await initialCsrModuleResponse.text();
+  assert(
+    initialCsrModule.includes('Client count:'),
+    'The CSR island client module did not contain its initial implementation.',
   );
   assert(
     (initialHtml.match(/src="\/@vite\/client"/g) ?? []).length === 1,
@@ -150,15 +249,6 @@ try {
   const hmrBase = viteClient.match(/const hmrBase = "([^"]+)"/)?.[1] ?? '/';
   assert(token, 'Could not read the Vite HMR websocket token.');
 
-  let resolveFullReload!: () => void;
-  const fullReload = new Promise<void>((resolve) => {
-    resolveFullReload = resolve;
-  });
-  let resolveCsrFullReload!: () => void;
-  const csrFullReload = new Promise<void>((resolve) => {
-    resolveCsrFullReload = resolve;
-  });
-  let fullReloadCount = 0;
   let resolveCssUpdate!: () => void;
   const cssUpdate = new Promise<void>((resolve) => {
     resolveCssUpdate = resolve;
@@ -170,12 +260,22 @@ try {
   socket.onmessage = (event) => {
     const message = JSON.parse(String(event.data)) as {
       type?: string;
+      path?: string;
       updates?: Array<{ path?: string; acceptedPath?: string }>;
     };
+    const updatePaths = message.updates?.flatMap((update) =>
+      [update.path, update.acceptedPath].filter(Boolean)
+    ) ?? [];
+    recentHmrMessages.push(
+      [message.type ?? 'unknown', message.path, ...updatePaths]
+        .filter(Boolean)
+        .join(':'),
+    );
+    if (recentHmrMessages.length > 20) {
+      recentHmrMessages.shift();
+    }
     if (message.type === 'full-reload') {
-      fullReloadCount++;
-      if (fullReloadCount === 1) resolveFullReload();
-      if (fullReloadCount === 2) resolveCsrFullReload();
+      fullReloadWaiters.shift()?.();
     }
     if (
       message.type === 'update' &&
@@ -188,8 +288,11 @@ try {
     }
   };
   await new Promise<void>((resolve, reject) => {
-    socket!.onopen = () => resolve();
-    socket!.onerror = () => reject(new Error('Vite HMR websocket failed.'));
+    socket!.onopen = () => {
+      resolve();
+    };
+    socket!.onerror = () =>
+      reject(new Error('Vite HMR websocket failed.'));
   });
 
   assert(
@@ -210,16 +313,7 @@ try {
     updatedCss.includes('status-island-hmr'),
     'Vite continued serving stale island CSS.',
   );
-  await Promise.race([
-    cssUpdate,
-    new Promise<never>((_, reject) =>
-      setTimeout(
-        () =>
-          reject(new Error('The island CSS edit did not emit an HMR update.')),
-        5_000,
-      )
-    ),
-  ]);
+  await waitForHmrEvent(cssUpdate, 'The island CSS HMR update');
   const cssUpdatedHtml = await waitForPage(before);
   assert(
     JSON.stringify(islandStyleUrls(cssUpdatedHtml)) ===
@@ -235,6 +329,7 @@ try {
     changedIsland !== originalIsland,
     'Island refresh fixture did not change.',
   );
+  const islandReload = waitForNextFullReload('The SSR island update');
   await Deno.writeTextFile(islandPath, changedIsland);
   islandChanged = true;
 
@@ -243,21 +338,13 @@ try {
     !updatedHtml.includes(before),
     'SSR retained the previous island constructor after its module changed.',
   );
-  await Promise.race([
-    fullReload,
-    new Promise<never>((_, reject) =>
-      setTimeout(
-        () =>
-          reject(new Error('The island update did not trigger a full reload.')),
-        5_000,
-      )
-    ),
-  ]);
+  await islandReload;
 
   assert(
     changedCsrIsland !== originalCsrIsland,
     'CSR island refresh fixture did not change.',
   );
+  const csrIslandReload = waitForNextFullReload('The CSR island update');
   await Deno.writeTextFile(csrIslandPath, changedCsrIsland);
   csrIslandChanged = true;
   let updatedCsrModule = '';
@@ -280,15 +367,7 @@ try {
     !updatedCsrHtml.includes('Changed client count:'),
     'A refreshed CSR-only island began deep-rendering on the server.',
   );
-  await Promise.race([
-    csrFullReload,
-    new Promise<never>((_, reject) =>
-      setTimeout(
-        () => reject(new Error('The CSR island update did not reload.')),
-        5_000,
-      )
-    ),
-  ]);
+  await csrIslandReload;
 } finally {
   if (islandChanged) await Deno.writeTextFile(islandPath, originalIsland);
   if (islandCssChanged) {
@@ -304,7 +383,7 @@ try {
     // The process may already have exited.
   }
   await child.status;
-  const errors = await stderr;
+  const errors = await stderr.complete;
   assert(
     !errors.includes('already has "test-status" defined') &&
       !errors.includes('already has "test-counter" defined') &&
