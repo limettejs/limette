@@ -1,21 +1,24 @@
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
 import type { LitElement } from 'lit';
 import { LitElementRenderer } from '@lit-labs/ssr/lib/lit-element-renderer.js';
-import type { RenderInfo, RenderResult } from '@lit-labs/ssr';
+import type { RenderInfo } from '@lit-labs/ssr';
+import type { ThunkedRenderResult } from '@lit-labs/ssr/lib/render-result.js';
 import type { RuntimeRouteDefinition } from '../route.ts';
 import type { Context, DefaultState, RenderContext } from '../context.ts';
 import type { HeadRenderResult } from '../components.ts';
 
 type LmtShadowRootMode = 'open' | 'closed' | 'disabled';
 
-function* renderRouteStyle(
+function renderRouteStyle(
   stylesheets: readonly string[],
-  shadow: RenderResult,
-): RenderResult {
-  yield `<style>${
-    stylesheets.map((stylesheet) => `@import url("${stylesheet}");`).join('')
-  }</style>`;
-  yield* shadow;
+  shadow: ThunkedRenderResult,
+): ThunkedRenderResult {
+  return [
+    `<style>${
+      stylesheets.map((stylesheet) => `@import url("${stylesheet}");`).join('')
+    }</style>`,
+    ...shadow,
+  ];
 }
 
 export const LimetteElementRenderer = <
@@ -63,7 +66,9 @@ export const LimetteElementRenderer = <
      * If `renderShadow()` returns undefined, no declarative shadow root is
      * emitted.
      */
-    override renderShadow(renderInfo: RenderInfo): RenderResult {
+    override renderShadow(
+      renderInfo: RenderInfo,
+    ): ThunkedRenderResult | undefined {
       // A component is an island if it's included in route.islands.
       const isIsland = route.islands.includes(this.tagName);
       const ssrIsland = route.ssrIslands.includes(this.tagName);
@@ -85,7 +90,6 @@ export const LimetteElementRenderer = <
       // invoking the application component implementation on the server.
       if (isIsland && !ssrIsland) {
         if (shadowStyles.length === 0) {
-          // @ts-expect-error: LitElementRenderer actually accepts undefined as a returned value
           return;
         }
 
@@ -108,7 +112,8 @@ export const LimetteElementRenderer = <
       }
 
       const shadow = super.renderShadow(renderInfo);
-      return shadowStyles.length > 0 && (!isIsland || ssrIsland)
+      return shadow !== undefined &&
+          shadowStyles.length > 0 && (!isIsland || ssrIsland)
         ? renderRouteStyle(shadowStyles, shadow)
         : shadow;
     }
