@@ -5,12 +5,16 @@ import { ContextImpl, type DefaultState } from './context.ts';
 import type { RouteHandler } from './handlers.ts';
 import type { Method } from './methods.ts';
 
+export type TrailingSlash = 'never' | 'always';
+
 export interface AppConfig {
   readonly basePath?: string;
+  readonly trailingSlash?: TrailingSlash;
 }
 
 interface ResolvedAppConfig {
   readonly basePath: string;
+  readonly trailingSlash: TrailingSlash;
 }
 
 export type AppHandler<Platform = unknown> = (
@@ -62,9 +66,26 @@ function joinRoutePath(basePath: string, routePath: string) {
   return normalizedRoute ? `${basePath}/${normalizedRoute}` : basePath;
 }
 
+function canonicalizePathname(
+  pathname: string,
+  trailingSlash: TrailingSlash,
+) {
+  if (pathname === '/') return pathname;
+  if (trailingSlash === 'always') {
+    return pathname.endsWith('/') ? pathname : `${pathname}/`;
+  }
+  return pathname.replace(/\/+$/, '') || '/';
+}
+
+function canonicalRedirectLocation(url: URL, trailingSlash: TrailingSlash) {
+  const pathname = canonicalizePathname(url.pathname, trailingSlash);
+  return pathname === url.pathname ? undefined : `${pathname}${url.search}`;
+}
+
 function normalizeConfig(options?: AppConfig): ResolvedAppConfig {
   return {
     basePath: normalizeBasePath(options?.basePath),
+    trailingSlash: options?.trailingSlash ?? 'never',
   };
 }
 
@@ -166,15 +187,26 @@ export class App<State = DefaultState, Platform = unknown> {
     const merged = typeof pathname === 'string'
       ? joinRoutePath(this.config.basePath, pathname)
       : pathname;
-    this.#router.add(method, merged, handlers);
+    const canonical = typeof merged === 'string'
+      ? canonicalizePathname(merged, this.config.trailingSlash)
+      : merged;
+    this.#router.add(method, canonical, handlers);
     return this;
   }
 
   handler(): AppHandler<Platform> {
     return async (request: Request, platform = undefined as Platform) => {
       const url = new URL(request.url);
-      // Prevent open redirect attacks
-      url.pathname = url.pathname.replace(/\/+/g, '/');
+      const redirectLocation = canonicalRedirectLocation(
+        url,
+        this.config.trailingSlash,
+      );
+      if (redirectLocation) {
+        return new Response(null, {
+          status: 308,
+          headers: { location: redirectLocation },
+        });
+      }
       const method = request.method.toUpperCase();
 
       const matched = this.#router.match(method, url);

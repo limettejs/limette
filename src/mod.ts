@@ -1,5 +1,5 @@
 export { App } from './server/app.ts';
-export type { AppConfig, AppHandler } from './server/app.ts';
+export type { AppConfig, AppHandler, TrailingSlash } from './server/app.ts';
 export {
   AppComponent,
   LayoutComponent,

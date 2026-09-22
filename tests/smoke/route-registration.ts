@@ -1,4 +1,9 @@
-import { App, type RouteHandler, type RouteHandlers } from '../../src/mod.ts';
+import {
+  App,
+  type RouteHandler,
+  type RouteHandlers,
+  type TrailingSlash,
+} from '../../src/mod.ts';
 import type { Method } from '../../src/server/methods.ts';
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -40,6 +45,8 @@ type MissingAppMethod = AssertNever<
 void (undefined as unknown as MissingRouteHandlerMethod);
 void (undefined as unknown as ExtraRouteHandlerMethod);
 void (undefined as unknown as MissingAppMethod);
+const typedTrailingSlash: TrailingSlash = 'always';
+void typedTrailingSlash;
 
 if (false) {
   const app = new App<TestState, TestPlatform>();
@@ -317,8 +324,11 @@ assert(
   'An exhausted ALL chain incorrectly changed the fallback to 405.',
 );
 
-function expectDuplicate(register: (app: App) => void) {
-  const app = new App();
+function expectDuplicate(
+  register: (app: App) => void,
+  trailingSlash?: TrailingSlash,
+) {
+  const app = new App({ trailingSlash });
   let message = '';
   try {
     register(app);
@@ -335,6 +345,14 @@ expectDuplicate((app) => {
   app.get('/duplicate', () => new Response('first'));
   app.get('/duplicate', () => new Response('second'));
 });
+expectDuplicate((app) => {
+  app.get('/canonical-duplicate', () => new Response('first'));
+  app.get('/canonical-duplicate/', () => new Response('second'));
+});
+expectDuplicate((app) => {
+  app.get('/canonical-duplicate', () => new Response('first'));
+  app.get('/canonical-duplicate/', () => new Response('second'));
+}, 'always');
 expectDuplicate((app) => {
   app.all('/duplicate', () => new Response('first'));
   app.all('/duplicate', () => new Response('second'));
@@ -409,4 +427,72 @@ assert(
   (await request(patternApp, '/advanced')).text === 'advanced' &&
     (await request(patternApp, '/api/advanced')).response.status === 404,
   'An explicit URLPattern was incorrectly rewritten with basePath.',
+);
+
+let canonicalHandlerCalls = 0;
+const canonicalApp = new App<TestState, TestPlatform>();
+canonicalApp.get('/foo/', () => {
+  canonicalHandlerCalls++;
+  return new Response('foo');
+});
+canonicalApp.get('/', () => new Response('root'));
+canonicalApp.get('/foo/bar', () => new Response('collapsed'));
+canonicalApp.get('/faithful', (ctx) =>
+  new Response(
+    String(
+      ctx.url.href === ctx.request.url &&
+        ctx.url.pathname === '/faithful' &&
+        ctx.url.search === '?value=a%2Fb',
+    ),
+  ));
+
+const defaultRedirect = await request(canonicalApp, '/foo/?page=2');
+assert(
+  defaultRedirect.response.status === 308 &&
+    defaultRedirect.response.headers.get('location') === '/foo?page=2' &&
+    canonicalHandlerCalls === 0,
+  'The default trailing-slash redirect did not preserve its query.',
+);
+assert(
+  canonicalApp.config.trailingSlash === 'never' &&
+    (await request(canonicalApp, '/')).text === 'root',
+  'The root pathname was redirected.',
+);
+assert(
+  (await request(canonicalApp, '/foo')).text === 'foo',
+  'A string route was not registered in its default canonical form.',
+);
+assert(
+  (await request(canonicalApp, '/foo//bar')).response.status === 404,
+  'Internal duplicate slashes were silently collapsed before routing.',
+);
+const duplicateSlashRedirect = await request(canonicalApp, '/foo//bar/');
+assert(
+  duplicateSlashRedirect.response.status === 308 &&
+    duplicateSlashRedirect.response.headers.get('location') ===
+      '/foo//bar',
+  'Trailing-slash removal also collapsed internal duplicate slashes.',
+);
+assert(
+  (await request(canonicalApp, '/faithful?value=a%2Fb')).text === 'true',
+  'ctx.url did not remain faithful to the request URL.',
+);
+
+const alwaysApp = new App<TestState, TestPlatform>({
+  basePath: '/api',
+  trailingSlash: 'always',
+});
+alwaysApp.get('/', () => new Response('base root'));
+alwaysApp.get('/users', () => new Response('users'));
+const alwaysRedirect = await request(alwaysApp, '/api/users?page=2');
+assert(
+  alwaysRedirect.response.status === 308 &&
+    alwaysRedirect.response.headers.get('location') === '/api/users/?page=2',
+  'The always policy did not append a slash while preserving its query.',
+);
+assert(
+  alwaysApp.config.trailingSlash === 'always' &&
+    (await request(alwaysApp, '/api/')).text === 'base root' &&
+    (await request(alwaysApp, '/api/users/')).text === 'users',
+  'Always-policy string registration did not align with basePath routes.',
 );
