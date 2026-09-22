@@ -1,73 +1,137 @@
-import type { AppConfig } from "./app.ts";
+import type { AppConfig } from './app.ts';
+import type { HttpError } from './error.ts';
 
-export interface ContextInit {
+export type DefaultState = Record<string, unknown>;
+export type RedirectStatus = 301 | 302 | 303 | 307 | 308;
+
+const REDIRECT_STATUSES: ReadonlySet<number> = new Set([
+  301,
+  302,
+  303,
+  307,
+  308,
+]);
+
+export interface RenderContext<
+  State = DefaultState,
+  Platform = unknown,
+> {
+  readonly request: Request;
+  readonly url: URL;
+  readonly params: Readonly<Record<string, string>>;
+  readonly config: Readonly<AppConfig>;
+  readonly platform: Platform;
+  readonly state: Readonly<State>;
+  readonly error: HttpError | undefined;
+}
+
+export interface Context<
+  State = DefaultState,
+  Platform = unknown,
+> extends Omit<RenderContext<State, Platform>, 'state'> {
+  readonly state: State;
+
+  next(): Promise<Response>;
+  render(): Promise<Response>;
+  redirect(location: string | URL, status?: RedirectStatus): Response;
+}
+
+interface ContextInit<State, Platform> {
   request: Request;
   url: URL;
-  info: Deno.ServeHandlerInfo;
+  platform: Platform;
   params: Record<string, string>;
-  config: AppConfig;
+  config: Readonly<AppConfig>;
   next: () => Promise<Response>;
-}
-export interface Context extends ContextInit {
-  data: unknown;
-  error: unknown;
-  render: (data?: Context["data"]) => Promise<Response>;
-  redirect(path: string, status?: number): Response;
+  state?: State;
 }
 
-export class Context implements Context {
-  constructor({ request, url, info, params, config, next }: ContextInit) {
+/** @internal Request-local implementation used by Limette's server pipeline. */
+export class ContextImpl<
+  State = DefaultState,
+  Platform = unknown,
+> implements Context<State, Platform> {
+  readonly request: Request;
+  readonly url: URL;
+  readonly platform: Platform;
+  readonly params: Readonly<Record<string, string>>;
+  readonly config: Readonly<AppConfig>;
+  readonly state: State;
+
+  #error: HttpError | undefined;
+  #next: () => Promise<Response>;
+  #render?: () => Promise<Response>;
+
+  constructor(
+    { request, url, platform, params, config, next, state }: ContextInit<
+      State,
+      Platform
+    >,
+  ) {
     this.request = request;
     this.url = url;
-    this.info = info;
+    this.platform = platform;
     this.params = params;
     this.config = config;
-    this.next = next;
+    this.state = state ?? ({} as State);
+    this.#next = next;
   }
 
-  redirect(pathOrUrl: string, status = 302): Response {
-    let location = pathOrUrl;
+  get error() {
+    return this.#error;
+  }
 
-    // Disallow protocol relative URLs
-    if (pathOrUrl !== "/" && pathOrUrl.startsWith("/")) {
-      let idx = pathOrUrl.indexOf("?");
-      if (idx === -1) {
-        idx = pathOrUrl.indexOf("#");
-      }
+  next(): Promise<Response> {
+    return this.#next();
+  }
 
-      const pathname = idx > -1 ? pathOrUrl.slice(0, idx) : pathOrUrl;
-      const search = idx > -1 ? pathOrUrl.slice(idx) : "";
+  render(): Promise<Response> {
+    if (!this.#render) {
+      throw new Error('ctx.render() is unavailable for this route.');
+    }
+    return this.#render();
+  }
 
-      // Remove double slashes to prevent open redirect vulnerability.
-      location = `${pathname.replaceAll(/\/+/g, "/")}${search}`;
+  /** @internal */
+  _setNext(next: () => Promise<Response>) {
+    this.#next = next;
+  }
+
+  /** @internal */
+  _getNext() {
+    return this.#next;
+  }
+
+  /** @internal */
+  _setRender(render: () => Promise<Response>) {
+    this.#render = render;
+  }
+
+  /** @internal */
+  _setError(error: HttpError | undefined) {
+    this.#error = error;
+  }
+
+  redirect(
+    location: string | URL,
+    status: RedirectStatus = 302,
+  ): Response {
+    const value = location instanceof URL ? location.href : location;
+
+    if (value.startsWith('//')) {
+      throw new TypeError(
+        `Protocol-relative redirect locations are not allowed: "${value}".`,
+      );
+    }
+    if (!REDIRECT_STATUSES.has(status)) {
+      throw new TypeError(
+        `Invalid redirect status ${status}. Expected 301, 302, 303, 307, or 308.`,
+      );
     }
 
     return new Response(null, {
       status,
-      headers: {
-        location,
-      },
+      headers: { location: value },
     });
   }
-}
-
-type Constructor<T = Record<string, never>> = new (...args: unknown[]) => T;
-
-export function ContextMixin(
-  Base: CustomElementConstructor
-): CustomElementConstructor & Constructor<{ ctx: Context }> {
-  return class ContextClass extends Base {
-    #ctx!: Context;
-
-    static __requiresContext = true;
-
-    get ctx() {
-      return this.#ctx;
-    }
-    set ctx(value) {
-      // Allow setting ctx only once?
-      if (this.#ctx instanceof Context) return;
-      this.#ctx = value;
-    }
-  };
 }

@@ -1,0 +1,7 @@
+{
+  "main": "./worker-entry.js",
+  "compatibility_date": "2026-09-18",
+  "assets": {
+    "directory": "./dist/client"
+  }
+}

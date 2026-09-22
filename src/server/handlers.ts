@@ -1,78 +1,63 @@
-import type { BuildRoute } from "../dev/build.ts";
-import type { Context } from "./context.ts";
-import { HttpError } from "./error.ts";
-import type { MiddlewareFn } from "./middlewares.ts";
-import { type AppWrapperComponentClass, renderContent } from "./ssr.ts";
+import type { RuntimeRouteDefinition } from './route.ts';
+import type { Context, ContextImpl, DefaultState } from './context.ts';
+import { HttpError } from './error.ts';
+import { type AppWrapperComponentClass, renderContent } from './ssr.ts';
+import { type Method, METHODS } from './methods.ts';
 
-export interface Handlers {
-  GET?: MiddlewareFn;
-  POST?: MiddlewareFn;
-  PUT?: MiddlewareFn;
-  DELETE?: MiddlewareFn;
-  PATCH?: MiddlewareFn;
-  OPTIONS?: MiddlewareFn;
-  HEAD?: MiddlewareFn;
-}
+export type RouteHandler<State = DefaultState, Platform = unknown> = (
+  ctx: Context<State, Platform>,
+) => Response | Promise<Response>;
 
-export function handlersForRoute(
-  route: BuildRoute,
-  AppWrapper: AppWrapperComponentClass
+export type RouteHandlers<State = DefaultState, Platform = unknown> = {
+  [CurrentMethod in Method]?: RouteHandler<State, Platform>;
+};
+
+export function handlersForRoute<State = DefaultState, Platform = unknown>(
+  route: RuntimeRouteDefinition<State, Platform>,
+  AppWrapper: AppWrapperComponentClass<State, Platform>,
 ) {
-  const handlers: Handlers = {};
+  const handlers: RouteHandlers<State, Platform> = {};
+
+  const renderRoute = async (ctx: ContextImpl<State, Platform>) => {
+    if (!route.routeModule?.default) {
+      throw new Error(
+        'No component was provided. Make sure you export a component as default to be rendered.',
+      );
+    }
+
+    const content = await renderContent(AppWrapper, route, ctx);
+    const status = ctx.error instanceof HttpError ? ctx.error.status : 200;
+
+    return new Response(content, {
+      status,
+      statusText: status === 200 ? 'OK' : undefined,
+      headers: new Headers({ 'Content-Type': 'text/html' }),
+    });
+  };
 
   // Register custom handlers
   if (route.routeModule?.handler) {
-    for (const [method, fn] of Object.entries(route.routeModule.handler)) {
-      const handler = async (ctx: Context) => {
-        ctx.render = async (data: Context["data"]) => {
-          if (!route.routeModule?.default) {
-            throw new Error(
-              "No component was provided. Make sure you export a component as default to be redered."
-            );
-          }
-
-          ctx.data = data;
-
-          const content = await renderContent(AppWrapper, route, ctx);
-
-          let status = 200;
-          if (ctx.error instanceof HttpError) {
-            status = ctx.error.status ?? 200;
-          }
-
-          return new Response(content, {
-            status: status,
-            statusText: "OK",
-            headers: new Headers({ "Content-Type": "text/html" }),
-          });
-        };
-
-        return await fn(ctx);
+    for (const method of METHODS) {
+      const fn = route.routeModule.handler[method];
+      if (!fn) continue;
+      const handler: RouteHandler<State, Platform> = async (ctx) => {
+        const internal = ctx as ContextImpl<State, Platform>;
+        internal._setRender(() => renderRoute(internal));
+        return await fn(internal);
       };
-      handlers[method as keyof Handlers] = handler as MiddlewareFn;
+      handlers[method] = handler;
     }
   }
 
   // Default behaviour if no GET handler is provided
   if (route.routeModule?.default && !route.routeModule?.handler?.GET) {
-    // TODO: Add render method to ctx for this case
-    const handler = async (ctx: Context) => {
-      const content = await renderContent(AppWrapper, route, ctx);
-
-      let status = 200;
-      if (ctx.error instanceof HttpError) {
-        status = ctx.error.status ?? 200;
-      }
-
-      return new Response(content, {
-        status: status,
-        headers: {
-          "Content-Type": "text/html",
-        },
-      });
+    const handler: RouteHandler<State, Platform> = async (ctx) => {
+      const internal = ctx as ContextImpl<State, Platform>;
+      internal._setRender(() => renderRoute(internal));
+      return await internal.render();
     };
 
-    handlers["GET"] = handler;
+    handlers['GET'] = handler;
   }
 
   return handlers;

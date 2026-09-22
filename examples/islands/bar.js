@@ -1,4 +1,4 @@
-import { LitElement, html, css } from "lit";
+import { css, html, LitElement } from 'lit';
 
 export class IslandBar extends LitElement {
   static styles = css`
@@ -22,7 +22,6 @@ export class IslandBar extends LitElement {
 
   static properties = {
     name: {},
-    ctx: { type: Object, reflect: true },
     foo: { type: Object, reflect: true },
     id: { type: Number },
     count: { type: Number },
@@ -34,7 +33,7 @@ export class IslandBar extends LitElement {
   }
 
   willUpdate() {
-    this.conect = "foo";
+    this.conect = 'foo';
   }
 
   render() {
@@ -61,7 +60,7 @@ export class IslandBar extends LitElement {
         <button
           type="button"
           class="rounded-full bg-white px-2.5 py-1 mt-4 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-          @click=${() => this.dispatchEvent(new Event("change-name"))}
+          @click=${() => this.dispatchEvent(new Event('change-name'))}
         >
           Change name
         </button>
@@ -69,5 +68,3 @@ export class IslandBar extends LitElement {
     `;
   }
 }
-
-customElements.define("island-bar", IslandBar);

@@ -1,7 +1,16 @@
-import { LitElement, html } from "lit";
-import "../islands/foo.js";
+import { PageComponent } from 'limette';
+import { html } from 'lit';
+import { IslandFoo } from '../islands/foo.js';
 
-export default class Home extends LitElement {
+export default class Home extends PageComponent {
+  static islands = {
+    'island-foo': IslandFoo,
+  };
+
+  head() {
+    return html`<title>Home</title>`;
+  }
+
   render() {
     return html`
       <section class="p-6">
@@ -10,7 +19,7 @@ export default class Home extends LitElement {
         <island-foo name="Iris"></island-foo>
 
         <section>
-          <a href="/foo/bar">To foo/bar</a> | <a href="/foo-123">To params</a> |
+          <a href="/foo/bar">To foo/bar</a> | <a href="/foo/123">To params</a> |
           <a href="/no-js">To no js</a>
         </section>
       </section>

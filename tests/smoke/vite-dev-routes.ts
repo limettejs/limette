@@ -1,0 +1,169 @@
+import { fileURLToPath } from 'node:url';
+import { App } from '../../src/mod.ts';
+import {
+  loadViteDevRoutes,
+  materializeDevRoutes,
+} from '../../src/vite/routes.ts';
+import { exampleRoot, loadExampleFile } from './_paths.ts';
+import { viteCommand } from './_vite-command.ts';
+
+const port = 5178;
+const origin = `http://127.0.0.1:${port}`;
+const app = new App().fsRoutes();
+const cssFixtureRoot = fileURLToPath(
+  new URL('../fixtures/server-build/', import.meta.url),
+);
+
+const cssRoutes = await loadViteDevRoutes({
+  root: cssFixtureRoot,
+  devServerOrigin: origin,
+  loadFile: async () => ({}),
+});
+const cssHomeRoute = cssRoutes.find((route) => route.path === '/');
+const cssOnlyRoute = cssRoutes.find((route) => route.path === '/about');
+if (!cssHomeRoute || !cssOnlyRoute) {
+  throw new Error('Expected CSS development fixture routes.');
+}
+const staticUserIndex = cssRoutes.findIndex((route) =>
+  route.path === '/users/new'
+);
+const dynamicUserIndex = cssRoutes.findIndex((route) =>
+  route.path === '/users/:id'
+);
+if (
+  staticUserIndex === -1 || dynamicUserIndex === -1 ||
+  staticUserIndex >= dynamicUserIndex
+) {
+  throw new Error('Vite dev routes lost filesystem specificity ordering.');
+}
+if (
+  cssHomeRoute.assets.scripts.length !== 1 ||
+  cssHomeRoute.assets.styles.length !== 0
+) {
+  throw new Error('Island route did not retain its development client entry.');
+}
+for (
+  const [tagName, expectedStyles] of [
+    [
+      'test-counter',
+      ['/islands/counter.css?direct', '/islands/shared.css?direct'],
+    ],
+    [
+      'test-status',
+      ['/islands/shared.css?direct', '/islands/status.css?direct'],
+    ],
+  ] as const
+) {
+  const islandStyles = cssHomeRoute.assets.islandStyles[tagName] ?? [];
+  if (
+    !expectedStyles.every((style) =>
+      islandStyles.includes(`${origin}${style}`)
+    ) || islandStyles.some((style) => style.includes('/styles/home.css'))
+  ) {
+    throw new Error(`Development island styles were incorrect for ${tagName}.`);
+  }
+}
+if (
+  cssOnlyRoute.assets.scripts.length !== 0 ||
+  ![
+    '/styles/app.css',
+    '/styles/layout.css',
+    '/styles/shared.css',
+    '/styles/about.css',
+  ].every((path) =>
+    cssOnlyRoute.assets.styles.includes(`${origin}${path}?direct`)
+  )
+) {
+  throw new Error(
+    'CSS-only route did not receive development styles without a script.',
+  );
+}
+
+await materializeDevRoutes(app, {
+  root: exampleRoot,
+  devServerOrigin: origin,
+  loadFile: loadExampleFile,
+});
+
+const response = await app.handler()(
+  new Request('http://localhost/'),
+);
+const html = await response.text();
+const scriptPath = html.match(/<script type="module" src="([^"]+)"/)?.[1];
+
+if (response.status !== 200) {
+  throw new Error(`Expected the page to render, got ${response.status}.`);
+}
+
+if (!scriptPath?.startsWith(`${origin}/@limette/client-entry/`)) {
+  throw new Error('Expected SSR output to include a Vite dev client entry.');
+}
+
+let undeclaredLoadAttempted = false;
+const appWithoutFsRoutes = new App();
+await materializeDevRoutes(appWithoutFsRoutes, {
+  root: exampleRoot,
+  loadFile: async () => {
+    undeclaredLoadAttempted = true;
+    throw new Error('An app without fsRoutes() must not load route modules.');
+  },
+});
+const undeclaredResponse = await appWithoutFsRoutes.handler()(
+  new Request('http://localhost/'),
+);
+if (undeclaredLoadAttempted || undeclaredResponse.status !== 404) {
+  throw new Error('Vite dev materialized routes without fsRoutes().');
+}
+
+const command = viteCommand([
+  '--config',
+  'vite.config.ts',
+  '--host',
+  '127.0.0.1',
+  '--port',
+  String(port),
+  '--strictPort',
+], {
+  stdout: 'null',
+  stderr: 'null',
+});
+const child = command.spawn();
+
+try {
+  let entryResponse: Response | undefined;
+  let lastError: unknown;
+
+  for (let i = 0; i < 40; i++) {
+    try {
+      entryResponse = await fetch(scriptPath);
+      if (entryResponse.ok) break;
+    } catch (error) {
+      lastError = error;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  if (!entryResponse?.ok) {
+    throw new Error(
+      `Expected Vite dev server to serve the client entry. Last error: ${
+        lastError instanceof Error ? lastError.message : String(lastError)
+      }`,
+    );
+  }
+
+  const code = await entryResponse.text();
+
+  if (code.includes('/@vite/client') || !code.includes('island-foo')) {
+    throw new Error(
+      'Expected the island entry without a duplicate Vite client import.',
+    );
+  }
+} finally {
+  try {
+    child.kill('SIGTERM');
+  } catch {
+    // The process may already have exited if startup failed.
+  }
+  await child.status;
+}

@@ -1,0 +1,7 @@
+:host {
+  border-color: seagreen;
+}
+
+.fixture-status-island-style {
+  --fixture-source: status-island;
+}

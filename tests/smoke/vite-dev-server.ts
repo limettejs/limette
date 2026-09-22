@@ -1,0 +1,205 @@
+import { join } from 'node:path';
+import { exampleRoot } from './_paths.ts';
+import { viteCommand } from './_vite-command.ts';
+
+const port = 5179;
+const origin = `http://127.0.0.1:${port}`;
+const homeRoutePath = join(exampleRoot, 'routes/index.js');
+const originalHomeRoute = await Deno.readTextFile(homeRoutePath);
+let homeRouteChanged = false;
+const command = viteCommand([
+  '--config',
+  'vite.config.ts',
+  '--host',
+  '127.0.0.1',
+  '--port',
+  String(port),
+  '--strictPort',
+  '--logLevel',
+  'error',
+], {
+  stdout: 'null',
+  stderr: 'piped',
+});
+const child = command.spawn();
+const stderr = new Response(child.stderr).text();
+
+function routeTag(html: string) {
+  return html.match(/<(lmt-route-[a-z0-9-]+)(?:\s|>)/)?.[1];
+}
+
+try {
+  let pageResponse: Response | undefined;
+  let lastError: unknown;
+
+  for (let i = 0; i < 40; i++) {
+    try {
+      pageResponse = await fetch(`${origin}/`);
+      if (pageResponse.ok) break;
+    } catch (error) {
+      lastError = error;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  if (!pageResponse?.ok) {
+    try {
+      child.kill('SIGTERM');
+    } catch {
+      // The process may already have exited if startup failed.
+    }
+
+    throw new Error(
+      `Expected Vite dev server to render the page. Last error: ${
+        lastError instanceof Error ? lastError.message : String(lastError)
+      }\nVite stderr:\n${await stderr}`,
+    );
+  }
+
+  const html = await pageResponse.text();
+  const initialRouteTag = routeTag(html);
+
+  if (!initialRouteTag) {
+    throw new Error('Expected SSR output to contain a Limette route tag.');
+  }
+  if (!html.includes('<title>Home</title>')) {
+    throw new Error('Expected dev SSR to render route head metadata.');
+  }
+
+  const staticConflictResponse = await fetch(`${origin}/foo/bar`);
+  const staticConflictHtml = await staticConflictResponse.text();
+  if (
+    !staticConflictResponse.ok || !staticConflictHtml.includes('Foo/Bar') ||
+    staticConflictHtml.includes('<h1>Params</h1>')
+  ) {
+    throw new Error(
+      'Vite dev routing did not prefer /foo/bar over /foo/:id.',
+    );
+  }
+
+  for (let i = 0; i < 20; i++) {
+    const repeatedResponse = await fetch(`${origin}/`);
+    const repeatedHtml = await repeatedResponse.text();
+
+    if (!repeatedResponse.ok || routeTag(repeatedHtml) !== initialRouteTag) {
+      throw new Error(
+        `Expected repeated requests to reuse ${initialRouteTag}; got status ` +
+          `${repeatedResponse.status} and tag ${routeTag(repeatedHtml)}.`,
+      );
+    }
+  }
+  const viteClientScripts = html.match(
+    /<script type="module" src="\/@vite\/client"><\/script>/g,
+  ) ?? [];
+  const scriptPath = html.match(
+    /<script type="module" src="([^" ]*\/@limette\/client-entry\/[^"]+)"/,
+  )?.[1];
+
+  if (viteClientScripts.length !== 1) {
+    throw new Error('Expected exactly one Vite development client script.');
+  }
+  if (
+    (html.match(/data-limette-bfcache-recovery/g) ?? []).length !== 1 ||
+    !html.includes('event.persisted') ||
+    !html.includes('location.reload()')
+  ) {
+    throw new Error('Expected exactly one development BFCache recovery hook.');
+  }
+
+  if (!scriptPath?.startsWith('/@limette/client-entry/')) {
+    throw new Error('Expected SSR output to include a same-origin Vite entry.');
+  }
+
+  const entryResponse = await fetch(`${origin}${scriptPath}`);
+
+  if (!entryResponse.ok) {
+    throw new Error(
+      `Expected Vite entry to load, got ${entryResponse.status}.`,
+    );
+  }
+
+  const code = await entryResponse.text();
+
+  if (code.includes('/@vite/client') || !code.includes('island-foo')) {
+    throw new Error(
+      'Expected island code without a duplicate Vite client import.',
+    );
+  }
+
+  const missingResponse = await fetch(`${origin}/missing-chunk.js`);
+
+  if (missingResponse.status !== 404) {
+    throw new Error(
+      `Expected missing chunk request to return 404, got ${missingResponse.status}.`,
+    );
+  }
+
+  const recoveryResponse = await fetch(`${origin}/`);
+
+  if (!recoveryResponse.ok) {
+    throw new Error('Expected dev server to keep running after a 404.');
+  }
+
+  const updatedHomeRoute = originalHomeRoute.replace(
+    'SSR content',
+    'SSR content changed by Vite dev smoke',
+  ).replace('<title>Home</title>', '<title>Updated home</title>');
+
+  if (updatedHomeRoute === originalHomeRoute) {
+    throw new Error('Expected home route fixture to contain SSR content.');
+  }
+
+  await Deno.writeTextFile(homeRoutePath, updatedHomeRoute);
+  homeRouteChanged = true;
+
+  let updatedHtml = '';
+
+  for (let i = 0; i < 40; i++) {
+    const updatedResponse = await fetch(`${origin}/`);
+    updatedHtml = await updatedResponse.text();
+
+    if (
+      updatedResponse.ok &&
+      updatedHtml.includes('SSR content changed by Vite dev smoke') &&
+      updatedHtml.includes('<title>Updated home</title>')
+    ) {
+      break;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  if (!updatedHtml.includes('SSR content changed by Vite dev smoke')) {
+    throw new Error('Expected changed server route code to be reloaded.');
+  }
+  if (!updatedHtml.includes('<title>Updated home</title>')) {
+    throw new Error('Expected changed route head() code to be reloaded.');
+  }
+
+  if (routeTag(updatedHtml) !== initialRouteTag) {
+    throw new Error('Expected route edits to preserve the development tag.');
+  }
+} finally {
+  if (homeRouteChanged) {
+    await Deno.writeTextFile(homeRoutePath, originalHomeRoute);
+  }
+
+  try {
+    child.kill('SIGTERM');
+  } catch {
+    // The process may already have exited if startup failed.
+  }
+  await child.status;
+  const errors = await stderr;
+  for (
+    const forbidden of [
+      'emitFile() is not supported in serve mode',
+      'Unable to statically analyze "static islands"',
+    ]
+  ) {
+    if (errors.includes(forbidden)) {
+      throw new Error(`Vite dev logged ${forbidden}.\n${errors}`);
+    }
+  }
+}

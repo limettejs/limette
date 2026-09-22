@@ -1,49 +1,39 @@
-import { html, render } from "@lit-labs/ssr";
+import './ssr-globals.ts';
+import { render } from '@lit-labs/ssr';
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
-import { unsafeHTML } from "lit/directives/unsafe-html.js";
-import { collectResult } from "@lit-labs/ssr/lib/render-result.js";
-import { DOMParser } from "@b-fuze/deno-dom";
+import { html } from 'lit';
 // @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
-import type { TemplateResult } from "lit";
-// @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
-import type { DirectiveResult } from "lit/directives/unsafe-html.js";
-// @ts-ignore lit is a npm package and Deno doesn't resolve the exported members
-import type { UnsafeHTMLDirective } from "lit/directives/unsafe-html.js";
-import type { Context } from "./context.ts";
-import type { BuildRoute } from "../dev/build.ts";
-import { LimetteElementRenderer } from "./rendering/limette-element-renderer.ts";
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
+import { collectResult } from '@lit-labs/ssr/lib/render-result.js';
+import { DOMParser } from 'linkedom';
+import type { Context, DefaultState, RenderContext } from './context.ts';
+import type { RuntimeRouteDefinition } from './route.ts';
+import { LimetteElementRenderer } from './rendering/limette-element-renderer.ts';
+import type {
+  AppAssets,
+  AppRouteInfo,
+  HeadRenderResult,
+} from './components.ts';
 
-import { installWindowOnGlobal } from "@lit-labs/ssr/lib/dom-shim.js";
-import type { LayoutModule } from "./layouts.ts";
+import type { LayoutComponent, LayoutModule } from './layouts.ts';
 
-const originalFetch = globalThis.fetch;
-installWindowOnGlobal();
-// Restore the original fetch function shimmed by lit-labs/ssr which is not compatible with Deno
-globalThis.fetch = originalFetch;
-// Set window object, because the shim doesn't do it
-// @ts-ignore some components use the `window` reference for registration process
-globalThis.window = globalThis;
-
-export type AppWrapperOptions = {
-  css: DirectiveResult<UnsafeHTMLDirective> | string;
-  js: string[] | TemplateResult[] | DirectiveResult<UnsafeHTMLDirective>[];
-  component: DirectiveResult<UnsafeHTMLDirective>;
-};
-
-export interface AppWrapperComponentClass {
-  new (): AppWrapperComponent;
-  ctx: Context;
-  render(app: AppWrapperOptions): TemplateResult | Promise<TemplateResult>;
+export interface AppWrapperComponentClass<
+  State = DefaultState,
+  Platform = unknown,
+> {
+  new (): AppWrapperComponent<State, Platform>;
 }
 
-export interface AppWrapperComponent {
-  ctx: Context;
-  render(app: AppWrapperOptions): TemplateResult | Promise<TemplateResult>;
+export interface AppWrapperComponent<State = DefaultState, Platform = unknown> {
+  assets?: AppAssets;
+  route?: AppRouteInfo;
+  head?(): HeadRenderResult | Promise<HeadRenderResult>;
+  render(): unknown;
 }
 
 function registerRouteComponent(
   ComponentClass: CustomElementConstructor,
-  tagName: string
+  tagName: string,
 ) {
   if (!customElements.get(`lmt-route-${tagName}`)) {
     customElements.define(`lmt-route-${tagName}`, ComponentClass);
@@ -54,57 +44,82 @@ function registerRouteComponent(
   return `<lmt-route-${tagName}></lmt-route-${tagName}>`;
 }
 
-function processHeadAndShadowRoots(htmlString: string) {
+function normalizedAttribute(element: Element, name: string) {
+  return element.getAttribute(name)?.trim() ?? '';
+}
+
+function headEntryIdentity(element: Element) {
+  const explicitKey = normalizedAttribute(element, 'key');
+  if (explicitKey) return `key:${explicitKey}`;
+
+  const tagName = element.tagName.toLowerCase();
+  if (tagName === 'title' || tagName === 'base') return `singleton:${tagName}`;
+
+  if (tagName === 'meta') {
+    if (element.hasAttribute('charset')) return 'meta:charset';
+    for (const attribute of ['name', 'property', 'http-equiv', 'itemprop']) {
+      const value = normalizedAttribute(element, attribute).toLowerCase();
+      if (value) return `meta:${attribute}:${value}`;
+    }
+    return;
+  }
+
+  if (tagName === 'link') {
+    const rel = normalizedAttribute(element, 'rel').toLowerCase()
+      .split(/\s+/).filter(Boolean).sort().join(' ');
+    if (rel === 'canonical') return 'link:canonical';
+    const href = normalizedAttribute(element, 'href');
+    if (!rel || !href) return;
+    const qualifiers = [
+      'as',
+      'type',
+      'media',
+      'hreflang',
+      'sizes',
+      'imagesrcset',
+    ]
+      .map((attribute) => normalizedAttribute(element, attribute).toLowerCase())
+      .join('|');
+    return `link:${rel}:${href}:${qualifiers}`;
+  }
+
+  if (tagName === 'script') {
+    const src = normalizedAttribute(element, 'src');
+    if (src) return `script:src:${src}`;
+  }
+}
+
+async function renderHeadContributions(
+  contributions: readonly (
+    | HeadRenderResult
+    | Promise<HeadRenderResult>
+    | undefined
+  )[],
+) {
+  const resolved = (await Promise.all(contributions)).filter(
+    (contribution) => contribution !== undefined && contribution !== null,
+  );
+  if (resolved.length === 0) return '';
+  return await collectResult(render(html`${resolved}`));
+}
+
+function processShadowRootsAndHead(
+  htmlString: string,
+  applicationHeadHtml: string,
+) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(
     htmlString,
-    "text/html"
+    'text/html',
   ) as unknown as Document;
-
-  const uniqueElements = new Map(); // Track the last unique element by key
-  let lastTitleElement = null; // Track the last <title> element found
-
-  // Recursive function to process <lmt-head> elements in the main DOM and nested declarative shadow DOMs
-  function processLmtHeadElements(root: Document | DocumentFragment) {
-    // Find and process all <lmt-head> elements within the current root
-    const lmtHeadElements = Array.from(root.querySelectorAll("lmt-head"));
-
-    lmtHeadElements.forEach((wrapper) => {
-      Array.from(wrapper.children).forEach((child) => {
-        if (child.tagName === "TITLE") {
-          // Keep only the last <title> element found
-          lastTitleElement = child;
-        } else {
-          const key = child.getAttribute("key");
-          if (key) {
-            uniqueElements.set(key, child); // Only keep the latest element with each key
-          } else {
-            uniqueElements.set(Symbol(), child); // Treat children without a key as unique
-          }
-        }
-      });
-
-      // Remove the <lmt-head> wrapper from the DOM
-      wrapper.remove();
-    });
-
-    // Recursively process nested declarative shadow DOMs within this root
-    (
-      root.querySelectorAll(
-        "template[shadowroot]"
-      ) as unknown as HTMLTemplateElement[]
-    ).forEach((template) => {
-      processLmtHeadElements(template.content); // Process the content of each declarative shadow DOM template
-    });
-  }
 
   function processLmtShadowRoots(node: Document | DocumentFragment) {
     // Select all <template> elements in the current node
-    const templates = node.querySelectorAll("template");
+    const templates = node.querySelectorAll('template');
 
     templates.forEach((template) => {
       // Only process templates with shadowroot="disabled"
-      if (template?.getAttribute("shadowroot") === "disabled") {
+      if (template?.getAttribute('shadowroot') === 'disabled') {
         // Recursively process the content of this template
         processLmtShadowRoots(template.content);
 
@@ -117,51 +132,73 @@ function processHeadAndShadowRoots(htmlString: string) {
     });
   }
 
-  // Process shadow roots
   processLmtShadowRoots(doc);
 
-  // Start by processing the main document
-  processLmtHeadElements(doc);
+  const contributionDoc = parser.parseFromString(
+    `<html><head>${applicationHeadHtml}</head><body></body></html>`,
+    'text/html',
+  ) as unknown as Document;
+  const entries: Array<{ element: Element; framework: boolean }> = [];
+  const entryIndexes = new Map<string, number>();
+  const frameworkIdentities = new Set<string>();
 
-  // Remove redundant elements in <head> that match keys in uniqueElements
-  Array.from(doc.head.querySelectorAll("[key]")).forEach((headElement) => {
-    const key = headElement.getAttribute("key");
-    if (key && uniqueElements.has(key)) {
-      headElement.remove();
+  const merge = (element: Element, framework: boolean) => {
+    const identity = headEntryIdentity(element);
+    element.removeAttribute('key');
+    element.removeAttribute('data-limette-head-asset');
+
+    if (!framework && identity && frameworkIdentities.has(identity)) return;
+    if (framework && identity) frameworkIdentities.add(identity);
+
+    if (identity && entryIndexes.has(identity)) {
+      const index = entryIndexes.get(identity)!;
+      if (!entries[index].framework || framework) {
+        entries[index] = { element, framework };
+      }
+      return;
     }
-  });
 
-  // Remove any existing <title> elements in <head> if we have a new one
-  if (lastTitleElement) {
-    Array.from(doc.head.querySelectorAll("title")).forEach((title) =>
-      title.remove()
-    );
-    // Append the last <title> element found to <head>
-    doc.head.appendChild(lastTitleElement);
+    if (identity) entryIndexes.set(identity, entries.length);
+    entries.push({ element, framework });
+  };
+
+  for (const element of Array.from(doc.head.children)) {
+    merge(element, element.hasAttribute('data-limette-head-asset'));
+  }
+  for (const element of Array.from(contributionDoc.head.children)) {
+    merge(element, false);
   }
 
-  // Append the deduplicated elements to <head>
-  uniqueElements.forEach((element) => {
-    doc.head.appendChild(element);
-  });
+  for (const element of Array.from(doc.head.children)) element.remove();
+  for (const { element } of entries) doc.head.appendChild(element);
+  for (
+    const element of Array.from(
+      doc.querySelectorAll('[data-limette-head-asset]'),
+    )
+  ) {
+    element.removeAttribute('data-limette-head-asset');
+  }
 
   return doc.documentElement.outerHTML;
 }
 
-export async function bootstrapContent(
-  AppWrapper: AppWrapperComponentClass,
-  route: BuildRoute,
-  ctx: Context
+export async function bootstrapContent<
+  State = DefaultState,
+  Platform = unknown,
+>(
+  AppWrapper: AppWrapperComponentClass<State, Platform>,
+  route: RuntimeRouteDefinition<State, Platform>,
+  ctx: Context<State, Platform>,
 ) {
   const routeModule = route.routeModule;
   const routeConfig = routeModule?.config;
 
   const ComponentClass = routeModule?.default;
-  let component = unsafeHTML(
+  let component: unknown = unsafeHTML(
     registerRouteComponent(
       ComponentClass as unknown as CustomElementConstructor,
-      route.tagName
-    )
+      route.tagName,
+    ),
   );
 
   /**
@@ -169,91 +206,137 @@ export async function bootstrapContent(
    * When a route uses skipInheritedLayouts, no layout will be used.
    * When a layout uses skipInheritedLayouts, only that layout is used.
    */
+  let layouts: LayoutComponent<State, Platform>[] = [];
   if (route.layouts.length > 0 && routeConfig?.skipInheritedLayouts !== true) {
     // Check if the inherited layouts should be skipped, in which case we only
     // render the last layout in the chain
-    const skipInheritedLayouts =
-      route.layouts.at(-1)?.config?.skipInheritedLayouts;
+    const skipInheritedLayouts = route.layouts.at(-1)?.config
+      ?.skipInheritedLayouts;
 
-    component = await renderLayout({
+    const renderedLayouts = await renderLayout({
       component: component,
-      layouts: !skipInheritedLayouts
-        ? (route.layouts as LayoutModule[])
-        : ([route.layouts.at(-1)] as LayoutModule[]),
+      layouts: (!skipInheritedLayouts
+        ? route.layouts
+        : [route.layouts.at(-1)]) as LayoutModule<State, Platform>[],
       ctx: ctx,
     });
+    component = renderedLayouts.component;
+    layouts = renderedLayouts.layouts;
   }
 
-  const ctxStr = `<script type="text/json" id="_lmt_ctx">${JSON.stringify(
-    ctx
-  )}</script>`;
-
-  const appWrapperOptions: AppWrapperOptions = {
-    css: route.cssAssetPath
-      ? unsafeHTML(`<link rel="stylesheet" href="${route.cssAssetPath}" />`)
-      : ``,
-    js: [
-      route.jsAssetPath ? unsafeHTML(ctxStr) : ``,
-      route.jsAssetPath
-        ? html`<script type="module" src="${route.jsAssetPath}"></script>`
-        : ``,
-    ],
-    component: component,
+  const documentStylePaths = [
+    ...route.assets.styles,
+    ...(route.assets.tailwindStyle ? [route.assets.tailwindStyle] : []),
+  ];
+  const styles = documentStylePaths.map((path) =>
+    unsafeHTML(
+      `<link data-limette-head-asset rel="stylesheet" href="${path}" />`,
+    )
+  );
+  const scripts = route.assets.scripts.length
+    ? route.assets.scripts.map((path) =>
+      html`
+        <script type="module" src="${path}"></script>
+      `
+    )
+    : [];
+  const assets = { styles, scripts };
+  const routeInfo = {
+    id: route.id,
+    path: route.path,
+    file: route.file,
   };
 
   const appWrapper = new AppWrapper();
-  // Inject context if it uses ContextMixin
-  if (Object.hasOwn(Object.getPrototypeOf(AppWrapper), "__requiresContext")) {
-    appWrapper.ctx = ctx;
-  }
-  return await appWrapper.render(appWrapperOptions);
+  (appWrapper as AppWrapperComponent<State, Platform> & {
+    ctx: RenderContext<State, Platform>;
+  }).ctx = ctx;
+  appWrapper.assets = assets;
+  appWrapper.route = routeInfo;
+  (appWrapper as AppWrapperComponent<State, Platform> & { outlet: unknown })
+    .outlet = component;
+
+  const content = await appWrapper.render();
+  const appHead: HeadRenderResult | Promise<HeadRenderResult> | undefined =
+    appWrapper.head?.();
+
+  const headContributions: Array<
+    HeadRenderResult | Promise<HeadRenderResult> | undefined
+  > = [appHead, ...layouts.map((layout) => layout.head?.())];
+
+  return {
+    content,
+    headContributions,
+  };
 }
 
-async function renderLayout({
+async function renderLayout<State = DefaultState, Platform = unknown>({
   component,
   layouts,
   ctx,
 }: {
-  component: DirectiveResult<UnsafeHTMLDirective>;
-  layouts: LayoutModule[];
-  ctx: Context;
+  component: unknown;
+  layouts: readonly LayoutModule<State, Platform>[];
+  ctx: Context<State, Platform>;
 }) {
-  if (layouts.length === 0) return;
+  if (layouts.length === 0) return { component, layouts: [] };
 
-  const layoutsReversed = [...layouts].reverse();
-
-  let result = component;
-  for await (const LayoutModule of layoutsReversed) {
+  let result: unknown = component;
+  const instances: LayoutComponent<State, Platform>[] = new Array(
+    layouts.length,
+  );
+  for (let index = layouts.length - 1; index >= 0; index--) {
+    const LayoutModule = layouts[index];
     const LayoutComponent = LayoutModule.default;
     const layout = new LayoutComponent();
-    // Inject context if it uses ContextMixin
-    if (
-      Object.hasOwn(Object.getPrototypeOf(LayoutComponent), "__requiresContext")
-    ) {
-      layout.ctx = ctx;
-    }
-    result = await layout.render(result);
+    (layout as LayoutComponent<State, Platform> & {
+      ctx: RenderContext<State, Platform>;
+      outlet: unknown;
+    }).ctx = ctx;
+    (layout as LayoutComponent<State, Platform> & { outlet: unknown }).outlet =
+      result;
+    instances[index] = layout;
+    result = await layout.render();
   }
 
-  return result;
+  return { component: result, layouts: instances };
 }
 
-export async function renderContent(
-  AppWrapper: AppWrapperComponentClass,
-  route: BuildRoute,
-  ctx: Context
+export async function renderContent<State = DefaultState, Platform = unknown>(
+  AppWrapper: AppWrapperComponentClass<State, Platform>,
+  route: RuntimeRouteDefinition<State, Platform>,
+  ctx: Context<State, Platform>,
 ) {
+  const bootstrap = await bootstrapContent(
+    AppWrapper,
+    route,
+    ctx,
+  );
+  let routeHead:
+    | HeadRenderResult
+    | Promise<HeadRenderResult>
+    | undefined;
   const result = render(
-    await bootstrapContent(AppWrapper as AppWrapperComponentClass, route, ctx),
+    bootstrap.content,
     {
-      elementRenderers: [LimetteElementRenderer(route, ctx)],
-    }
+      elementRenderers: [
+        LimetteElementRenderer(
+          route,
+          ctx,
+          (head) => routeHead = head,
+        ),
+      ],
+    },
   );
 
   // Collect the output from the generator
   const rawContent = await collectResult(result);
 
-  const content = processHeadAndShadowRoots(rawContent);
+  const applicationHeadHtml = await renderHeadContributions([
+    ...bootstrap.headContributions,
+    routeHead,
+  ]);
+  const content = processShadowRootsAndHead(rawContent, applicationHeadHtml);
 
   return content;
 }

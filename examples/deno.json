@@ -1,14 +1,26 @@
 {
   "tasks": {
-    "dev": "deno run -A --watch=static/,routes/ dev.ts",
-    "build": "deno run -A dev.ts build",
-    "start": "deno run -A main.ts"
+    "dev": "deno run -A npm:vite@^8.0.0 --config vite.config.ts --host 127.0.0.1",
+    "build": "deno run -A npm:vite@^8.0.0 --config vite.config.ts build",
+    "start": "deno run -A main.deno.js"
   },
   "imports": {
-    "@limette/core": "jsr:@limette/core@0.1.0",
-    "/lit": "npm:/lit@^3.2.1/",
-    "lit": "npm:lit@^3.2.1",
-    "tailwindcss": "npm:tailwindcss@^3.4.17"
+    "limette": "../src/mod.ts",
+    "limette/deno": "../src/deno.ts",
+    "limette/node": "../src/node.ts",
+    "limette/vite": "../src/vite/mod.ts",
+    "limette/internal/server-runtime": "../src/server-runtime.ts",
+    "limette/runtime": "../src/runtime/mod.ts",
+    "limette/runtime/ssr-client/lit-element-hydrate-support.ts": "../src/runtime/ssr-client/lit-element-hydrate-support.ts",
+    "limette/runtime/ssr-client/lit-element-hydrate-support-patch.ts": "../src/runtime/ssr-client/lit-element-hydrate-support-patch.ts",
+    "@lit-labs/ssr": "npm:@lit-labs/ssr@4.1.0",
+    "@lit-labs/ssr/": "npm:/@lit-labs/ssr@4.1.0/",
+    "@lit-labs/ssr-dom-shim": "npm:@lit-labs/ssr-dom-shim@1.6.0",
+    "@lit-labs/ssr-client": "npm:@lit-labs/ssr-client@1.1.8",
+    "/lit": "npm:/lit@3.3.3/",
+    "lit": "npm:lit@3.3.3",
+    "linkedom": "npm:linkedom@0.18.13",
+    "vite": "npm:vite@^8.0.0"
   },
   "compilerOptions": {
     "lib": [
@@ -19,8 +31,10 @@
       "deno.unstable"
     ]
   },
+  "nodeModulesDir": "auto",
   "fmt": {
     "singleQuote": true
   },
-  "lock": false
+  "lock": false,
+  "links": ["../"]
 }

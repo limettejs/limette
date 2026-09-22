@@ -1,0 +1,130 @@
+{
+  "name": "limette",
+  "version": "0.3.0",
+  "description": "A full-stack framework for Lit Web Components.",
+  "keywords": [
+    "lit",
+    "web-components",
+    "ssr",
+    "islands",
+    "vite"
+  ],
+  "type": "module",
+  "types": "./dist/index.d.mts",
+  "license": "MIT",
+  "homepage": "https://limette.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/limettejs/limette.git"
+  },
+  "bugs": {
+    "url": "https://github.com/limettejs/limette/issues"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "check": "deno check src/mod.ts src/vite/mod.ts src/deno.ts src/node.ts",
+    "check:examples": "deno check --config examples/deno.json examples/app.js examples/main.js examples/main.deno.js examples/vite.config.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check:tests": "deno check vitest.config.ts tests/spec/manifest.test.ts tests/spec/router.test.ts tests/spec/params.test.ts tests/spec/redirect.test.ts tests/spec/register-routes.test.ts tests/spec/context.test.ts tests/spec/head.test.ts tests/spec/island-styles.test.ts tests/spec/ssr-globals.test.ts tests/spec/exports.test.ts tests/types/handler-types.ts && deno check --config examples/deno.json tests/smoke/island-discovery.ts tests/smoke/static-files.ts tests/smoke/dependency-isolation.ts tests/smoke/package-consumers.ts tests/smoke/initializer.ts tests/smoke/server-entry-generation.ts tests/smoke/server-entry-assets.ts tests/smoke/server-entry-build.ts tests/smoke/server-entry-worker-build.ts tests/smoke/browser-hydration.ts tests/smoke/cloudflare-assets.ts tests/smoke/production-runtimes.ts tests/smoke/vite-dev-routes.ts tests/smoke/vite-dev-css.ts tests/smoke/vite-dev-island-refresh.ts tests/smoke/vite-dev-server.ts tests/smoke/tailwind.ts tests/smoke/_paths.ts tests/smoke/_vite-command.ts tests/fixtures/server-build/vite.config.ts tests/fixtures/server-build/vite.browser.config.ts tests/fixtures/server-build/vite.worker.config.ts tests/fixtures/server-build/deno-runner.ts tests/fixtures/server-build/app.ts tests/fixtures/server-build/routes/_app.ts tests/fixtures/server-build/routes/_layout.ts tests/fixtures/server-build/routes/_middleware.ts tests/fixtures/server-build/routes/csr-islands.ts tests/fixtures/server-build/routes/index.ts tests/fixtures/server-build/routes/shared-island.ts tests/fixtures/server-build/routes/worker-info.ts 'tests/fixtures/server-build/routes/users/[id].ts' tests/fixtures/server-build/routes/users/new.ts tests/fixtures/server-build/islands/client-only.ts tests/fixtures/tailwind/vite.config.ts tests/fixtures/tailwind/app.ts tests/fixtures/tailwind/routes/_app.ts tests/fixtures/tailwind/routes/_layout.ts tests/fixtures/tailwind/routes/a.ts tests/fixtures/tailwind/routes/b.ts tests/fixtures/tailwind/islands/tailwind-island.ts tests/fixtures/tailwind/shared/classes.ts",
+    "check:smoke": "npm run check:tests",
+    "test:examples": "npm run build && npm run test:examples:built",
+    "test:examples:built": "npm --prefix examples run build",
+    "test:integration": "npm run build && npm run test:integration:built",
+    "test:integration:built": "deno run -A --config examples/deno.json tests/smoke/island-discovery.ts && deno run -A --config examples/deno.json tests/smoke/dependency-isolation.ts && npm run test:smoke:server-build && npm run test:smoke:tailwind && deno run -A --config examples/deno.json tests/smoke/package-consumers.ts && deno run -A --config examples/deno.json tests/smoke/initializer.ts && npm run test:smoke:server",
+    "test:runtime": "npm run build && npm run test:runtime:built",
+    "test:runtime:built": "deno run -A --config examples/deno.json tests/smoke/static-files.ts && npm run test:smoke:worker && deno run -A --config examples/deno.json tests/smoke/cloudflare-assets.ts && deno run -A --config examples/deno.json tests/smoke/production-runtimes.ts",
+    "test:browser": "deno run -A --config examples/deno.json tests/smoke/browser-hydration.ts",
+    "test:release": "npm run check && npm run check:examples && npm run check:tests && npm test && npm run build && npm run test:integration:built && npm run test:runtime:built && npm run test:browser && npm run test:examples:built",
+    "test:smoke": "npm run test:release",
+    "test:smoke:context": "vitest run tests/spec/context.test.ts",
+    "test:smoke:params": "vitest run tests/spec/params.test.ts",
+    "test:smoke:redirect": "vitest run tests/spec/redirect.test.ts",
+    "test:smoke:handler-types": "deno check tests/types/handler-types.ts",
+    "test:smoke:route-registration": "vitest run tests/spec/router.test.ts",
+    "test:smoke:server-build": "deno run -A --config examples/deno.json tests/smoke/server-entry-generation.ts && deno run -A --config examples/deno.json tests/smoke/server-entry-assets.ts && deno run -A --config examples/deno.json tests/smoke/server-entry-build.ts",
+    "test:smoke:hydration": "deno run -A --config examples/deno.json tests/smoke/browser-hydration.ts",
+    "test:smoke:cloudflare": "deno run -A --config examples/deno.json tests/smoke/cloudflare-assets.ts",
+    "test:smoke:worker": "deno run -A --config examples/deno.json tests/smoke/server-entry-worker-build.ts",
+    "test:smoke:production": "npm run build && deno run -A --config examples/deno.json tests/smoke/production-runtimes.ts",
+    "test:smoke:package": "npm run build && deno run -A --config examples/deno.json tests/smoke/package-consumers.ts",
+    "test:smoke:init": "npm run build && deno run -A --config examples/deno.json tests/smoke/initializer.ts",
+    "test:smoke:server": "deno run -A --config examples/deno.json tests/smoke/vite-dev-routes.ts && deno run -A --config examples/deno.json tests/smoke/vite-dev-css.ts && deno run -A --config examples/deno.json tests/smoke/vite-dev-island-refresh.ts && deno run -A --config examples/deno.json tests/smoke/vite-dev-server.ts",
+    "test:smoke:tailwind": "deno run -A --config examples/deno.json tests/smoke/tailwind.ts",
+    "pack:dry": "npm pack --dry-run",
+    "prepack": "npm run build"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./deno": {
+      "types": "./dist/deno.d.mts",
+      "default": "./dist/deno.mjs"
+    },
+    "./node": {
+      "types": "./dist/node.d.mts",
+      "default": "./dist/node.mjs"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.mts",
+      "default": "./dist/vite.mjs"
+    },
+    "./internal/server-runtime": {
+      "types": "./dist/internal/server-runtime.d.mts",
+      "default": "./dist/internal/server-runtime.mjs"
+    },
+    "./runtime": {
+      "types": "./dist/runtime.d.mts",
+      "default": "./dist/runtime.mjs"
+    },
+    "./runtime/ssr-client/lit-element-hydrate-support": {
+      "types": "./dist/runtime/ssr-client/lit-element-hydrate-support.d.mts",
+      "default": "./dist/runtime/ssr-client/lit-element-hydrate-support.mjs"
+    },
+    "./runtime/ssr-client/lit-element-hydrate-support.ts": {
+      "types": "./dist/runtime/ssr-client/lit-element-hydrate-support.d.mts",
+      "default": "./dist/runtime/ssr-client/lit-element-hydrate-support.mjs"
+    },
+    "./runtime/ssr-client/lit-element-hydrate-support-patch": {
+      "types": "./dist/runtime/ssr-client/lit-element-hydrate-support-patch.d.mts",
+      "default": "./dist/runtime/ssr-client/lit-element-hydrate-support-patch.mjs"
+    },
+    "./runtime/ssr-client/lit-element-hydrate-support-patch.ts": {
+      "types": "./dist/runtime/ssr-client/lit-element-hydrate-support-patch.d.mts",
+      "default": "./dist/runtime/ssr-client/lit-element-hydrate-support-patch.mjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "peerDependencies": {
+    "lit": "^3.2.1",
+    "vite": "^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@lit-labs/ssr": "4.1.0",
+    "@lit-labs/ssr-client": "1.1.8",
+    "@lit-labs/ssr-dom-shim": "1.6.0",
+    "linkedom": "0.18.13"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "lit": "3.3.3",
+    "playwright-core": "1.63.0",
+    "tailwindcss": "^4.3.3",
+    "tsdown": "0.23.0",
+    "typescript": "^6.0.3",
+    "vite": "8.3.0",
+    "vitest": "5.0.1",
+    "wrangler": "4.135.0"
+  }
+}

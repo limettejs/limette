@@ -1,7 +1,11 @@
-import { LitElement, html, css } from "lit";
-import "./bar.js";
+import { css, html, LitElement } from 'lit';
+import { IslandBar } from './bar.js';
 
 export class IslandFoo extends LitElement {
+  static islands = {
+    'island-bar': IslandBar,
+  };
+
   static styles = css`
     div {
       padding: 1rem;
@@ -28,7 +32,7 @@ export class IslandFoo extends LitElement {
 
   constructor() {
     super();
-    this.name = "Somebody";
+    this.name = 'Somebody';
     this.count = 0;
   }
 
@@ -57,11 +61,9 @@ export class IslandFoo extends LitElement {
 
         <island-bar
           class="mt-5"
-          @change-name=${() => (this.name = "Ingrid")}
+          @change-name=${() => (this.name = 'Ingrid')}
         ></island-bar>
       </div>
     `;
   }
 }
-
-customElements.define("island-foo", IslandFoo);

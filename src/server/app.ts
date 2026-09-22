@@ -1,286 +1,278 @@
-import { Spinner } from "@std/cli/unstable-spinner";
-import { type Method, UrlPatternRouter } from "./router.ts";
-import { type MiddlewareFn, runMiddlewares } from "./middlewares.ts";
-import { staticBuildMiddleware } from "./static-files.ts";
-import { HttpError } from "./error.ts";
-import { setFsRoutes } from "./fs.ts";
-import { bgGreen, blue } from "@std/fmt/colors";
-import type { FsRoutesPluginOptions } from "../plugins/fs-routes.ts";
-import type { TailwindPluginOptions } from "../plugins/tailwind.ts";
-import type { Builder } from "../dev/builder.ts";
-import { Context } from "./context.ts";
+import { UrlPatternRouter } from './router.ts';
+import { type Middleware, runMiddlewares } from './middlewares.ts';
+import { HttpError } from './error.ts';
+import { ContextImpl, type DefaultState } from './context.ts';
+import type { RouteHandler } from './handlers.ts';
+import type { Method } from './methods.ts';
 
-// TODO: context on client side
+export type TrailingSlash = 'never' | 'always';
 
 export interface AppConfig {
-  basePath?: string;
-  mode?: "development" | "production";
-  builder?: Builder;
+  readonly basePath?: string;
+  readonly trailingSlash?: TrailingSlash;
 }
 
 interface ResolvedAppConfig {
-  basePath: string;
-  mode: "development" | "production";
-  builder?: Builder;
+  readonly basePath: string;
+  readonly trailingSlash: TrailingSlash;
 }
 
-export type ListenOptions = Partial<
-  Deno.ServeTcpOptions & Deno.TlsCertifiedKeyPem
-> & {
-  remoteAddress?: string;
-};
-
-interface BuiltinPluginOptions {
-  fsRoutes: FsRoutesPluginOptions;
-  tailwind: TailwindPluginOptions;
-}
+export type AppHandler<Platform = unknown> = (
+  request: Request,
+  platform?: Platform,
+) => Response | Promise<Response>;
 
 const DEFAULT_NOT_FOUND = () => {
   throw new HttpError(404);
 };
-const DEFAULT_NOT_ALLOWED_METHOD = () => {
-  throw new HttpError(405);
-};
 
-export function mergePaths(a: string, b: string) {
-  if (a === "" || a === "/" || a === "/*") return b;
-  if (b === "/") return a;
-  if (a.endsWith("/")) {
-    return a.slice(0, -1) + b;
-  } else if (!b.startsWith("/")) {
-    return a + "/" + b;
+function methodNotAllowed(allow: string) {
+  return () => {
+    throw new HttpError(405, undefined, { headers: { allow } });
+  };
+}
+
+function applyErrorHeaders(response: Response, error: HttpError): Response {
+  if (!error.options?.headers) return response;
+
+  const headers = new Headers(response.headers);
+  new Headers(error.options.headers).forEach((value, key) => {
+    headers.set(key, value);
+  });
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+function withoutBody(response: Response): Response {
+  return new Response(null, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+}
+
+function normalizeBasePath(basePath = '') {
+  if (!basePath || basePath === '/') return '';
+  const withLeadingSlash = basePath.startsWith('/') ? basePath : `/${basePath}`;
+  return withLeadingSlash.replace(/\/+$/, '');
+}
+
+function joinRoutePath(basePath: string, routePath: string) {
+  const normalizedRoute = routePath.replace(/^\/+/, '');
+  if (!basePath) return normalizedRoute ? `/${normalizedRoute}` : '/';
+  return normalizedRoute ? `${basePath}/${normalizedRoute}` : basePath;
+}
+
+function canonicalizePathname(
+  pathname: string,
+  trailingSlash: TrailingSlash,
+) {
+  if (pathname === '/') return pathname;
+  if (trailingSlash === 'always') {
+    return pathname.endsWith('/') ? pathname : `${pathname}/`;
   }
-  return a + b;
+  return pathname.replace(/\/+$/, '') || '/';
+}
+
+function canonicalRedirectLocation(url: URL, trailingSlash: TrailingSlash) {
+  const pathname = canonicalizePathname(url.pathname, trailingSlash);
+  return pathname === url.pathname ? undefined : `${pathname}${url.search}`;
 }
 
 function normalizeConfig(options?: AppConfig): ResolvedAppConfig {
   return {
-    basePath: options?.basePath || "",
-    mode: options?.mode || "production",
-    builder: options?.builder,
+    basePath: normalizeBasePath(options?.basePath),
+    trailingSlash: options?.trailingSlash ?? 'never',
   };
 }
 
-export class App {
-  config: ResolvedAppConfig;
-  builder?: Builder;
-  #builtinPluginOptions: BuiltinPluginOptions = {
-    fsRoutes: {
-      enabled: false,
-      loadFile: undefined,
-    },
-    tailwind: {
-      enabled: false,
-    },
-  };
+export class App<State = DefaultState, Platform = unknown> {
+  readonly config: ResolvedAppConfig;
+  #fsRoutesEnabled = false;
 
-  middlewares: MiddlewareFn[] = [];
-  #router = new UrlPatternRouter();
-
-  get builtinPluginOptions(): BuiltinPluginOptions {
-    return this.#builtinPluginOptions;
-  }
+  #router = new UrlPatternRouter<State, Platform>();
 
   constructor(config?: AppConfig) {
     this.config = normalizeConfig(config);
   }
 
-  _setBuiltinPluginOptions<K extends keyof BuiltinPluginOptions>(
-    pluginName: K,
-    options: BuiltinPluginOptions[K]
-  ): void {
-    this.#builtinPluginOptions[pluginName] = options;
-  }
-
-  use(middleware: MiddlewareFn): this {
+  use(middleware: Middleware<State, Platform>): this {
     this.#router.addMiddleware(middleware);
     return this;
   }
 
-  error(pathname: string | URLPattern, middleware: MiddlewareFn): this {
+  fsRoutes(): this {
+    this.#fsRoutesEnabled = true;
+    return this;
+  }
+
+  /** @internal Used by Limette's Vite development and generated entry. */
+  _hasFsRoutes(): boolean {
+    return this.#fsRoutesEnabled;
+  }
+
+  error(
+    pathname: string | URLPattern,
+    middleware: Middleware<State, Platform>,
+  ): this {
     this.#router.addError(pathname, middleware);
     return this;
   }
 
-  get(path: string, ...middlewares: MiddlewareFn[]): this {
-    return this.#addRoutes("GET", path, middlewares);
+  get(
+    path: string | URLPattern,
+    handler: RouteHandler<State, Platform>,
+    ...handlers: RouteHandler<State, Platform>[]
+  ): this {
+    return this.#addRoute('GET', path, [handler, ...handlers]);
   }
-  post(path: string, ...middlewares: MiddlewareFn[]): this {
-    return this.#addRoutes("POST", path, middlewares);
+  post(
+    path: string | URLPattern,
+    handler: RouteHandler<State, Platform>,
+    ...handlers: RouteHandler<State, Platform>[]
+  ): this {
+    return this.#addRoute('POST', path, [handler, ...handlers]);
   }
-  patch(path: string, ...middlewares: MiddlewareFn[]): this {
-    return this.#addRoutes("PATCH", path, middlewares);
+  patch(
+    path: string | URLPattern,
+    handler: RouteHandler<State, Platform>,
+    ...handlers: RouteHandler<State, Platform>[]
+  ): this {
+    return this.#addRoute('PATCH', path, [handler, ...handlers]);
   }
-  put(path: string, ...middlewares: MiddlewareFn[]): this {
-    return this.#addRoutes("PUT", path, middlewares);
+  put(
+    path: string | URLPattern,
+    handler: RouteHandler<State, Platform>,
+    ...handlers: RouteHandler<State, Platform>[]
+  ): this {
+    return this.#addRoute('PUT', path, [handler, ...handlers]);
   }
-  delete(path: string, ...middlewares: MiddlewareFn[]): this {
-    return this.#addRoutes("DELETE", path, middlewares);
+  delete(
+    path: string | URLPattern,
+    handler: RouteHandler<State, Platform>,
+    ...handlers: RouteHandler<State, Platform>[]
+  ): this {
+    return this.#addRoute('DELETE', path, [handler, ...handlers]);
   }
-  head(path: string, ...middlewares: MiddlewareFn[]): this {
-    return this.#addRoutes("HEAD", path, middlewares);
+  head(
+    path: string | URLPattern,
+    handler: RouteHandler<State, Platform>,
+    ...handlers: RouteHandler<State, Platform>[]
+  ): this {
+    return this.#addRoute('HEAD', path, [handler, ...handlers]);
   }
-  all(path: string, ...middlewares: MiddlewareFn[]): this {
-    return this.#addRoutes("ALL", path, middlewares);
+  options(
+    path: string | URLPattern,
+    handler: RouteHandler<State, Platform>,
+    ...handlers: RouteHandler<State, Platform>[]
+  ): this {
+    return this.#addRoute('OPTIONS', path, [handler, ...handlers]);
+  }
+  all(
+    path: string | URLPattern,
+    handler: RouteHandler<State, Platform>,
+    ...handlers: RouteHandler<State, Platform>[]
+  ): this {
+    return this.#addRoute('ALL', path, [handler, ...handlers]);
   }
 
-  #addRoutes(
-    method: Method | "ALL",
+  #addRoute(
+    method: Method | 'ALL',
     pathname: string | URLPattern,
-    middlewares: MiddlewareFn[]
+    handlers: RouteHandler<State, Platform>[],
   ): this {
-    const merged =
-      typeof pathname === "string"
-        ? mergePaths(this.config.basePath, pathname)
-        : pathname;
-    this.#router.add(method, merged, middlewares);
+    const merged = typeof pathname === 'string'
+      ? joinRoutePath(this.config.basePath, pathname)
+      : pathname;
+    const canonical = typeof merged === 'string'
+      ? canonicalizePathname(merged, this.config.trailingSlash)
+      : merged;
+    this.#router.add(method, canonical, handlers);
     return this;
   }
 
-  handler(): Deno.ServeHandler {
-    return async (request: Request, conn: Deno.ServeHandlerInfo) => {
+  handler(): AppHandler<Platform> {
+    return async (request: Request, platform = undefined as Platform) => {
       const url = new URL(request.url);
-      // Prevent open redirect attacks
-      url.pathname = url.pathname.replace(/\/+/g, "/");
-      const method = request.method.toUpperCase() as Method;
+      const redirectLocation = canonicalRedirectLocation(
+        url,
+        this.config.trailingSlash,
+      );
+      if (redirectLocation) {
+        return new Response(null, {
+          status: 308,
+          headers: { location: redirectLocation },
+        });
+      }
+      const method = request.method.toUpperCase();
 
       const matched = this.#router.match(method, url);
+      const decodingError = matched.error;
+      const allow = matched.allowedMethods.join(', ');
 
-      const next =
-        matched.patternMatch && !matched.methodMatch
-          ? DEFAULT_NOT_ALLOWED_METHOD
-          : DEFAULT_NOT_FOUND;
+      const next = decodingError
+        ? () => {
+          throw decodingError;
+        }
+        : method === 'OPTIONS' && matched.allowedMethods.length > 0
+        ? async () => new Response(null, { status: 204, headers: { allow } })
+        : matched.allowedMethods.length > 0
+        ? methodNotAllowed(allow)
+        : DEFAULT_NOT_FOUND;
 
       const { params, handlers } = matched;
 
-      const ctx = new Context({
+      const ctx = new ContextImpl<State, Platform>({
         request,
         url,
-        info: conn,
+        platform,
         params,
         config: this.config,
         next,
       });
 
+      let response: Response;
       try {
-        if (handlers.length === 1 && handlers[0].length === 1) {
-          return handlers[0][0](ctx);
-        }
-        return await runMiddlewares(handlers, ctx);
+        response = await runMiddlewares(handlers, ctx);
       } catch (err) {
         // Check if we have an error page registered for the url
         const errorRoute = this.#router.matchError(url);
 
         if (errorRoute.handler) {
-          if (err instanceof HttpError) {
-            ctx.error = err;
-          }
+          const error = err instanceof HttpError
+            ? err
+            : new HttpError(500, undefined, { cause: err });
+          ctx._setError(error);
           try {
-            console.error(err);
-            return await runMiddlewares([[errorRoute.handler]], ctx);
+            if (error.status >= 500) console.error(err);
+            response = applyErrorHeaders(
+              await runMiddlewares([[errorRoute.handler]], ctx),
+              error,
+            );
           } catch (e) {
             console.error(e);
-            return new Response("Internal server error", { status: 500 });
+            response = new Response('Internal server error', { status: 500 });
           }
-        }
-
-        if (err instanceof HttpError) {
+        } else if (err instanceof HttpError) {
           if (err.status >= 500) {
             // deno-lint-ignore no-console
             console.error(err);
           }
-          return new Response(err.message, { status: err.status });
+          response = new Response(err.message, {
+            status: err.status,
+            headers: err.options?.headers,
+          });
+        } else {
+          // deno-lint-ignore no-console
+          console.error(err);
+          response = new Response('Internal server error', { status: 500 });
         }
-
-        // deno-lint-ignore no-console
-        console.error(err);
-        return new Response("Internal server error", { status: 500 });
       }
+
+      return method === 'HEAD' ? withoutBody(response) : response;
     };
-  }
-
-  async listen(options: ListenOptions = {}): Promise<void> {
-    const t0 = performance.now();
-    const spinner = new Spinner({ message: "Starting...", color: "blue" });
-    spinner.start();
-
-    if (!options.onListen) {
-      options.onListen = (params) => {
-        const pathname = this.config.basePath + "/";
-        const protocol =
-          "key" in options && options.key && options.cert ? "https:" : "http:";
-
-        let hostname = params.hostname;
-
-        if (
-          Deno.build.os === "windows" &&
-          (hostname === "0.0.0.0" || hostname === "::")
-        ) {
-          hostname = "localhost";
-        }
-        // Work around https://github.com/denoland/deno/issues/23650
-        hostname = hostname.startsWith("::") ? `[${hostname}]` : hostname;
-        const address = `${protocol}//${hostname}:${params.port}${pathname}`;
-      };
-    }
-
-    // For production mode, use the static build middleware
-    if (this.config.mode === "production") {
-      this.get("/_limette/*", staticBuildMiddleware);
-    }
-
-    // Set routes
-    if (this.#builtinPluginOptions.fsRoutes?.enabled === true) {
-      await setFsRoutes(this);
-    }
-
-    const handler = this.handler();
-    if (options.port) {
-      Deno.serve(options, handler);
-      const t1 = performance.now();
-      const duration = ((t1 - t0) / 1000).toFixed(2);
-      spinner.stop();
-      console.log(
-        `🟢 ${bgGreen(" Limette ")} app started (${duration}s) \n\t ${blue(
-          `http://localhost:${options.port}`
-        )}\n`
-      );
-    } else {
-      // No port specified, check for a free port. Instead of picking just
-      // any port we'll check if the next one is free for UX reasons.
-      // That way the user only needs to increment a number when running
-      // multiple apps vs having to remember completely different ports.
-      let firstError;
-      for (let port = 8000; port < 8020; port++) {
-        try {
-          Deno.serve({ ...options, port }, handler);
-          firstError = undefined;
-          const t1 = performance.now();
-          const duration = ((t1 - t0) / 1000).toFixed(2);
-          spinner.stop();
-          console.log(
-            `🟢 ${bgGreen(" Limette ")} app started (${duration}s) \n\t ${blue(
-              `http://localhost:${port}`
-            )}\n`
-          );
-          break;
-        } catch (err) {
-          if (err instanceof Deno.errors.AddrInUse) {
-            // Throw first EADDRINUSE error
-            // if no port is free
-            if (!firstError) {
-              firstError = err;
-            }
-            continue;
-          }
-
-          throw err;
-        }
-      }
-
-      if (firstError) {
-        throw firstError;
-      }
-    }
   }
 }

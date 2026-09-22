@@ -1,42 +1,49 @@
 /**
- * Patch lit-element-hydrate-support.js to remove defer-hydration attribute
- * when skip-attribute is present.
+ * Limette integration for Lit's official hydration support.
+ *
+ * Limette does not hydrate the surrounding route light DOM, so top-level
+ * islands cannot wait for a parent Lit hydration pass to remove
+ * `defer-hydration`. CSR-only islands also carry a server-created style shadow
+ * root which must be client-rendered instead of hydrated.
  */
-
-import type { RenderOptions } from "lit";
 
 interface PatchableLitElement extends HTMLElement {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-misused-new
   new (...args: any[]): PatchableLitElement;
-  enableUpdating(requestedUpdate?: boolean): void;
   createRenderRoot(): Element | ShadowRoot;
-  renderRoot: HTMLElement | DocumentFragment;
-  render(): unknown;
-  renderOptions: RenderOptions;
-  _$needsHydration: boolean;
 }
 
-// @ts-expect-error: This is a builtin property from Lit
-const litElementHydrateSupport = globalThis.litElementHydrateSupport;
-if (litElementHydrateSupport) {
-  // @ts-expect-error: This is a builtin property from Lit
-  globalThis.litElementHydrateSupport = ({
-    LitElement,
-  }: {
-    LitElement: PatchableLitElement;
-  }) => {
-    // Apply the original support for hydration
-    litElementHydrateSupport({ LitElement });
+type LitElementHydrateSupport = (options: {
+  LitElement: PatchableLitElement;
+}) => void;
 
-    // Override `connectedCallback` to capture whether we need hydration, and
-    // defer `super.connectedCallback()` if the 'defer-hydration' attribute is set
+const globalWithHydration = globalThis as typeof globalThis & {
+  litElementHydrateSupport?: LitElementHydrateSupport;
+};
+const officialHydrateSupport = globalWithHydration.litElementHydrateSupport;
+
+if (officialHydrateSupport) {
+  globalWithHydration.litElementHydrateSupport = ({ LitElement }) => {
+    const clientRenderRoot = LitElement.prototype.createRenderRoot;
+    officialHydrateSupport({ LitElement });
+
+    const hydrateRenderRoot = LitElement.prototype.createRenderRoot;
+    LitElement.prototype.createRenderRoot = function () {
+      if (this.hasAttribute('skip-hydration')) {
+        this.removeAttribute('skip-hydration');
+        return clientRenderRoot.call(this);
+      }
+      return hydrateRenderRoot.call(this);
+    };
+
     const connectedCallback = LitElement.prototype.connectedCallback;
-    LitElement.prototype.connectedCallback = function (
-      this: PatchableLitElement
-    ) {
-      // Hydrate component when is attached to DOM
-      this.removeAttribute("defer-hydration");
-
+    LitElement.prototype.connectedCallback = function () {
+      if (this.hasAttribute('defer-hydration')) {
+        // Lit's official attribute callback enables the element when this is
+        // removed. Returning avoids invoking connectedCallback a second time.
+        this.removeAttribute('defer-hydration');
+        return;
+      }
       connectedCallback.call(this);
     };
   };
