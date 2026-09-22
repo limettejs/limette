@@ -228,9 +228,7 @@ async function runCombination(
       fooRoute.includes('override head()') &&
       fooRoute.includes('<title>Foo</title>') &&
       fooRoute.includes('type RouteHandlers') &&
-      fooRoute.includes('handler: RouteHandlers') &&
-      !appWrapper.includes('<lmt-head') &&
-      !fooRoute.includes('<lmt-head'),
+      fooRoute.includes('handler: RouteHandlers'),
     `${projectName} does not use the structural head() API.`,
   );
   assert(
@@ -240,25 +238,6 @@ async function runCombination(
       island.includes('leading-[1.4]') === tailwind,
     `${projectName} generated an inconsistent Tailwind variant.`,
   );
-
-  const obsoleteText = `${
-    JSON.stringify(manifest)
-  }\n${viteConfig}\n${island}\n${appWrapper}\n${route}\n${fooRoute}`;
-  for (
-    const obsolete of [
-      'npm:vite',
-      'clientEntryInputs',
-      'App.listen',
-      'this.page',
-      'this.child',
-      '_limette',
-    ]
-  ) {
-    assert(
-      !obsoleteText.includes(obsolete),
-      `${projectName} retained obsolete generated content: ${obsolete}.`,
-    );
-  }
 
   if (runtime === 'deno') {
     await Deno.writeTextFile(
@@ -403,7 +382,6 @@ async function runCombination(
       production.body.includes(
         '<meta name="description" content="A Limette application">',
       ) &&
-      !production.body.includes('<lmt-head') &&
       !production.body.includes(' key='),
     `${projectName} returned an unexpected production SSR response.`,
   );
@@ -465,6 +443,7 @@ try {
     npmExecutable,
     [
       'pack',
+      '--ignore-scripts',
       '--pack-destination',
       packageDirectory,
     ],

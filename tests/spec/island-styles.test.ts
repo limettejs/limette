@@ -3,9 +3,10 @@ import { AppComponent, PageComponent } from '../../src/server/components.ts';
 import { ContextImpl } from '../../src/server/context.ts';
 import type { RuntimeRouteDefinition } from '../../src/server/route.ts';
 import { renderContent } from '../../src/server/ssr.ts';
+import { describe, expect, it } from 'vitest';
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  expect(condition, message).toBeTruthy();
 }
 
 class SharedStyleIsland extends LitElement {
@@ -132,35 +133,40 @@ function assertRouteStyle(html: string, own: 'a' | 'b', other: 'a' | 'b') {
   );
 }
 
-const elementStyles = SharedStyleIsland.elementStyles;
-const styleText = (style: unknown) => (style as { cssText: string }).cssText;
-const applicationStyles = elementStyles.map(styleText);
-const classProperties = Object.getOwnPropertyNames(SharedStyleIsland);
+describe('SSR island styles', () => {
+  it('keeps route-specific styles render-local under sequential and concurrent rendering', async () => {
+    const elementStyles = SharedStyleIsland.elementStyles;
+    const styleText = (style: unknown) =>
+      (style as { cssText: string }).cssText;
+    const applicationStyles = elementStyles.map(styleText);
+    const classProperties = Object.getOwnPropertyNames(SharedStyleIsland);
 
-assertRouteStyle(await renderRoute(routeA, 'a'), 'a', 'b');
-assertRouteStyle(await renderRoute(routeB, 'b'), 'b', 'a');
-assertRouteStyle(await renderRoute(routeA, 'a'), 'a', 'b');
+    assertRouteStyle(await renderRoute(routeA, 'a'), 'a', 'b');
+    assertRouteStyle(await renderRoute(routeB, 'b'), 'b', 'a');
+    assertRouteStyle(await renderRoute(routeA, 'a'), 'a', 'b');
 
-const concurrent = Array.from({ length: 100 }, (_, index) => {
-  const id = index % 2 === 0 ? 'a' : 'b';
-  const definition = id === 'a' ? routeA : routeB;
-  return renderRoute(definition, id).then((result) =>
-    assertRouteStyle(result, id, id === 'a' ? 'b' : 'a')
-  );
+    const concurrent = Array.from({ length: 100 }, (_, index) => {
+      const id = index % 2 === 0 ? 'a' : 'b';
+      const definition = id === 'a' ? routeA : routeB;
+      return renderRoute(definition, id).then((result) =>
+        assertRouteStyle(result, id, id === 'a' ? 'b' : 'a')
+      );
+    });
+    await Promise.all(concurrent);
+
+    assert(
+      SharedStyleIsland.elementStyles === elementStyles,
+      'Rendering replaced the island class elementStyles array.',
+    );
+    assert(
+      JSON.stringify(SharedStyleIsland.elementStyles.map(styleText)) ===
+        JSON.stringify(applicationStyles),
+      'Rendering changed the island class application-defined styles.',
+    );
+    assert(
+      JSON.stringify(Object.getOwnPropertyNames(SharedStyleIsland)) ===
+        JSON.stringify(classProperties),
+      'Rendering added state to the island class.',
+    );
+  });
 });
-await Promise.all(concurrent);
-
-assert(
-  SharedStyleIsland.elementStyles === elementStyles,
-  'Rendering replaced the island class elementStyles array.',
-);
-assert(
-  JSON.stringify(SharedStyleIsland.elementStyles.map(styleText)) ===
-    JSON.stringify(applicationStyles),
-  'Rendering changed the island class application-defined styles.',
-);
-assert(
-  JSON.stringify(Object.getOwnPropertyNames(SharedStyleIsland)) ===
-    JSON.stringify(classProperties),
-  'Rendering added state to the island class.',
-);

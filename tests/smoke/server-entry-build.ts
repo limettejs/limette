@@ -630,7 +630,7 @@ try {
   );
   assert(
     /<shorthand-client-only[^>]*\bssr(?:="")?/.test(csrHtml),
-    'The legacy-named ssr attribute was not preserved as an ordinary attribute.',
+    'The island host did not preserve its ordinary ssr attribute.',
   );
   assert(
     !csrHtml.includes('Client-only implementation') &&

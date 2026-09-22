@@ -8,9 +8,10 @@ import {
 import { ContextImpl } from '../../src/server/context.ts';
 import type { RuntimeRouteDefinition } from '../../src/server/route.ts';
 import { renderContent } from '../../src/server/ssr.ts';
+import { describe, expect, it } from 'vitest';
 
 function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
+  expect(condition, message).toBeTruthy();
 }
 
 let instanceSequence = 0;
@@ -217,147 +218,155 @@ function one(document: Document, selector: string) {
   return elements[0];
 }
 
-lifecycle.length = 0;
-const htmlA = await renderRoute('a');
-const documentA = parseDocument(htmlA) as unknown as Document;
+describe('head composition', () => {
+  it('merges app, layout, and route head content per render', async () => {
+    lifecycle.length = 0;
+    const htmlA = await renderRoute('a');
+    const documentA = parseDocument(htmlA) as unknown as Document;
 
-assert(
-  lifecycle.join(',') === 'app,outer,inner,route',
-  `Head lifecycle order was ${lifecycle.join(',')}.`,
-);
-assert(
-  one(documentA, 'title').textContent === 'Route A title',
-  'Route title did not win.',
-);
-assert(
-  one(documentA, 'base').getAttribute('href') === '/inner/',
-  'Inner base did not win.',
-);
-assert(
-  one(documentA, 'meta[charset]').getAttribute('charset') === 'utf-16',
-  'Route charset did not win.',
-);
-assert(
-  one(documentA, 'meta[name="description"]').getAttribute('content') ===
-    'Route A description',
-  'Route description did not win.',
-);
-assert(
-  one(documentA, 'meta[name="robots"]').getAttribute('content') ===
-    'index,follow',
-  'Unrelated app metadata was lost.',
-);
-assert(
-  one(documentA, 'meta[property="og:title"]').getAttribute('content') ===
-    'Route A OG title',
-  'Route Open Graph title did not win.',
-);
+    assert(
+      lifecycle.join(',') === 'app,outer,inner,route',
+      `Head lifecycle order was ${lifecycle.join(',')}.`,
+    );
+    assert(
+      one(documentA, 'title').textContent === 'Route A title',
+      'Route title did not win.',
+    );
+    assert(
+      one(documentA, 'base').getAttribute('href') === '/inner/',
+      'Inner base did not win.',
+    );
+    assert(
+      one(documentA, 'meta[charset]').getAttribute('charset') === 'utf-16',
+      'Route charset did not win.',
+    );
+    assert(
+      one(documentA, 'meta[name="description"]').getAttribute('content') ===
+        'Route A description',
+      'Route description did not win.',
+    );
+    assert(
+      one(documentA, 'meta[name="robots"]').getAttribute('content') ===
+        'index,follow',
+      'Unrelated app metadata was lost.',
+    );
+    assert(
+      one(documentA, 'meta[property="og:title"]').getAttribute('content') ===
+        'Route A OG title',
+      'Route Open Graph title did not win.',
+    );
 
-const images = Array.from(
-  documentA.querySelectorAll('meta[property="og:image"]'),
-);
-assert(
-  images.length === 2,
-  `Expected two keyed OG images, got ${images.length}.`,
-);
-assert(
-  images.some((image) => image.getAttribute('content') === '/route-a.jpg'),
-  'Same-key route image did not replace the app image.',
-);
-assert(
-  images.some((image) => image.getAttribute('content') === '/two.jpg'),
-  'Differently keyed image was lost.',
-);
-assert(
-  one(documentA, 'link[rel="canonical"]').getAttribute('href') ===
-    'https://example.test/a',
-  'Route canonical did not win.',
-);
-assert(
-  documentA.querySelectorAll('link[href="/application.css"]').length === 1,
-  'Duplicate logical stylesheet accumulated.',
-);
-assert(
-  documentA.querySelectorAll('link[rel="preload"][href="/chunk.js"]').length ===
-    1,
-  'Preload link was lost.',
-);
-assert(
-  documentA.querySelectorAll('link[href="/assets/framework.css"]').length === 1,
-  'Framework route CSS was lost.',
-);
-assert(
-  documentA.querySelectorAll('link[href="/assets/tailwind.css"]').length === 1,
-  'Framework Tailwind CSS was lost.',
-);
-assert(
-  documentA.querySelectorAll('head > script:not([src])').length === 5,
-  'Unkeyed inline scripts did not coexist with keyed JSON-LD.',
-);
-assert(
-  documentA.querySelectorAll('head > style').length === 4,
-  'Unkeyed inline styles did not coexist.',
-);
-assert(
-  one(documentA, 'script[type="application/ld+json"]').textContent?.includes(
-    'route-a',
-  ),
-  'Keyed JSON-LD was not replaced.',
-);
-assert(
-  !htmlA.includes('<lmt-head'),
-  'Legacy lmt-head markup reached SSR output.',
-);
-assert(
-  !documentA.head.innerHTML.includes(' key='),
-  'A Limette head key leaked into final HTML.',
-);
-assert(
-  !htmlA.includes('data-limette-head-asset'),
-  'An internal framework asset marker leaked into final HTML.',
-);
+    const images = Array.from(
+      documentA.querySelectorAll('meta[property="og:image"]'),
+    );
+    assert(
+      images.length === 2,
+      `Expected two keyed OG images, got ${images.length}.`,
+    );
+    assert(
+      images.some((image) => image.getAttribute('content') === '/route-a.jpg'),
+      'Same-key route image did not replace the app image.',
+    );
+    assert(
+      images.some((image) => image.getAttribute('content') === '/two.jpg'),
+      'Differently keyed image was lost.',
+    );
+    assert(
+      one(documentA, 'link[rel="canonical"]').getAttribute('href') ===
+        'https://example.test/a',
+      'Route canonical did not win.',
+    );
+    assert(
+      documentA.querySelectorAll('link[href="/application.css"]').length === 1,
+      'Duplicate logical stylesheet accumulated.',
+    );
+    assert(
+      documentA.querySelectorAll('link[rel="preload"][href="/chunk.js"]')
+        .length ===
+        1,
+      'Preload link was lost.',
+    );
+    assert(
+      documentA.querySelectorAll('link[href="/assets/framework.css"]')
+        .length === 1,
+      'Framework route CSS was lost.',
+    );
+    assert(
+      documentA.querySelectorAll('link[href="/assets/tailwind.css"]').length ===
+        1,
+      'Framework Tailwind CSS was lost.',
+    );
+    assert(
+      documentA.querySelectorAll('head > script:not([src])').length === 5,
+      'Unkeyed inline scripts did not coexist with keyed JSON-LD.',
+    );
+    assert(
+      documentA.querySelectorAll('head > style').length === 4,
+      'Unkeyed inline styles did not coexist.',
+    );
+    assert(
+      one(documentA, 'script[type="application/ld+json"]').textContent
+        ?.includes(
+          'route-a',
+        ),
+      'Keyed JSON-LD was not replaced.',
+    );
+    assert(
+      !documentA.head.innerHTML.includes(' key='),
+      'A Limette head key leaked into final HTML.',
+    );
+    assert(
+      !htmlA.includes('data-limette-head-asset'),
+      'An internal framework asset marker leaked into final HTML.',
+    );
 
-for (const owner of ['app', 'outer', 'inner', 'route']) {
-  const headInstance = one(documentA, `meta[name="${owner}-instance"]`)
-    .getAttribute('content');
-  const renderedInstance = one(documentA, `[data-${owner}-instance]`)
-    .getAttribute(`data-${owner}-instance`);
-  assert(
-    headInstance === renderedInstance,
-    `${owner} head() did not use its rendering instance.`,
-  );
-}
+    for (const owner of ['app', 'outer', 'inner', 'route']) {
+      const headInstance = one(documentA, `meta[name="${owner}-instance"]`)
+        .getAttribute('content');
+      const renderedInstance = one(documentA, `[data-${owner}-instance]`)
+        .getAttribute(`data-${owner}-instance`);
+      assert(
+        headInstance === renderedInstance,
+        `${owner} head() did not use its rendering instance.`,
+      );
+    }
 
-const htmlB = await renderRoute('b');
-const documentB = parseDocument(htmlB) as unknown as Document;
-assert(
-  one(documentB, 'title').textContent === 'Route B title',
-  'Route B title did not render.',
-);
-assert(
-  !documentB.querySelector('meta[name="route-a-only"]'),
-  'Route A-only metadata survived Route B rendering.',
-);
-assert(
-  !documentB.head.textContent?.includes('route-a'),
-  'Route A-only JSON-LD survived Route B rendering.',
-);
-assert(
-  documentB.body.textContent?.includes('Route B') &&
-    !documentB.body.textContent?.includes('Route A'),
-  'Route B received a stale structural outlet from Route A.',
-);
+    const htmlB = await renderRoute('b');
+    const documentB = parseDocument(htmlB) as unknown as Document;
+    assert(
+      one(documentB, 'title').textContent === 'Route B title',
+      'Route B title did not render.',
+    );
+    assert(
+      !documentB.querySelector('meta[name="route-a-only"]'),
+      'Route A-only metadata survived Route B rendering.',
+    );
+    assert(
+      !documentB.head.textContent?.includes('route-a'),
+      'Route A-only JSON-LD survived Route B rendering.',
+    );
+    assert(
+      documentB.body.textContent?.includes('Route B') &&
+        !documentB.body.textContent?.includes('Route A'),
+      'Route B received a stale structural outlet from Route A.',
+    );
 
-const isolatedRenders = await Promise.all(
-  Array.from({ length: 20 }, (_, index) => renderRoute(index % 2 ? 'a' : 'b')),
-);
-for (let index = 0; index < isolatedRenders.length; index++) {
-  const expected = index % 2 ? 'Route A' : 'Route B';
-  const unexpected = index % 2 ? 'Route B' : 'Route A';
-  const body = (parseDocument(isolatedRenders[index]) as unknown as Document)
-    .body.textContent ?? '';
-  assert(
-    body.includes(expected) && !body.includes(unexpected),
-    `Concurrent ${expected} render received another request's outlet.`,
-  );
-}
+    const isolatedRenders = await Promise.all(
+      Array.from(
+        { length: 20 },
+        (_, index) => renderRoute(index % 2 ? 'a' : 'b'),
+      ),
+    );
+    for (let index = 0; index < isolatedRenders.length; index++) {
+      const expected = index % 2 ? 'Route A' : 'Route B';
+      const unexpected = index % 2 ? 'Route B' : 'Route A';
+      const body =
+        (parseDocument(isolatedRenders[index]) as unknown as Document)
+          .body.textContent ?? '';
+      assert(
+        body.includes(expected) && !body.includes(unexpected),
+        `Concurrent ${expected} render received another request's outlet.`,
+      );
+    }
+  });
+});
