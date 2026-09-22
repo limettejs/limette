@@ -1,4 +1,5 @@
-import { exampleRoot } from './_paths.ts';
+import { join } from 'node:path';
+import { exampleRoot, repositoryRoot } from './_paths.ts';
 
 type StreamOption = 'inherit' | 'null' | 'piped';
 
@@ -8,14 +9,15 @@ type ViteCommandOptions = {
   cwd?: string;
 };
 
-const npmCommand = Deno.build.os === 'windows' ? 'npm.cmd' : 'npm';
+const nodeCommand = Deno.build.os === 'windows' ? 'node.exe' : 'node';
+const viteCli = join(repositoryRoot, 'node_modules/vite/bin/vite.js');
 
 export function viteCommand(
   args: string[],
   options: ViteCommandOptions = {},
 ) {
-  return new Deno.Command(npmCommand, {
-    args: ['--prefix', exampleRoot, 'exec', 'vite', '--', ...args],
+  return new Deno.Command(nodeCommand, {
+    args: [viteCli, ...args],
     cwd: options.cwd ?? exampleRoot,
     stdout: options.stdout ?? 'null',
     stderr: options.stderr ?? 'piped',

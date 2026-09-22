@@ -15,8 +15,6 @@ function workerServerEnvironment(
 
   config.keepProcessEnv = false;
   config.resolve ??= {};
-  config.resolve.mainFields = ['browser', 'module', 'jsnext:main', 'jsnext'];
-  config.resolve.conditions = ['worker', 'browser', 'module', 'production'];
   config.resolve.builtins = [];
   config.resolve.external = [];
   config.resolve.noExternal = true;
@@ -62,6 +60,9 @@ export default {
   ssr: {
     target: 'webworker',
     noExternal: true,
+    resolve: {
+      conditions: ['module', 'development|production'],
+    },
   },
   builder: {
     buildApp: buildWorkerApp,

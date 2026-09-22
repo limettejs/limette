@@ -50,7 +50,7 @@
     "test:smoke:package": "npm run build && deno run -A --config examples/deno.json tests/smoke/package-consumers.ts",
     "test:smoke:init": "npm run build && deno run -A --config examples/deno.json tests/smoke/initializer.ts",
     "test:smoke:server": "deno run -A --config examples/deno.json tests/smoke/vite-dev-routes.ts && deno run -A --config examples/deno.json tests/smoke/vite-dev-css.ts && deno run -A --config examples/deno.json tests/smoke/vite-dev-island-refresh.ts && deno run -A --config examples/deno.json tests/smoke/vite-dev-server.ts",
-    "test:smoke:tailwind": "deno run -A --config examples/deno.json tests/smoke/tailwind.ts",
+    "test:smoke:tailwind": "node tests/smoke/tailwind.ts",
     "pack:dry": "npm pack --dry-run",
     "prepack": "npm run build"
   },
@@ -118,6 +118,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^24.13.6",
     "lit": "3.3.3",
     "playwright-core": "1.63.0",
     "tailwindcss": "^4.3.3",
@@ -126,5 +127,10 @@
     "vite": "8.3.0",
     "vitest": "5.0.1",
     "wrangler": "4.135.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "workerd@1.20260918.1": true,
+    "fsevents@2.3.3": true
   }
 }

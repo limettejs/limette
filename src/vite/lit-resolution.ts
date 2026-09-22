@@ -17,6 +17,21 @@ const PACKAGE_ENTRIES: Readonly<Record<string, string>> = {
   '@lit-labs/ssr-dom-shim': 'index.js',
 };
 
+const CONDITIONAL_LIT_PACKAGES = [
+  'lit',
+  'lit-html',
+  'lit-element',
+  '@lit/reactive-element',
+] as const;
+
+const ALIAS_SOURCES: Readonly<Record<string, string[]>> = {
+  'lit-html': ['lit', '@lit-labs/ssr'],
+  'lit-element': ['lit'],
+  '@lit/reactive-element': ['lit', 'lit-element', '@lit-labs/ssr'],
+  '@lit-labs/ssr-client': ['@lit-labs/ssr'],
+  '@lit-labs/ssr-dom-shim': ['@lit-labs/ssr', '@lit-labs/ssr-client'],
+};
+
 function packageName(specifier: string) {
   const segments = specifier.split('/');
   return specifier.startsWith('@')
@@ -97,19 +112,11 @@ function addPackageAlias(
   root: string,
   specifier: string,
 ) {
-  const aliasSources: Record<string, string[]> = {
-    'lit-html': ['lit', '@lit-labs/ssr'],
-    'lit-element': ['lit'],
-    '@lit/reactive-element': ['lit', 'lit-element', '@lit-labs/ssr'],
-    '@lit-labs/ssr-client': ['@lit-labs/ssr'],
-    '@lit-labs/ssr-dom-shim': ['@lit-labs/ssr', '@lit-labs/ssr-client'],
-  };
-  const fromSpecifiers = aliasSources[specifier] ?? [];
+  const fromSpecifiers = ALIAS_SOURCES[specifier] ?? [];
 
   try {
     const packageRoot = packageRootFromRoot(root, specifier, fromSpecifiers);
     const pattern = escapeRegExp(specifier);
-
     aliases.push(
       {
         find: new RegExp(`^${pattern}$`),
@@ -126,15 +133,12 @@ function addPackageAlias(
   }
 }
 
-function litAliases(root: string) {
+function litAliases(root: string, includeCore: boolean) {
   const aliases: Alias[] = [];
 
   for (
     const specifier of [
-      'lit',
-      'lit-html',
-      'lit-element',
-      '@lit/reactive-element',
+      ...(includeCore ? CONDITIONAL_LIT_PACKAGES : []),
       '@lit-labs/ssr',
       '@lit-labs/ssr-client',
       '@lit-labs/ssr-dom-shim',
@@ -146,10 +150,42 @@ function litAliases(root: string) {
   return aliases;
 }
 
-export function litResolution(root: string) {
+export function resolveLitPackageId(
+  root: string,
+  id: string,
+  server: boolean,
+) {
+  const [specifier, query] = id.split('?', 2);
+  const packageSpecifier = CONDITIONAL_LIT_PACKAGES.find((candidate) =>
+    specifier === candidate || specifier.startsWith(`${candidate}/`)
+  );
+  if (!packageSpecifier) return;
+
+  const fromSpecifiers = ALIAS_SOURCES[packageSpecifier] ?? [];
+  let resolved: string;
+  if (server) {
+    // Resolve only core Lit through its server exports. A global `node`
+    // condition makes other packages, notably ssr-client, import Node APIs.
+    resolved = resolveFromPackages(root, specifier, fromSpecifiers);
+  } else {
+    const packageRoot = packageRootFromRoot(
+      root,
+      packageSpecifier,
+      fromSpecifiers,
+    );
+    const subpath = specifier.slice(packageSpecifier.length + 1);
+    resolved = subpath
+      ? resolve(packageRoot, subpath)
+      : resolve(packageRoot, PACKAGE_ENTRIES[packageSpecifier]!);
+  }
+
+  return query ? `${resolved}?${query}` : resolved;
+}
+
+export function litResolution(root: string, includeCoreAliases = true) {
   return {
     resolve: {
-      alias: litAliases(root),
+      alias: litAliases(root, includeCoreAliases),
       dedupe: [
         '@lit-labs/ssr',
         '@lit-labs/ssr-client',
@@ -160,6 +196,9 @@ export function litResolution(root: string) {
       ],
     },
     ssr: {
+      resolve: {
+        conditions: ['module', 'development|production'],
+      },
       noExternal: [
         'limette',
         '@lit-labs/ssr',

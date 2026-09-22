@@ -1,5 +1,5 @@
 import { discoverRoutes } from './manifest.ts';
-import { litResolution } from './lit-resolution.ts';
+import { litResolution, resolveLitPackageId } from './lit-resolution.ts';
 import { createLimetteDevServer } from './dev-server.ts';
 import { clientEntryInputs } from './client-entries.ts';
 import { readViteManifest, resolveServerEntryAssets } from './assets.ts';
@@ -69,11 +69,12 @@ export function limette(options: LimetteOptions) {
 
   return {
     name: 'limette',
+    enforce: 'pre' as const,
     config(config: UserConfigLike, env: ConfigEnvLike) {
       command = env.command;
       root = resolve(config.root ?? root);
       base = config.base ?? '/';
-      const resolution = litResolution(root);
+      const resolution = litResolution(root, env.command !== 'build');
 
       if (env.command !== 'build') {
         return { ...resolution, appType: 'custom' as const };
@@ -98,9 +99,13 @@ export function limette(options: LimetteOptions) {
           server: {
             consumer: 'server',
             resolve: {
-              alias: {
-                [SERVER_RUNTIME_MODULE_ID]: serverRuntimePath(),
-              },
+              alias: [
+                {
+                  find: SERVER_RUNTIME_MODULE_ID,
+                  replacement: serverRuntimePath(),
+                },
+              ],
+              conditions: resolution.ssr.resolve.conditions,
               external: ['limette'],
               noExternal: resolution.ssr.noExternal.filter((dependency) =>
                 dependency !== 'limette'
@@ -148,7 +153,16 @@ export function limette(options: LimetteOptions) {
     handleHotUpdate(ctx: HotUpdateContextLike) {
       return devServer.handleHotUpdate(ctx);
     },
-    resolveId(id: string) {
+    resolveId(this: PluginContextLike, id: string) {
+      if (command === 'build') {
+        const litPackageId = resolveLitPackageId(
+          root,
+          id,
+          this.environment?.name === 'server',
+        );
+        if (litPackageId) return litPackageId;
+      }
+
       if (id === SERVER_ENTRY_MODULE_ID) {
         return RESOLVED_SERVER_ENTRY_MODULE_ID;
       }

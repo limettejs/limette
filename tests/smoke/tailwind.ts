@@ -1,8 +1,11 @@
+import { spawn } from 'node:child_process';
+import { readFile, rm, writeFile } from 'node:fs/promises';
+import { createServer } from 'node:net';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { discoverRoutes } from '../../src/vite/manifest.ts';
 import { tailwindEntryName } from '../../src/vite/tailwind.ts';
-import { viteCommand } from './_vite-command.ts';
+import { repositoryRoot } from './_paths.ts';
 
 const fixtureRoot = fileURLToPath(
   new URL('../fixtures/tailwind/', import.meta.url),
@@ -10,22 +13,103 @@ const fixtureRoot = fileURLToPath(
 const buildDir = join(fixtureRoot, 'dist');
 const routePath = join(fixtureRoot, 'routes/a.ts');
 const islandPath = join(fixtureRoot, 'islands/tailwind-island.ts');
-const originalRoute = await Deno.readTextFile(routePath);
-const originalIsland = await Deno.readTextFile(islandPath);
+const viteCli = join(repositoryRoot, 'node_modules/vite/bin/vite.js');
+const originalRoute = await readFile(routePath, 'utf8');
+const originalIsland = await readFile(islandPath, 'utf8');
 let routeChanged = false;
 let islandChanged = false;
-let child: Deno.ChildProcess | undefined;
+let viteProcess: ReturnType<typeof startVite> | undefined;
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
 async function remove(path: string) {
-  try {
-    await Deno.remove(path, { recursive: true });
-  } catch (error) {
-    if (!(error instanceof Deno.errors.NotFound)) throw error;
+  await rm(path, { recursive: true, force: true });
+}
+
+function startVite(args: string[]) {
+  const child = spawn(process.execPath, [viteCli, ...args], {
+    cwd: fixtureRoot,
+    stdio: ['ignore', 'ignore', 'pipe'],
+  });
+  let stderr = '';
+  child.stderr.setEncoding('utf8');
+  child.stderr.on('data', (chunk: string) => {
+    stderr += chunk;
+  });
+  const status = new Promise<{
+    code: number | null;
+    signal: NodeJS.Signals | null;
+  }>((resolve, reject) => {
+    child.once('error', reject);
+    child.once('exit', (code, signal) => resolve({ code, signal }));
+  });
+  const closed = new Promise<void>((resolve) => {
+    child.once('error', () => resolve());
+    child.once('close', () => resolve());
+  });
+  return {
+    child,
+    status,
+    closed,
+    stderr: () => stderr,
+  };
+}
+
+async function settlesWithin(promise: Promise<unknown>, timeout: number) {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const settled = await Promise.race([
+    promise.then(() => true, () => true),
+    new Promise<false>((resolve) => {
+      timeoutId = setTimeout(() => resolve(false), timeout);
+    }),
+  ]);
+  if (timeoutId !== undefined) clearTimeout(timeoutId);
+  return settled;
+}
+
+async function stopDevServer(
+  process: ReturnType<typeof startVite>,
+) {
+  process.child.kill('SIGTERM');
+  if (!(await settlesWithin(process.status, 2_500))) {
+    process.child.kill('SIGKILL');
   }
+  await process.status;
+
+  if (!(await settlesWithin(process.closed, 500))) {
+    process.child.stderr.destroy();
+    await settlesWithin(process.closed, 500);
+  }
+  return process.stderr();
+}
+
+async function runVite(args: string[]) {
+  const process = startVite(args);
+  const status = await process.status;
+  await process.closed;
+  return {
+    success: status.code === 0,
+    stderr: process.stderr(),
+  };
+}
+
+async function availablePort() {
+  const server = createServer();
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  const address = server.address();
+  if (!address || typeof address === 'string') {
+    server.close();
+    throw new Error('Could not allocate a local Vite test port.');
+  }
+  await new Promise<void>((resolve, reject) => {
+    server.close((error) => error ? reject(error) : resolve());
+  });
+  return address.port;
 }
 
 function hasDeclaration(css: string, property: string, value: string) {
@@ -67,14 +151,14 @@ async function waitForCss(
 
 try {
   await remove(buildDir);
-  const build = await viteCommand([
+  const build = await runVite([
     '--config',
     join(fixtureRoot, 'vite.config.ts'),
     'build',
-  ], { cwd: fixtureRoot }).output();
+  ]);
   assert(
     build.success,
-    `Tailwind fixture build failed:\n${new TextDecoder().decode(build.stderr)}`,
+    `Tailwind fixture build failed:\n${build.stderr}`,
   );
 
   const routes = await discoverRoutes({ root: fixtureRoot });
@@ -82,7 +166,7 @@ try {
   const routeB = routes.routes.find((route) => route.path === '/b');
   assert(routeA && routeB, 'Tailwind fixture routes were not discovered.');
   const manifest = JSON.parse(
-    await Deno.readTextFile(join(buildDir, 'client/.vite/manifest.json')),
+    await readFile(join(buildDir, 'client/.vite/manifest.json'), 'utf8'),
   ) as Record<string, { file: string; name?: string; isEntry?: boolean }>;
   const entryFor = (routeId: string) =>
     Object.values(manifest).find((entry) =>
@@ -92,8 +176,8 @@ try {
   const entryB = entryFor(routeB.id);
   assert(entryA && entryB, 'Route-specific Tailwind entries were not emitted.');
   assert(entryA.file !== entryB.file, 'Routes shared one Tailwind CSS asset.');
-  const cssA = await Deno.readTextFile(join(buildDir, 'client', entryA.file));
-  const cssB = await Deno.readTextFile(join(buildDir, 'client', entryB.file));
+  const cssA = await readFile(join(buildDir, 'client', entryA.file), 'utf8');
+  const cssB = await readFile(join(buildDir, 'client', entryB.file), 'utf8');
   assert(
     hasDeclaration(cssA, 'padding', '13px') &&
       hasDeclaration(cssA, 'border-width', '3px') &&
@@ -134,11 +218,9 @@ try {
     'SSR did not distribute one Tailwind URL to the document and shadow root.',
   );
 
-  const listener = Deno.listen({ hostname: '127.0.0.1', port: 0 });
-  const port = (listener.addr as Deno.NetAddr).port;
-  listener.close();
+  const port = await availablePort();
   const origin = `http://127.0.0.1:${port}`;
-  child = viteCommand([
+  viteProcess = startVite([
     '--config',
     join(fixtureRoot, 'vite.config.ts'),
     '--host',
@@ -148,12 +230,7 @@ try {
     '--strictPort',
     '--logLevel',
     'error',
-  ], {
-    cwd: fixtureRoot,
-    stdout: 'null',
-    stderr: 'piped',
-  }).spawn();
-  const stderr = new Response(child.stderr).text();
+  ]);
   const initialHtml = await waitForPage(origin, '/a', 'p-[13px]');
   const devStyle = initialHtml.match(
     /<link rel="stylesheet" href="([^"]*virtual:limette\/tailwind\/[^"]+)"/,
@@ -170,7 +247,7 @@ try {
     updatedRoute !== originalRoute,
     'Route update fixture did not change.',
   );
-  await Deno.writeTextFile(routePath, updatedRoute);
+  await writeFile(routePath, updatedRoute);
   routeChanged = true;
   const routeHtml = await waitForPage(origin, '/a', 'p-[19px]');
   const routeDevStyle = routeHtml.match(
@@ -199,7 +276,7 @@ try {
     updatedIsland !== originalIsland,
     'Island update fixture did not change.',
   );
-  await Deno.writeTextFile(islandPath, updatedIsland);
+  await writeFile(islandPath, updatedIsland);
   islandChanged = true;
   const islandHtml = await waitForPage(origin, '/a', 'outline-[9px]');
   const islandDevStyle = islandHtml.match(
@@ -220,21 +297,14 @@ try {
     'Tailwind retained the stale island candidate after an edit.',
   );
 
-  child.kill('SIGTERM');
-  await child.status;
-  child = undefined;
-  const errors = await stderr;
+  const errors = await stopDevServer(viteProcess);
+  viteProcess = undefined;
   assert(!errors, `Tailwind Vite dev logged errors:\n${errors}`);
 } finally {
-  if (routeChanged) await Deno.writeTextFile(routePath, originalRoute);
-  if (islandChanged) await Deno.writeTextFile(islandPath, originalIsland);
-  if (child) {
-    try {
-      child.kill('SIGTERM');
-    } catch {
-      // The process may already have exited.
-    }
-    await child.status;
+  if (routeChanged) await writeFile(routePath, originalRoute);
+  if (islandChanged) await writeFile(islandPath, originalIsland);
+  if (viteProcess) {
+    await stopDevServer(viteProcess);
   }
   await remove(buildDir);
 }

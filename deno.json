@@ -42,6 +42,6 @@
   "fmt": {
     "singleQuote": true
   },
-  "nodeModulesDir": "auto",
+  "nodeModulesDir": "manual",
   "lock": false
 }

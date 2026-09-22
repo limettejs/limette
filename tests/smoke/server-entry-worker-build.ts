@@ -74,6 +74,14 @@ try {
     'Worker server artifact still contains node-fetch.',
   );
   assert(
+    !runtimeSpecifierPattern('buffer').test(emittedSource),
+    'Worker server artifact imports the Node buffer module.',
+  );
+  assert(
+    !emittedSource.includes('createRequire'),
+    'Worker server artifact contains createRequire.',
+  );
+  assert(
     !/(?:from\s*|import\s*(?:\(\s*)?|require\s*\(\s*|__require\s*\(\s*)["']node:/
       .test(
         emittedSource,

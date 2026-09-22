@@ -7,6 +7,7 @@ import {
 } from '../../src/vite/server-entry.ts';
 import type { LimetteRouteManifest } from '../../src/vite/manifest.ts';
 import { limette } from '../../src/vite/plugin.ts';
+import type { PluginContextLike } from '../../src/vite/types.ts';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -165,13 +166,17 @@ assert(
 const unresolvedAppPlugin = limette({
   app: './missing-app.ts',
 });
-const resolvedServerEntryId = unresolvedAppPlugin.resolveId(
+const pluginContext: PluginContextLike = {
+  resolve: () => Promise.resolve(null),
+};
+const resolvedServerEntryId = unresolvedAppPlugin.resolveId.call(
+  pluginContext,
   SERVER_ENTRY_MODULE_ID,
 );
 let unresolvedAppError = '';
 try {
   await unresolvedAppPlugin.load.call(
-    { resolve: () => Promise.resolve(null) },
+    pluginContext,
     resolvedServerEntryId!,
   );
 } catch (error) {
