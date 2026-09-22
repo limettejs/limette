@@ -149,6 +149,94 @@ assert(
   'Runtime definitions were not registered in their supplied order.',
 );
 
+const coexistenceCalls: string[] = [];
+const coexistenceApp = new App().fsRoutes();
+coexistenceApp.use(async (ctx) => {
+  coexistenceCalls.push('global');
+  return await ctx.next();
+});
+coexistenceApp.all('/wrapped/*', async (ctx) => {
+  coexistenceCalls.push('all:before');
+  const response = await ctx.next();
+  coexistenceCalls.push('all:after');
+  return response;
+});
+coexistenceApp.get(
+  '/users/:id',
+  (ctx) => new Response(`imperative:${ctx.params.id}`),
+);
+coexistenceApp.post('/health', () => new Response('imperative POST'));
+registerRouteDefinitions(coexistenceApp, {
+  appWrapper: TestAppWrapper,
+  routes: [
+    handlerRoute('/users/new', () => new Response('filesystem static')),
+    handlerRoute('/filesystem-only', () => new Response('filesystem only')),
+    handlerRoute('/health', () => new Response('filesystem GET')),
+    handlerRoute(
+      '/wrapped/item',
+      () => {
+        coexistenceCalls.push('filesystem-route');
+        return new Response('wrapped filesystem');
+      },
+      [{
+        handler: async (ctx) => {
+          coexistenceCalls.push('filesystem-middleware');
+          return await ctx.next();
+        },
+      }],
+    ),
+  ],
+});
+
+const coexistenceHandler = coexistenceApp.handler();
+assert(
+  await (await coexistenceHandler(
+    new Request('http://localhost/users/new'),
+  )).text() === 'imperative:new',
+  'An overlapping filesystem route took precedence over an imperative route.',
+);
+assert(
+  await (await coexistenceHandler(
+    new Request('http://localhost/filesystem-only'),
+  )).text() === 'filesystem only',
+  'An imperative and filesystem route could not coexist in one App.',
+);
+assert(
+  await (await coexistenceHandler(
+        new Request('http://localhost/health'),
+      )).text() === 'filesystem GET' &&
+    await (await coexistenceHandler(
+        new Request('http://localhost/health', { method: 'POST' }),
+      )).text() === 'imperative POST',
+  'Different imperative/filesystem methods could not share one pathname.',
+);
+
+coexistenceCalls.length = 0;
+assert(
+  await (await coexistenceHandler(
+        new Request('http://localhost/wrapped/item'),
+      )).text() === 'wrapped filesystem' &&
+    coexistenceCalls.join(',') ===
+      'global,all:before,filesystem-middleware,filesystem-route,all:after',
+  `Imperative/global middleware order changed: ${coexistenceCalls.join(',')}`,
+);
+
+const duplicateApp = new App().fsRoutes();
+duplicateApp.get('/health', () => new Response('imperative'));
+let duplicateError = '';
+try {
+  registerRouteDefinitions(duplicateApp, {
+    appWrapper: TestAppWrapper,
+    routes: [handlerRoute('/health', () => new Response('filesystem'))],
+  });
+} catch (error) {
+  duplicateError = error instanceof Error ? error.message : String(error);
+}
+assert(
+  duplicateError.includes('Duplicate route registration for GET /health'),
+  `An imperative/filesystem duplicate did not fail clearly: ${duplicateError}`,
+);
+
 class RuntimeBoundaryIsland extends LitElement {
   override render() {
     return html`<span>island content</span>`;
