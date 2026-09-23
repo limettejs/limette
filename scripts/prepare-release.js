@@ -311,10 +311,6 @@ ${result.updates.map((path) => `  ${path}`).join('\n')}${note}
 
 Next steps:
 
-  npm run format
-  npm run check
-  npm run test:release
-
   git status --short
   git diff
   git add ${addPaths}
