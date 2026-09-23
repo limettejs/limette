@@ -89,6 +89,26 @@ export function compareVersions(leftVersion, rightVersion) {
   return 0;
 }
 
+export function isVersionCoveredByCaretBaseline(baselineVersion, version) {
+  const baseline = parseVersion(baselineVersion);
+  if (!baseline || baseline.prerelease.length > 0) {
+    fail(`Invalid stable Limette caret baseline "${baselineVersion}".`);
+  }
+  const candidate = parseVersion(version);
+  if (!candidate) fail(`Invalid semantic version "${version}".`);
+  if (candidate.prerelease.length > 0) return false;
+  if (compareVersions(version, baselineVersion) < 0) return false;
+
+  const upperBound =
+    baseline.major > 0
+      ? `${baseline.major + 1}.0.0`
+      : baseline.minor > 0
+        ? `0.${baseline.minor + 1}.0`
+        : `0.0.${baseline.patch + 1}`;
+
+  return compareVersions(version, upperBound) < 0;
+}
+
 export function parseArguments(args) {
   if (args.length !== 2) fail('Expected a package and a version or bump.');
   const [packageName, requestedVersion] = args;
@@ -131,18 +151,18 @@ export function releaseTagFor(packageName, version) {
   return packageName === 'limette' ? version : `create-limette@${version}`;
 }
 
-export function updateLimetteVersionConstant(source, currentVersion, nextVersion) {
+function readLimetteVersionConstant(source) {
   const matches = [...source.matchAll(LIMETTE_VERSION_PATTERN)];
   if (matches.length !== 1) {
     fail(`Expected exactly one LIMETTE_VERSION declaration in ${LIMETTE_SOURCE}.`);
   }
-  if (matches[0][2] !== currentVersion) {
-    fail(
-      `Limette version drift: ${LIMETTE_SOURCE} has ${matches[0][2]}, but packages/limette/package.json has ${currentVersion}.`
-    );
-  }
 
-  const match = matches[0];
+  return { baselineVersion: matches[0][2], match: matches[0] };
+}
+
+export function updateLimetteVersionConstant(source, nextVersion) {
+  const { match } = readLimetteVersionConstant(source);
+
   return `${source.slice(0, match.index)}const LIMETTE_VERSION = ${match[1]}${nextVersion}${match[1]};${source.slice(
     match.index + match[0].length
   )}`;
@@ -193,8 +213,14 @@ export async function prepareRelease({
   const nextVersion = resolveNextVersion(currentVersion, requestedVersion);
   const lockfile = await readJson(lockfilePath, LOCKFILE);
   const lockPackagePath = PACKAGES[packageName].replace('/package.json', '');
-  if (!lockfile.value.packages?.[lockPackagePath]) {
+  const currentLockPackage = lockfile.value.packages?.[lockPackagePath];
+  if (!currentLockPackage) {
     fail(`${LOCKFILE} is missing workspace metadata for ${packageName}.`);
+  }
+  if (currentLockPackage.version !== currentVersion) {
+    fail(
+      `${LOCKFILE} version drift: ${packageName} is ${currentVersion}, but its workspace lock entry is ${currentLockPackage.version ?? '<missing>'}.`
+    );
   }
 
   const originals = [
@@ -203,17 +229,38 @@ export async function prepareRelease({
   ];
   const updates = [PACKAGES[packageName]];
   let initializerUpdate;
+  let baselineChange;
   if (packageName === 'limette') {
     const initializerPath = resolve(root, LIMETTE_SOURCE);
     const initializerSource = await readFile(initializerPath, 'utf8').catch((error) =>
       fail(`Could not read ${LIMETTE_SOURCE}: ${error.message}`)
     );
-    initializerUpdate = {
-      path: initializerPath,
-      source: updateLimetteVersionConstant(initializerSource, currentVersion, nextVersion),
-    };
-    originals.push([initializerPath, initializerSource]);
-    updates.push(LIMETTE_SOURCE);
+    const { baselineVersion } = readLimetteVersionConstant(initializerSource);
+    const current = parseVersion(currentVersion);
+    const currentIsCovered = isVersionCoveredByCaretBaseline(baselineVersion, currentVersion);
+    const currentIsValid =
+      current.prerelease.length > 0
+        ? compareVersions(currentVersion, baselineVersion) > 0
+        : currentIsCovered;
+    if (!currentIsValid) {
+      fail(
+        `Limette version drift: create-limette targets ^${baselineVersion}, but the current Limette package is ${currentVersion}.`
+      );
+    }
+
+    const next = parseVersion(nextVersion);
+    if (
+      next.prerelease.length === 0 &&
+      !isVersionCoveredByCaretBaseline(baselineVersion, nextVersion)
+    ) {
+      initializerUpdate = {
+        path: initializerPath,
+        source: updateLimetteVersionConstant(initializerSource, nextVersion),
+      };
+      originals.push([initializerPath, initializerSource]);
+      updates.push(LIMETTE_SOURCE);
+      baselineChange = { from: baselineVersion, to: nextVersion };
+    }
   }
 
   packageFile.value.version = nextVersion;
@@ -245,18 +292,22 @@ export async function prepareRelease({
     packageName,
     tag: releaseTagFor(packageName, nextVersion),
     updates,
+    baselineChange,
   };
 }
 
 export function formatSummary(result) {
   const addPaths = result.updates.join(' ');
+  const note = result.baselineChange
+    ? `\n\nNote:\n  create-limette source now targets Limette ^${result.baselineChange.to}.\n  The currently published create-limette package will continue generating\n  its previous Limette range until create-limette is released separately.`
+    : '';
   return `Prepared ${result.packageName} release
 
   Version: ${result.currentVersion} -> ${result.nextVersion}
   Tag:     ${result.tag}
 
 Updated:
-${result.updates.map((path) => `  ${path}`).join('\n')}
+${result.updates.map((path) => `  ${path}`).join('\n')}${note}
 
 Next steps:
 
@@ -264,6 +315,7 @@ Next steps:
   npm run check
   npm run test:release
 
+  git status --short
   git diff
   git add ${addPaths}
   git commit -m "chore: prepare ${result.packageName} ${result.nextVersion}"
