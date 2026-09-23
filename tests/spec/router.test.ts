@@ -3,8 +3,8 @@ import {
   type RouteHandler,
   type RouteHandlers,
   type TrailingSlash,
-} from '../../src/mod.ts';
-import type { Method } from '../../src/server/methods.ts';
+} from '../../packages/limette/src/mod.ts';
+import type { Method } from '../../packages/limette/src/server/methods.ts';
 import { describe, expect, it } from 'vitest';
 
 function assert(condition: unknown, message: string): asserts condition {

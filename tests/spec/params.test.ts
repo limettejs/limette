@@ -1,4 +1,4 @@
-import { App, type Context, type RenderContext } from '../../src/mod.ts';
+import { App, type Context, type RenderContext } from '../../packages/limette/src/mod.ts';
 import { describe, expect, it } from 'vitest';
 
 function assert(condition: unknown, message: string): asserts condition {

@@ -1,28 +1,13 @@
 {
-  "name": "limette",
-  "version": "0.3.0",
-  "description": "A full-stack framework for Lit Web Components.",
-  "keywords": [
-    "lit",
-    "web-components",
-    "ssr",
-    "islands",
-    "vite"
-  ],
+  "name": "limette-workspace",
+  "private": true,
   "type": "module",
-  "types": "./dist/index.d.mts",
-  "license": "MIT",
-  "homepage": "https://limette.dev",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/limettejs/limette.git"
-  },
-  "bugs": {
-    "url": "https://github.com/limettejs/limette/issues"
-  },
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "build": "tsdown",
-    "check": "deno check src/mod.ts src/vite/mod.ts src/deno.ts src/node.ts",
+    "build": "tsdown --config packages/limette/tsdown.config.ts",
+    "check": "deno check packages/limette/src/mod.ts packages/limette/src/vite/mod.ts packages/limette/src/deno.ts packages/limette/src/node.ts",
     "check:examples": "deno check --config examples/deno.json examples/app.js examples/main.js examples/main.deno.js examples/vite.config.ts",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -51,70 +36,7 @@
     "test:smoke:init": "npm run build && deno run -A --config examples/deno.json tests/smoke/initializer.ts",
     "test:smoke:server": "deno run -A --config examples/deno.json tests/smoke/vite-dev-routes.ts && deno run -A --config examples/deno.json tests/smoke/vite-dev-css.ts && deno run -A --config examples/deno.json tests/smoke/vite-dev-island-refresh.ts && deno run -A --config examples/deno.json tests/smoke/vite-dev-server.ts",
     "test:smoke:tailwind": "node tests/smoke/tailwind.ts",
-    "pack:dry": "npm pack --dry-run",
-    "prepack": "npm run build"
-  },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.mts",
-      "default": "./dist/index.mjs"
-    },
-    "./deno": {
-      "types": "./dist/deno.d.mts",
-      "default": "./dist/deno.mjs"
-    },
-    "./node": {
-      "types": "./dist/node.d.mts",
-      "default": "./dist/node.mjs"
-    },
-    "./vite": {
-      "types": "./dist/vite.d.mts",
-      "default": "./dist/vite.mjs"
-    },
-    "./internal/server-runtime": {
-      "types": "./dist/internal/server-runtime.d.mts",
-      "default": "./dist/internal/server-runtime.mjs"
-    },
-    "./runtime": {
-      "types": "./dist/runtime.d.mts",
-      "default": "./dist/runtime.mjs"
-    },
-    "./runtime/ssr-client/lit-element-hydrate-support": {
-      "types": "./dist/runtime/ssr-client/lit-element-hydrate-support.d.mts",
-      "default": "./dist/runtime/ssr-client/lit-element-hydrate-support.mjs"
-    },
-    "./runtime/ssr-client/lit-element-hydrate-support.ts": {
-      "types": "./dist/runtime/ssr-client/lit-element-hydrate-support.d.mts",
-      "default": "./dist/runtime/ssr-client/lit-element-hydrate-support.mjs"
-    },
-    "./runtime/ssr-client/lit-element-hydrate-support-patch": {
-      "types": "./dist/runtime/ssr-client/lit-element-hydrate-support-patch.d.mts",
-      "default": "./dist/runtime/ssr-client/lit-element-hydrate-support-patch.mjs"
-    },
-    "./runtime/ssr-client/lit-element-hydrate-support-patch.ts": {
-      "types": "./dist/runtime/ssr-client/lit-element-hydrate-support-patch.d.mts",
-      "default": "./dist/runtime/ssr-client/lit-element-hydrate-support-patch.mjs"
-    }
-  },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ],
-  "peerDependencies": {
-    "lit": "^3.2.1",
-    "vite": "^8.0.0"
-  },
-  "peerDependenciesMeta": {
-    "vite": {
-      "optional": true
-    }
-  },
-  "dependencies": {
-    "@lit-labs/ssr": "4.1.0",
-    "@lit-labs/ssr-client": "1.1.8",
-    "@lit-labs/ssr-dom-shim": "1.6.0",
-    "linkedom": "0.18.13"
+    "pack:dry": "npm pack --workspace=limette --dry-run"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

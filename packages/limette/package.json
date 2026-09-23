@@ -1,0 +1,85 @@
+{
+  "name": "limette",
+  "version": "0.3.0",
+  "description": "A full-stack framework for Lit Web Components.",
+  "keywords": [
+    "lit",
+    "web-components",
+    "ssr",
+    "islands",
+    "vite"
+  ],
+  "type": "module",
+  "types": "./dist/index.d.mts",
+  "license": "MIT",
+  "homepage": "https://limette.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/limettejs/limette.git"
+  },
+  "bugs": {
+    "url": "https://github.com/limettejs/limette/issues"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./deno": {
+      "types": "./dist/deno.d.mts",
+      "default": "./dist/deno.mjs"
+    },
+    "./node": {
+      "types": "./dist/node.d.mts",
+      "default": "./dist/node.mjs"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.mts",
+      "default": "./dist/vite.mjs"
+    },
+    "./internal/server-runtime": {
+      "types": "./dist/internal/server-runtime.d.mts",
+      "default": "./dist/internal/server-runtime.mjs"
+    },
+    "./runtime": {
+      "types": "./dist/runtime.d.mts",
+      "default": "./dist/runtime.mjs"
+    },
+    "./runtime/ssr-client/lit-element-hydrate-support": {
+      "types": "./dist/runtime/ssr-client/lit-element-hydrate-support.d.mts",
+      "default": "./dist/runtime/ssr-client/lit-element-hydrate-support.mjs"
+    },
+    "./runtime/ssr-client/lit-element-hydrate-support.ts": {
+      "types": "./dist/runtime/ssr-client/lit-element-hydrate-support.d.mts",
+      "default": "./dist/runtime/ssr-client/lit-element-hydrate-support.mjs"
+    },
+    "./runtime/ssr-client/lit-element-hydrate-support-patch": {
+      "types": "./dist/runtime/ssr-client/lit-element-hydrate-support-patch.d.mts",
+      "default": "./dist/runtime/ssr-client/lit-element-hydrate-support-patch.mjs"
+    },
+    "./runtime/ssr-client/lit-element-hydrate-support-patch.ts": {
+      "types": "./dist/runtime/ssr-client/lit-element-hydrate-support-patch.d.mts",
+      "default": "./dist/runtime/ssr-client/lit-element-hydrate-support-patch.mjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "peerDependencies": {
+    "lit": "^3.2.1",
+    "vite": "^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@lit-labs/ssr": "4.1.0",
+    "@lit-labs/ssr-client": "1.1.8",
+    "@lit-labs/ssr-dom-shim": "1.6.0",
+    "linkedom": "0.18.13"
+  }
+}

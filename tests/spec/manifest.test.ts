@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { discoverRoutes } from '../../src/vite/manifest.ts';
+import { discoverRoutes } from '../../packages/limette/src/vite/manifest.ts';
 
 function assert(condition: unknown, message: string): asserts condition {
   expect(condition, message).toBeTruthy();

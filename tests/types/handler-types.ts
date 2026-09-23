@@ -4,7 +4,7 @@ import {
   type Middleware,
   type RouteHandler,
   type RouteHandlers,
-} from '../../src/mod.ts';
+} from '../../packages/limette/src/mod.ts';
 
 interface AppState {
   user?: string;
@@ -83,10 +83,10 @@ const synchronousAppHandler =
 const asynchronousAppHandler =
   (async () => new Response('async')) satisfies AppHandler<AppPlatform>;
 type NodeAdapterHandler = Parameters<
-  typeof import('../../src/node.ts').serve
+  typeof import('../../packages/limette/src/node.ts').serve
 >[0];
 type DenoAdapterHandler = Parameters<
-  typeof import('../../src/deno.ts').serve
+  typeof import('../../packages/limette/src/deno.ts').serve
 >[0];
 const nodeAdapterHandler =
   ((request) => new Response(request.url)) satisfies NodeAdapterHandler;

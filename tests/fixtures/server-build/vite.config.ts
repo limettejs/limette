@@ -1,4 +1,4 @@
-import { limette } from '../../../src/vite/plugin.ts';
+import { limette } from '../../../packages/limette/src/vite/plugin.ts';
 import { fileURLToPath } from 'node:url';
 
 export default {

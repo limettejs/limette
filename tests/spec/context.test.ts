@@ -7,9 +7,9 @@ import {
   LayoutComponent,
   PageComponent,
   type RenderContext,
-} from '../../src/mod.ts';
-import { registerRouteDefinitions } from '../../src/server/register-routes.ts';
-import type { RuntimeRouteDefinition } from '../../src/server/route.ts';
+} from '../../packages/limette/src/mod.ts';
+import { registerRouteDefinitions } from '../../packages/limette/src/server/register-routes.ts';
+import type { RuntimeRouteDefinition } from '../../packages/limette/src/server/route.ts';
 import { describe, expect, it } from 'vitest';
 
 function assert(condition: unknown, message: string): asserts condition {

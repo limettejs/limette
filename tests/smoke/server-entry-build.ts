@@ -5,8 +5,8 @@ import { viteCommand } from './_vite-command.ts';
 import {
   readViteManifest,
   resolveServerEntryAssets,
-} from '../../src/vite/assets.ts';
-import { discoverRoutes } from '../../src/vite/manifest.ts';
+} from '../../packages/limette/src/vite/assets.ts';
+import { discoverRoutes } from '../../packages/limette/src/vite/manifest.ts';
 
 const fixtureRoot = fileURLToPath(
   new URL('../fixtures/server-build/', import.meta.url),

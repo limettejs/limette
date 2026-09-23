@@ -443,6 +443,7 @@ try {
     npmExecutable,
     [
       'pack',
+      '--workspace=limette',
       '--ignore-scripts',
       '--pack-destination',
       packageDirectory,
