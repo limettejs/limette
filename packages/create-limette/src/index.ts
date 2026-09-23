@@ -1,6 +1,10 @@
-import { ensureDir } from '@std/fs';
-import { basename, join } from '@std/path';
-import { green, red } from '@std/fmt/colors';
+#!/usr/bin/env node
+
+import { spawnSync } from 'node:child_process';
+import { mkdir, readdir, stat, writeFile } from 'node:fs/promises';
+import { basename, join } from 'node:path';
+import { createInterface } from 'node:readline/promises';
+import { stdin, stdout } from 'node:process';
 
 // This value is changed in the release pipeline
 const LIMETTE_VERSION = '0.3.0';
@@ -11,14 +15,36 @@ const TAILWIND_VERSION = '4.3.3';
 
 type Runtime = 'deno' | 'node';
 
+const args = process.argv.slice(2);
+
+const color = (code: number, value: string) =>
+  stdout.isTTY ? `\u001b[${code}m${value}\u001b[0m` : value;
+const green = (value: string) => color(32, value);
+const red = (value: string) => color(31, value);
+
+let readline: ReturnType<typeof createInterface> | undefined;
+
+process.once('SIGINT', () => {
+  readline?.close();
+  console.error('\nCancelled.');
+  process.exit(130);
+});
+
+async function prompt(message: string, defaultValue?: string) {
+  readline ??= createInterface({ input: stdin, output: stdout });
+  const suffix = defaultValue ? ` (${defaultValue})` : '';
+  const answer = await readline.question(`${message}${suffix}: `);
+  return answer.trim() || defaultValue;
+}
+
 function option(name: string) {
   const prefix = `--${name}=`;
-  return Deno.args.find((argument) => argument.startsWith(prefix))?.slice(
+  return args.find((argument) => argument.startsWith(prefix))?.slice(
     prefix.length,
   );
 }
 
-function choose(
+async function choose(
   label: string,
   choices: readonly string[],
   defaultChoice: string,
@@ -27,7 +53,7 @@ function choose(
   for (const choice of choices) {
     console.log(`${choice === defaultChoice ? '>' : ' '} ${choice}`);
   }
-  const answer = prompt(`Choose ${label.toLowerCase()}`, defaultChoice);
+  const answer = await prompt(`Choose ${label.toLowerCase()}`, defaultChoice);
   return choices.find((choice) =>
     choice.toLowerCase() === answer?.trim().toLowerCase()
   ) ?? defaultChoice;
@@ -35,11 +61,12 @@ function choose(
 
 function fail(message: string): never {
   console.error(`${red('Error:')} ${message}`);
-  Deno.exit(1);
+  readline?.close();
+  process.exit(1);
 }
 
-const projectName = Deno.args.find((argument) => !argument.startsWith('--')) ??
-  prompt('Your project name?');
+const projectName = args.find((argument) => !argument.startsWith('--')) ??
+  await prompt('Your project name?');
 if (typeof projectName !== 'string' || projectName.length < 1) {
   fail('Invalid project name!');
 }
@@ -49,7 +76,7 @@ if (runtimeOption && runtimeOption !== 'deno' && runtimeOption !== 'node') {
   fail('Runtime must be "deno" or "node".');
 }
 const runtime = (runtimeOption ??
-  choose('Runtime', ['Deno', 'Node'], 'Deno').toLowerCase()) as Runtime;
+  (await choose('Runtime', ['Deno', 'Node'], 'Deno')).toLowerCase()) as Runtime;
 
 const tailwindOption = option('tailwind')?.toLowerCase();
 if (
@@ -59,16 +86,29 @@ if (
 }
 const useTailwind = tailwindOption
   ? tailwindOption === 'yes' || tailwindOption === 'true'
-  : choose('Use Tailwind CSS?', ['Yes', 'No'], 'Yes') === 'Yes';
+  : await choose('Use Tailwind CSS?', ['Yes', 'No'], 'Yes') === 'Yes';
 
-const projectPath = join(Deno.cwd(), projectName);
+readline?.close();
+
+const projectPath = join(process.cwd(), projectName);
 const islandsPath = join(projectPath, 'islands');
 const routesPath = join(projectPath, 'routes');
 const publicPath = join(projectPath, 'public');
 
-await ensureDir(islandsPath);
-await ensureDir(routesPath);
-await ensureDir(publicPath);
+try {
+  const projectStat = await stat(projectPath);
+  if (!projectStat.isDirectory() || (await readdir(projectPath)).length > 0) {
+    fail(`Target directory "${projectName}" already exists and is not empty.`);
+  }
+} catch (error) {
+  if (!(error instanceof Error && 'code' in error && error.code === 'ENOENT')) {
+    throw error;
+  }
+}
+
+await mkdir(islandsPath, { recursive: true });
+await mkdir(routesPath, { recursive: true });
+await mkdir(publicPath, { recursive: true });
 
 const gitignore = `
 # dotenv environment variable files
@@ -360,43 +400,41 @@ export default class Foo extends PageComponent {
 
 const tailwindCss = `@import "tailwindcss";\n`;
 
-await Deno.writeTextFile(join(projectPath, '.gitignore'), gitignore);
-await Deno.writeTextFile(
+await writeFile(join(projectPath, '.gitignore'), gitignore);
+await writeFile(
   join(projectPath, 'package.json'),
   `${JSON.stringify(packageJson, null, 2)}\n`,
 );
-await Deno.writeTextFile(join(projectPath, 'app.ts'), appTs);
-await Deno.writeTextFile(
+await writeFile(join(projectPath, 'app.ts'), appTs);
+await writeFile(
   join(projectPath, runtime === 'deno' ? 'main.ts' : 'main.js'),
   runtime === 'deno' ? denoMain : nodeMain,
 );
-await Deno.writeTextFile(join(projectPath, 'vite.config.ts'), viteConfigTs);
-await Deno.writeTextFile(
+await writeFile(join(projectPath, 'vite.config.ts'), viteConfigTs);
+await writeFile(
   join(projectPath, 'islands/counter.ts'),
   counterIslandTs,
 );
-await Deno.writeTextFile(join(projectPath, 'routes/_app.ts'), _appRouteTs);
-await Deno.writeTextFile(join(projectPath, 'routes/index.ts'), indexRouteTs);
-await Deno.writeTextFile(join(projectPath, 'routes/foo.ts'), fooRouteTs);
+await writeFile(join(projectPath, 'routes/_app.ts'), _appRouteTs);
+await writeFile(join(projectPath, 'routes/index.ts'), indexRouteTs);
+await writeFile(join(projectPath, 'routes/foo.ts'), fooRouteTs);
 if (useTailwind) {
-  await Deno.writeTextFile(join(projectPath, 'tailwind.css'), tailwindCss);
+  await writeFile(join(projectPath, 'tailwind.css'), tailwindCss);
 }
 
-if (Deno.env.get('LIMETTE_INIT_SKIP_INSTALL') !== '1') {
+if (process.env.LIMETTE_INIT_SKIP_INSTALL !== '1') {
   const executable = runtime === 'deno'
     ? 'deno'
-    : Deno.build.os === 'windows'
+    : process.platform === 'win32'
     ? 'npm.cmd'
     : 'npm';
-  const output = await new Deno.Command(executable, {
-    args: ['install'],
+  const output = spawnSync(executable, ['install'], {
     cwd: projectPath,
-    stdout: 'piped',
-    stderr: 'piped',
-  }).output();
-  if (!output.success) {
-    console.error(new TextDecoder().decode(output.stderr));
-    Deno.exit(output.code);
+    encoding: 'utf8',
+  });
+  if (output.status !== 0) {
+    if (output.stderr) console.error(output.stderr);
+    process.exit(output.status ?? 1);
   }
 }
 

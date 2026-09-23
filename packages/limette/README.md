@@ -25,13 +25,13 @@ npm install limette lit
 
 Run this command:
 
-```
-deno run -A jsr:@limette/init
+```sh
+npm create limette
 ```
 
 The initializer creates an application using `new App().fsRoutes()`, a Vite
-configuration with `limette({ app: "./app.ts" })`, and a Deno production
-launcher. Node applications can use the equivalent `limette/node` adapter.
+configuration with `limette({ app: "./app.ts" })`, and a Node or Deno
+production launcher.
 
 ## Start the Vite development server
 
