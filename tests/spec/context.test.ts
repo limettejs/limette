@@ -48,7 +48,7 @@ function observe(
   owner: StructuralOwner,
   phase: Observation['phase'],
   instance: number,
-  ctx: RenderContext<RequestState, TestPlatform>,
+  ctx: RenderContext<RequestState, TestPlatform>
 ) {
   observations.push({ owner, phase, instance, ctx });
 }
@@ -66,12 +66,13 @@ class ContextApp extends AppComponent<RequestState, TestPlatform> {
     return html`
       <!DOCTYPE html>
       <html>
-        <head>${this.assets.styles}</head>
+        <head>
+          ${this.assets.styles}
+        </head>
         <body data-app>
-          <div
-            data-app-outlet
-            data-base-path="${this.ctx.config.basePath ?? ''}"
-          >${this.outlet}</div>
+          <div data-app-outlet data-base-path="${this.ctx.config.basePath ?? ''}">
+            ${this.outlet}
+          </div>
           ${this.assets.scripts}
         </body>
       </html>
@@ -98,12 +99,7 @@ class InnerLayout extends LayoutComponent<RequestState, TestPlatform> {
 
   override head() {
     observe('inner', 'head', this.instance, this.ctx);
-    return html`
-      <meta
-        name="inner-product"
-        content="${this.ctx.state.product}"
-      />
-    `;
+    return html` <meta name="inner-product" content="${this.ctx.state.product}" /> `;
   }
 
   override render() {
@@ -249,20 +245,14 @@ void handlerTypeSurface;
 function componentRoute(
   id: string,
   path: string,
-  Page: RuntimeRouteDefinition<RequestState, TestPlatform>['routeModule'][
-    'default'
-  ],
+  Page: RuntimeRouteDefinition<RequestState, TestPlatform>['routeModule']['default'],
   options: {
     layouts?: RuntimeRouteDefinition<RequestState, TestPlatform>['layouts'];
-    handler?: RuntimeRouteDefinition<RequestState, TestPlatform>['routeModule'][
-      'handler'
-    ];
-    middlewares?: RuntimeRouteDefinition<RequestState, TestPlatform>[
-      'middlewares'
-    ];
+    handler?: RuntimeRouteDefinition<RequestState, TestPlatform>['routeModule']['handler'];
+    middlewares?: RuntimeRouteDefinition<RequestState, TestPlatform>['middlewares'];
     islands?: readonly string[];
     ssrIslands?: readonly string[];
-  } = {},
+  } = {}
 ): RuntimeRouteDefinition<RequestState, TestPlatform> {
   return {
     id,
@@ -305,12 +295,14 @@ describe('request and render context', () => {
       ],
       islands: ['context-island'],
       ssrIslands: ['context-island'],
-      middlewares: [{
-        handler: async (ctx) => {
-          inheritedMiddlewareParams.push(ctx.params);
-          return await ctx.next();
+      middlewares: [
+        {
+          handler: async (ctx) => {
+            inheritedMiddlewareParams.push(ctx.params);
+            return await ctx.next();
+          },
         },
-      }],
+      ],
       handler: {
         GET(ctx) {
           handlerStates.push(ctx.state);
@@ -321,16 +313,9 @@ describe('request and render context', () => {
       },
     });
 
-    const failingRoute = componentRoute(
-      'fail',
-      '/fail/:id',
-      FailureTargetPage,
-      {
-        layouts: [
-          { config: { skipInheritedLayouts: false }, default: FailingLayout },
-        ],
-      },
-    );
+    const failingRoute = componentRoute('fail', '/fail/:id', FailureTargetPage, {
+      layouts: [{ config: { skipInheritedLayouts: false }, default: FailingLayout }],
+    });
 
     const throwingHandler = (message: string | HttpError) => ({
       GET() {
@@ -339,9 +324,7 @@ describe('request and render context', () => {
     });
 
     const errorRoute = componentRoute('error', '/_error', ErrorPage, {
-      layouts: [
-        { config: { skipInheritedLayouts: false }, default: ErrorRouteLayout },
-      ],
+      layouts: [{ config: { skipInheritedLayouts: false }, default: ErrorRouteLayout }],
     });
 
     const app = new App<RequestState, TestPlatform>({ basePath: '/base' });
@@ -357,23 +340,15 @@ describe('request and render context', () => {
         componentRoute('ordinary-error', '/ordinary-error', OrdinaryErrorPage, {
           handler: throwingHandler('ordinary failure'),
         }),
-        componentRoute(
-          'error-page-fails',
-          '/error-page-fails',
-          ErrorPageFailureTarget,
-          {
-            handler: throwingHandler('trigger failing error page'),
-          },
-        ),
+        componentRoute('error-page-fails', '/error-page-fails', ErrorPageFailureTarget, {
+          handler: throwingHandler('trigger failing error page'),
+        }),
         componentRoute('admin-root-failure', '/admin', FailureTargetPage, {
           handler: throwingHandler(new HttpError(418)),
         }),
-        componentRoute(
-          'admin-user-failure',
-          '/admin/users/:id',
-          FailureTargetPage,
-          { handler: throwingHandler(new HttpError(418)) },
-        ),
+        componentRoute('admin-user-failure', '/admin/users/:id', FailureTargetPage, {
+          handler: throwingHandler(new HttpError(418)),
+        }),
         componentRoute('other-failure', '/other', FailureTargetPage, {
           handler: throwingHandler(new HttpError(418)),
         }),
@@ -393,53 +368,46 @@ describe('request and render context', () => {
     const handler = app.handler();
     const normalResponse = await handler(
       new Request('https://example.test/base/items/alpha'),
-      platform,
+      platform
     );
     const normalHtml = await normalResponse.text();
-    assert(
-      normalResponse.status === 200,
-      'Normal context route did not render.',
-    );
-    for (
-      const expected of [
-        'data-app',
-        'data-outer',
-        'data-inner',
-        'data-page',
-        'data-request-id="alpha"',
-        'data-product="product:alpha"',
-        'data-param="alpha"',
-        'data-platform="opaque-platform"',
-        'data-base-path="/base"',
-        '/assets/context.css',
-        '/assets/context-client.js',
-      ]
-    ) {
+    assert(normalResponse.status === 200, 'Normal context route did not render.');
+    for (const expected of [
+      'data-app',
+      'data-outer',
+      'data-inner',
+      'data-page',
+      'data-request-id="alpha"',
+      'data-product="product:alpha"',
+      'data-param="alpha"',
+      'data-platform="opaque-platform"',
+      'data-base-path="/base"',
+      '/assets/context.css',
+      '/assets/context-client.js',
+    ]) {
       assert(normalHtml.includes(expected), `Normal SSR lost ${expected}.`);
     }
     assert(
       normalHtml.indexOf('data-app') < normalHtml.indexOf('data-outer') &&
         normalHtml.indexOf('data-outer') < normalHtml.indexOf('data-inner') &&
         normalHtml.indexOf('data-inner') < normalHtml.indexOf('data-page'),
-      'Structural context fixture rendered in the wrong order.',
+      'Structural context fixture rendered in the wrong order.'
     );
     assert(
       middlewareStates[0] === handlerStates[0],
-      'Middleware and route handler received different state objects.',
+      'Middleware and route handler received different state objects.'
     );
     assert(
       globalMiddlewareParams[0] === inheritedMiddlewareParams[0] &&
         inheritedMiddlewareParams[0] === handlerParams[0] &&
         handlerParams[0].id === 'alpha',
-      'Global/inherited middleware and the route handler did not share route params.',
+      'Global/inherited middleware and the route handler did not share route params.'
     );
     const normalObservations = observations.filter((entry) =>
       entry.ctx.url.pathname.endsWith('/items/alpha')
     );
     for (const owner of ['app', 'outer', 'inner', 'page'] as const) {
-      const entries = normalObservations.filter((entry) =>
-        entry.owner === owner
-      );
+      const entries = normalObservations.filter((entry) => entry.owner === owner);
       assert(entries.length === 2, `${owner} did not run head() and render().`);
       assert(
         entries[0].instance === entries[1].instance &&
@@ -449,26 +417,25 @@ describe('request and render context', () => {
           entries[0].ctx.params.id === 'alpha' &&
           entries[0].ctx.request === normalObservations[0].ctx.request &&
           entries[0].ctx.platform === platform,
-        `${owner} did not receive the same request-local instance/context/state.`,
+        `${owner} did not receive the same request-local instance/context/state.`
       );
     }
     assert(
       normalHtml.includes('data-island-context="false"'),
-      'An SSR island received an implicit server context.',
+      'An SSR island received an implicit server context.'
     );
 
-    const concurrentPlatforms = Array.from(
-      { length: 20 },
-      (_, index): TestPlatform => ({ marker: `platform-${index}` }),
-    );
+    const concurrentPlatforms = Array.from({ length: 20 }, (_, index): TestPlatform => ({
+      marker: `platform-${index}`,
+    }));
     const concurrentBodies = await Promise.all(
       concurrentPlatforms.map(async (requestPlatform, index) => {
         const response = await handler(
           new Request(`https://example.test/base/items/request-${index}`),
-          requestPlatform,
+          requestPlatform
         );
         return await response.text();
-      }),
+      })
     );
     for (let index = 0; index < concurrentBodies.length; index++) {
       const body = concurrentBodies[index];
@@ -476,58 +443,50 @@ describe('request and render context', () => {
         body.includes(`data-request-id="request-${index}"`) &&
           body.includes(`data-product="product:request-${index}"`) &&
           body.includes(`data-platform="platform-${index}"`),
-        `Concurrent request ${index} received another request's context/state.`,
+        `Concurrent request ${index} received another request's context/state.`
       );
     }
     assert(
       new Set(middlewareStates).size === middlewareStates.length,
-      'Requests reused a state object.',
+      'Requests reused a state object.'
     );
 
     const failedLayoutResponse = await handler(
       new Request('https://example.test/base/fail/layout-id'),
-      platform,
+      platform
     );
     const failedLayoutHtml = await failedLayoutResponse.text();
-    assert(
-      failedLayoutResponse.status === 503,
-      'Error status was not preserved.',
-    );
-    for (
-      const expected of [
-        'data-app',
-        'data-error',
-        'data-status="503"',
-        'data-state="user:/base/fail/layout-id"',
-        'data-param="layout-id"',
-        'data-platform="opaque-platform"',
-        '<title>Error page</title>',
-        'content="503"',
-      ]
-    ) {
-      assert(
-        failedLayoutHtml.includes(expected),
-        `Error SSR lost ${expected}.`,
-      );
+    assert(failedLayoutResponse.status === 503, 'Error status was not preserved.');
+    for (const expected of [
+      'data-app',
+      'data-error',
+      'data-status="503"',
+      'data-state="user:/base/fail/layout-id"',
+      'data-param="layout-id"',
+      'data-platform="opaque-platform"',
+      '<title>Error page</title>',
+      'content="503"',
+    ]) {
+      assert(failedLayoutHtml.includes(expected), `Error SSR lost ${expected}.`);
     }
     assert(
       failingLayoutRenders === 1 && errorRouteLayoutRenders === 0,
-      'Error rendering reran a matched/error-route layout.',
+      'Error rendering reran a matched/error-route layout.'
     );
 
     const notFoundResponse = await handler(
       new Request('https://example.test/base/not-found'),
-      platform,
+      platform
     );
     assert(
       notFoundResponse.status === 404 &&
         (await notFoundResponse.text()).includes('data-status="404"'),
-      '404 did not use the shared error page.',
+      '404 did not use the shared error page.'
     );
 
     const adminChildResponse = await handler(
       new Request('https://example.test/base/admin/users/alice'),
-      platform,
+      platform
     );
     const adminChildHtml = await adminChildResponse.text();
     assert(
@@ -536,69 +495,62 @@ describe('request and render context', () => {
         adminChildHtml.includes('data-param="alice"') &&
         adminChildHtml.includes('data-state="user:/base/admin/users/alice"') &&
         adminChildHtml.includes('data-platform="opaque-platform"'),
-      'A nested error did not use its nearest boundary with original context.',
+      'A nested error did not use its nearest boundary with original context.'
     );
 
     const adminRootResponse = await handler(
       new Request('https://example.test/base/admin'),
-      platform,
+      platform
     );
     assert(
       adminRootResponse.status === 418 &&
         (await adminRootResponse.text()).includes('data-boundary="admin"'),
-      'A nested error boundary did not include its directory root.',
+      'A nested error boundary did not include its directory root.'
     );
 
-    const siblingResponse = await handler(
-      new Request('https://example.test/base/other'),
-      platform,
-    );
+    const siblingResponse = await handler(new Request('https://example.test/base/other'), platform);
     const siblingHtml = await siblingResponse.text();
     assert(
       siblingResponse.status === 418 &&
         siblingHtml.includes('data-boundary="root"') &&
         !siblingHtml.includes('data-boundary="admin"'),
-      'A sibling route did not fall back to the root error boundary.',
+      'A sibling route did not fall back to the root error boundary.'
     );
 
     const prefixCollisionResponse = await handler(
       new Request('https://example.test/base/administrator'),
-      platform,
+      platform
     );
     assert(
       prefixCollisionResponse.status === 404 &&
         (await prefixCollisionResponse.text()).includes('data-boundary="root"'),
-      'The /admin error boundary incorrectly matched /administrator.',
+      'The /admin error boundary incorrectly matched /administrator.'
     );
 
     const ordinaryResponse = await handler(
       new Request('https://example.test/base/ordinary-error'),
-      platform,
+      platform
     );
     assert(
       ordinaryResponse.status === 500 &&
         (await ordinaryResponse.text()).includes('data-status="500"'),
-      'An ordinary error was not normalized for the error page.',
+      'An ordinary error was not normalized for the error page.'
     );
 
-    const teapotResponse = await handler(
-      new Request('https://example.test/base/teapot'),
-      platform,
-    );
+    const teapotResponse = await handler(new Request('https://example.test/base/teapot'), platform);
     assert(
-      teapotResponse.status === 418 &&
-        (await teapotResponse.text()).includes('data-status="418"'),
-      'HttpError status did not reach the error page.',
+      teapotResponse.status === 418 && (await teapotResponse.text()).includes('data-status="418"'),
+      'HttpError status did not reach the error page.'
     );
 
     const fallbackResponse = await handler(
       new Request('https://example.test/base/error-page-fails'),
-      platform,
+      platform
     );
     assert(
       fallbackResponse.status === 500 &&
         (await fallbackResponse.text()) === 'Internal server error',
-      'A failing custom error page did not use the non-recursive fallback.',
+      'A failing custom error page did not use the non-recursive fallback.'
     );
   });
 });

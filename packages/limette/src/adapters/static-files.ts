@@ -31,7 +31,7 @@ function normalizeBasePath(base = '/') {
 
 export function staticFileRequest(
   request: Request,
-  base?: string,
+  base?: string
 ): StaticFileRequest | Response | undefined {
   const normalizedBase = normalizeBasePath(base);
   const pathname = new URL(request.url).pathname;
@@ -44,18 +44,14 @@ export function staticFileRequest(
   let decodedPathname: string;
   try {
     decodedPathname = decodeURIComponent(
-      normalizedBase === '/'
-        ? pathname.slice(1)
-        : pathname.slice(normalizedBase.length),
+      normalizedBase === '/' ? pathname.slice(1) : pathname.slice(normalizedBase.length)
     );
   } catch {
     return undefined;
   }
 
   const segments = decodedPathname.replaceAll('\\', '/').split('/');
-  if (
-    segments.some((segment) => segment === '..' || segment.includes('\0'))
-  ) {
+  if (segments.some((segment) => segment === '..' || segment.includes('\0'))) {
     return undefined;
   }
 

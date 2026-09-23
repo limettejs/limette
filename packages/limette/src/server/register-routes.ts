@@ -13,7 +13,7 @@ function registerMethod<State = DefaultState, Platform = unknown>(
   app: App<State, Platform>,
   method: Method,
   path: string | URLPattern,
-  handlers: RouteHandler<State, Platform>[],
+  handlers: RouteHandler<State, Platform>[]
 ) {
   const [handler, ...remainingHandlers] = handlers;
   if (!handler) {
@@ -39,28 +39,26 @@ function registerMethod<State = DefaultState, Platform = unknown>(
 }
 
 function isMiddleware<State = DefaultState, Platform = unknown>(
-  value: unknown,
+  value: unknown
 ): value is Middleware<State, Platform> {
   return typeof value === 'function';
 }
 
-function normalizeMiddlewareModules<
-  State = DefaultState,
-  Platform = unknown,
->(
+function normalizeMiddlewareModules<State = DefaultState, Platform = unknown>(
   modules: readonly unknown[],
-  routeFile: string,
+  routeFile: string
 ): Middleware<State, Platform>[] {
   const normalized: Middleware<State, Platform>[] = [];
 
   for (const [moduleIndex, middlewareModule] of modules.entries()) {
     if (
-      !middlewareModule || typeof middlewareModule !== 'object' ||
+      !middlewareModule ||
+      typeof middlewareModule !== 'object' ||
       !('handler' in middlewareModule)
     ) {
       throw new TypeError(
         `Invalid filesystem middleware for route "${routeFile}" at index ${moduleIndex}: ` +
-          'expected a module exporting "handler" as a function or array of functions.',
+          'expected a module exporting "handler" as a function or array of functions.'
       );
     }
 
@@ -72,7 +70,7 @@ function normalizeMiddlewareModules<
         throw new TypeError(
           `Invalid filesystem middleware for route "${routeFile}" at index ${moduleIndex}` +
             `${Array.isArray(exported) ? `, handler ${handlerIndex}` : ''}: ` +
-            'expected "handler" to contain only functions.',
+            'expected "handler" to contain only functions.'
         );
       }
       normalized.push(handler);
@@ -95,30 +93,22 @@ function filesystemErrorScope(path: string, basePath: string) {
 }
 
 function filesystemErrorDepth(path: string) {
-  return path.slice(0, -ERROR_ROUTE_SUFFIX.length).split('/').filter(Boolean)
-    .length;
+  return path.slice(0, -ERROR_ROUTE_SUFFIX.length).split('/').filter(Boolean).length;
 }
 
-export interface RegisterRouteDefinitionsOptions<
-  State = DefaultState,
-  Platform = unknown,
-> {
+export interface RegisterRouteDefinitionsOptions<State = DefaultState, Platform = unknown> {
   readonly appWrapper: AppWrapperComponentClass<State, Platform>;
   readonly routes: readonly RuntimeRouteDefinition<State, Platform>[];
 }
 
-function collectIslandComponents(
-  components: readonly (ServerComponentClass | undefined)[],
-) {
+function collectIslandComponents(components: readonly (ServerComponentClass | undefined)[]) {
   const islands: Record<string, CustomElementConstructor> = {};
   const visited = new Set<CustomElementConstructor>();
 
   const visit = (component: ServerComponentClass | undefined) => {
     if (!component || visited.has(component)) return;
     visited.add(component);
-    for (
-      const [tagName, definition] of Object.entries(component.islands ?? {})
-    ) {
+    for (const [tagName, definition] of Object.entries(component.islands ?? {})) {
       const Island = islandComponent(definition);
       islands[tagName] = Island;
       visit(Island as ServerComponentClass);
@@ -131,25 +121,25 @@ function collectIslandComponents(
 
 function prepareRoute<State = DefaultState, Platform = unknown>(
   route: RuntimeRouteDefinition<State, Platform>,
-  appWrapper: AppWrapperComponentClass<State, Platform>,
+  appWrapper: AppWrapperComponentClass<State, Platform>
 ): RuntimeRouteDefinition<State, Platform> {
   const renderComponents = {
     ...Object.fromEntries(
-      Object.entries(collectIslandComponents([
-        appWrapper as unknown as ServerComponentClass,
-        ...route.layouts.map((layout) =>
-          layout.default as unknown as ServerComponentClass
-        ),
-        route.routeModule.default as ServerComponentClass,
-        ...Object.values(route.renderComponents ?? {}).map((component) =>
-          component as ServerComponentClass
-        ),
-      ])).filter(([tagName]) => route.ssrIslands.includes(tagName)),
+      Object.entries(
+        collectIslandComponents([
+          appWrapper as unknown as ServerComponentClass,
+          ...route.layouts.map((layout) => layout.default as unknown as ServerComponentClass),
+          route.routeModule.default as ServerComponentClass,
+          ...Object.values(route.renderComponents ?? {}).map(
+            (component) => component as ServerComponentClass
+          ),
+        ])
+      ).filter(([tagName]) => route.ssrIslands.includes(tagName))
     ),
     ...Object.fromEntries(
-      Object.entries(route.renderComponents ?? {}).filter(([tagName]) =>
-        !route.islands.includes(tagName) || route.ssrIslands.includes(tagName)
-      ),
+      Object.entries(route.renderComponents ?? {}).filter(
+        ([tagName]) => !route.islands.includes(tagName) || route.ssrIslands.includes(tagName)
+      )
     ),
   };
 
@@ -165,19 +155,14 @@ function prepareRoute<State = DefaultState, Platform = unknown>(
   return { ...route, renderComponents };
 }
 
-export function registerRouteDefinitions<
-  State = DefaultState,
-  Platform = unknown,
->(
+export function registerRouteDefinitions<State = DefaultState, Platform = unknown>(
   app: App<State, Platform>,
-  options: RegisterRouteDefinitionsOptions<State, Platform>,
+  options: RegisterRouteDefinitionsOptions<State, Platform>
 ): void {
   const { appWrapper, routes } = options;
 
   if (!appWrapper) {
-    throw new Error(
-      'You need to create an AppWrapper (_app.ts/js) to render a page.',
-    );
+    throw new Error('You need to create an AppWrapper (_app.ts/js) to render a page.');
   }
 
   const errorRoutes: Array<{
@@ -190,9 +175,7 @@ export function registerRouteDefinitions<
   for (const [order, route] of routes.entries()) {
     const preparedRoute = prepareRoute(route, appWrapper);
     const errorRoute = preparedRoute.path.endsWith(ERROR_ROUTE_SUFFIX);
-    const renderedRoute = errorRoute
-      ? { ...preparedRoute, layouts: [] }
-      : preparedRoute;
+    const renderedRoute = errorRoute ? { ...preparedRoute, layouts: [] } : preparedRoute;
     const handlers = handlersForRoute(renderedRoute, appWrapper);
 
     // Register error pages
@@ -208,24 +191,17 @@ export function registerRouteDefinitions<
 
     const middlewares = normalizeMiddlewareModules<State, Platform>(
       preparedRoute.middlewares,
-      preparedRoute.file,
+      preparedRoute.file
     );
 
     for (const method of METHODS) {
       const handler = handlers[method];
       if (!handler) continue;
-      registerMethod(
-        app,
-        method,
-        preparedRoute.path,
-        [...middlewares, handler],
-      );
+      registerMethod(app, method, preparedRoute.path, [...middlewares, handler]);
     }
   }
 
-  errorRoutes.sort((left, right) =>
-    right.depth - left.depth || left.order - right.order
-  );
+  errorRoutes.sort((left, right) => right.depth - left.depth || left.order - right.order);
   for (const errorRoute of errorRoutes) {
     app.error(errorRoute.path, errorRoute.handler);
   }

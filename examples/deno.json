@@ -20,16 +20,11 @@
     "/lit": "npm:/lit@3.3.3/",
     "lit": "npm:lit@3.3.3",
     "linkedom": "npm:linkedom@0.18.13",
+    "playwright-core": "npm:playwright-core@1.63.0",
     "vite": "npm:vite@^8.0.0"
   },
   "compilerOptions": {
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "dom.asynciterable",
-      "deno.ns",
-      "deno.unstable"
-    ]
+    "lib": ["dom", "dom.iterable", "dom.asynciterable", "deno.ns", "deno.unstable"]
   },
   "nodeModulesDir": "auto",
   "fmt": {

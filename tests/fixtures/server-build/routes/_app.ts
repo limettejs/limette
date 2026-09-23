@@ -15,11 +15,11 @@ export default class TestApp extends AppComponent {
       <!DOCTYPE html>
       <html>
         <head>
-                ${this.assets.styles}
-              </head>
+          ${this.assets.styles}
+        </head>
         <body>
-                ${this.outlet} ${this.assets.scripts}
-              </body>
+          ${this.outlet} ${this.assets.scripts}
+        </body>
       </html>
     `;
   }

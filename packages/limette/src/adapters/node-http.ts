@@ -1,9 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 function requestOrigin(req: IncomingMessage) {
-  const proto = req.socket instanceof Object && 'encrypted' in req.socket
-    ? 'https'
-    : 'http';
+  const proto = req.socket instanceof Object && 'encrypted' in req.socket ? 'https' : 'http';
   const host = req.headers.host ?? 'localhost';
 
   return `${proto}://${host}`;
@@ -14,9 +12,7 @@ async function requestBody(req: IncomingMessage) {
   let length = 0;
 
   for await (const chunk of req) {
-    const bytes = typeof chunk === 'string'
-      ? new TextEncoder().encode(chunk)
-      : chunk;
+    const bytes = typeof chunk === 'string' ? new TextEncoder().encode(chunk) : chunk;
     chunks.push(bytes);
     length += bytes.byteLength;
   }
@@ -56,10 +52,7 @@ export async function incomingMessageToRequest(req: IncomingMessage) {
   return new Request(url, init);
 }
 
-export async function writeResponseToServerResponse(
-  response: Response,
-  res: ServerResponse,
-) {
+export async function writeResponseToServerResponse(response: Response, res: ServerResponse) {
   res.statusCode = response.status;
   res.statusMessage = response.statusText;
 

@@ -5,7 +5,7 @@ import { type AppWrapperComponentClass, renderContent } from './ssr.ts';
 import { type Method, METHODS } from './methods.ts';
 
 export type RouteHandler<State = DefaultState, Platform = unknown> = (
-  ctx: Context<State, Platform>,
+  ctx: Context<State, Platform>
 ) => Response | Promise<Response>;
 
 export type RouteHandlers<State = DefaultState, Platform = unknown> = {
@@ -14,14 +14,14 @@ export type RouteHandlers<State = DefaultState, Platform = unknown> = {
 
 export function handlersForRoute<State = DefaultState, Platform = unknown>(
   route: RuntimeRouteDefinition<State, Platform>,
-  AppWrapper: AppWrapperComponentClass<State, Platform>,
+  AppWrapper: AppWrapperComponentClass<State, Platform>
 ) {
   const handlers: RouteHandlers<State, Platform> = {};
 
   const renderRoute = async (ctx: ContextImpl<State, Platform>) => {
     if (!route.routeModule?.default) {
       throw new Error(
-        'No component was provided. Make sure you export a component as default to be rendered.',
+        'No component was provided. Make sure you export a component as default to be rendered.'
       );
     }
 

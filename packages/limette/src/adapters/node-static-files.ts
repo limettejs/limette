@@ -8,13 +8,10 @@ import {
 
 function isInsideRoot(root: string, path: string) {
   const relativePath = relative(root, path);
-  return relativePath === '' ||
-    (!relativePath.startsWith('..') && !isAbsolute(relativePath));
+  return relativePath === '' || (!relativePath.startsWith('..') && !isAbsolute(relativePath));
 }
 
-export function staticDirectoryHandler(
-  options: StaticDirectoryHandlerOptions,
-) {
+export function staticDirectoryHandler(options: StaticDirectoryHandlerOptions) {
   const configuredRoot = resolve(options.root);
   const root = realpath(configuredRoot).catch(() => undefined);
 

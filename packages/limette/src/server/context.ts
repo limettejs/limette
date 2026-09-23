@@ -4,18 +4,9 @@ import type { HttpError } from './error.ts';
 export type DefaultState = Record<string, unknown>;
 export type RedirectStatus = 301 | 302 | 303 | 307 | 308;
 
-const REDIRECT_STATUSES: ReadonlySet<number> = new Set([
-  301,
-  302,
-  303,
-  307,
-  308,
-]);
+const REDIRECT_STATUSES: ReadonlySet<number> = new Set([301, 302, 303, 307, 308]);
 
-export interface RenderContext<
-  State = DefaultState,
-  Platform = unknown,
-> {
+export interface RenderContext<State = DefaultState, Platform = unknown> {
   readonly request: Request;
   readonly url: URL;
   readonly params: Readonly<Record<string, string>>;
@@ -25,10 +16,10 @@ export interface RenderContext<
   readonly error: HttpError | undefined;
 }
 
-export interface Context<
-  State = DefaultState,
-  Platform = unknown,
-> extends Omit<RenderContext<State, Platform>, 'state'> {
+export interface Context<State = DefaultState, Platform = unknown> extends Omit<
+  RenderContext<State, Platform>,
+  'state'
+> {
   readonly state: State;
 
   next(): Promise<Response>;
@@ -47,10 +38,10 @@ interface ContextInit<State, Platform> {
 }
 
 /** @internal Request-local implementation used by Limette's server pipeline. */
-export class ContextImpl<
-  State = DefaultState,
-  Platform = unknown,
-> implements Context<State, Platform> {
+export class ContextImpl<State = DefaultState, Platform = unknown> implements Context<
+  State,
+  Platform
+> {
   readonly request: Request;
   readonly url: URL;
   readonly platform: Platform;
@@ -62,12 +53,15 @@ export class ContextImpl<
   #next: () => Promise<Response>;
   #render?: () => Promise<Response>;
 
-  constructor(
-    { request, url, platform, params, config, next, state }: ContextInit<
-      State,
-      Platform
-    >,
-  ) {
+  constructor({
+    request,
+    url,
+    platform,
+    params,
+    config,
+    next,
+    state,
+  }: ContextInit<State, Platform>) {
     this.request = request;
     this.url = url;
     this.platform = platform;
@@ -112,20 +106,15 @@ export class ContextImpl<
     this.#error = error;
   }
 
-  redirect(
-    location: string | URL,
-    status: RedirectStatus = 302,
-  ): Response {
+  redirect(location: string | URL, status: RedirectStatus = 302): Response {
     const value = location instanceof URL ? location.href : location;
 
     if (value.startsWith('//')) {
-      throw new TypeError(
-        `Protocol-relative redirect locations are not allowed: "${value}".`,
-      );
+      throw new TypeError(`Protocol-relative redirect locations are not allowed: "${value}".`);
     }
     if (!REDIRECT_STATUSES.has(status)) {
       throw new TypeError(
-        `Invalid redirect status ${status}. Expected 301, 302, 303, 307, or 308.`,
+        `Invalid redirect status ${status}. Expected 301, 302, 303, 307, or 308.`
       );
     }
 

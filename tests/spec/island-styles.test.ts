@@ -42,17 +42,18 @@ class TestApp extends AppComponent {
     return html`
       <!DOCTYPE html>
       <html>
-        <head>${this.assets.styles}</head>
-        <body>${this.outlet}</body>
+        <head>
+          ${this.assets.styles}
+        </head>
+        <body>
+          ${this.outlet}
+        </body>
       </html>
     `;
   }
 }
 
-function route(
-  id: 'a' | 'b',
-  component: typeof RouteA | typeof RouteB,
-): RuntimeRouteDefinition {
+function route(id: 'a' | 'b', component: typeof RouteA | typeof RouteB): RuntimeRouteDefinition {
   return {
     id,
     path: `/${id}`,
@@ -71,10 +72,7 @@ function route(
       scripts: [],
       styles: [`/assets/page-${id}.css`],
       islandStyles: {
-        'shared-style-island': [
-          `/assets/island-${id}-one.css`,
-          `/assets/island-${id}-two.css`,
-        ],
+        'shared-style-island': [`/assets/island-${id}-one.css`, `/assets/island-${id}-two.css`],
       },
     },
   };
@@ -96,17 +94,11 @@ function context(id: 'a' | 'b') {
 }
 
 async function renderRoute(definition: RuntimeRouteDefinition, id: 'a' | 'b') {
-  return await renderContent(
-    TestApp,
-    definition,
-    context(id),
-  );
+  return await renderContent(TestApp, definition, context(id));
 }
 
 function islandShadow(html: string) {
-  const match = html.match(
-    /<shared-style-island[^>]*>([\s\S]*?)<\/shared-style-island>/,
-  );
+  const match = html.match(/<shared-style-island[^>]*>([\s\S]*?)<\/shared-style-island>/);
   assert(match, 'The shared island was not rendered.');
   return match[1];
 }
@@ -116,28 +108,27 @@ function assertRouteStyle(html: string, own: 'a' | 'b', other: 'a' | 'b') {
   assert(
     shadow.includes(`/assets/island-${own}-one.css`) &&
       shadow.includes(`/assets/island-${own}-two.css`),
-    `Route ${own} island lost one of its stylesheets.`,
+    `Route ${own} island lost one of its stylesheets.`
   );
   assert(
     !shadow.includes(`/assets/island-${other}-one.css`) &&
       !shadow.includes(`/assets/island-${other}-two.css`),
-    `Route ${own} island received route ${other}'s stylesheet.`,
+    `Route ${own} island received route ${other}'s stylesheet.`
   );
   assert(
     !shadow.includes(`/assets/page-${own}.css`),
-    `Route ${own} island received the document stylesheet.`,
+    `Route ${own} island received the document stylesheet.`
   );
   assert(
     shadow.includes('color: rebeccapurple'),
-    `Route ${own} island lost its application-defined styles.`,
+    `Route ${own} island lost its application-defined styles.`
   );
 }
 
 describe('SSR island styles', () => {
   it('keeps route-specific styles render-local under sequential and concurrent rendering', async () => {
     const elementStyles = SharedStyleIsland.elementStyles;
-    const styleText = (style: unknown) =>
-      (style as { cssText: string }).cssText;
+    const styleText = (style: unknown) => (style as { cssText: string }).cssText;
     const applicationStyles = elementStyles.map(styleText);
     const classProperties = Object.getOwnPropertyNames(SharedStyleIsland);
 
@@ -156,17 +147,17 @@ describe('SSR island styles', () => {
 
     assert(
       SharedStyleIsland.elementStyles === elementStyles,
-      'Rendering replaced the island class elementStyles array.',
+      'Rendering replaced the island class elementStyles array.'
     );
     assert(
       JSON.stringify(SharedStyleIsland.elementStyles.map(styleText)) ===
         JSON.stringify(applicationStyles),
-      'Rendering changed the island class application-defined styles.',
+      'Rendering changed the island class application-defined styles.'
     );
     assert(
       JSON.stringify(Object.getOwnPropertyNames(SharedStyleIsland)) ===
         JSON.stringify(classProperties),
-      'Rendering added state to the island class.',
+      'Rendering added state to the island class.'
     );
   });
 });

@@ -10,11 +10,7 @@ import {
   RESOLVED_CLIENT_ENTRY_MODULE_PREFIX,
   RESOLVED_ISLAND_ENTRY_MODULE_PREFIX,
 } from './client-entry.ts';
-import type {
-  HotUpdateContextLike,
-  PluginContextLike,
-  ViteDevServerLike,
-} from './types.ts';
+import type { HotUpdateContextLike, PluginContextLike, ViteDevServerLike } from './types.ts';
 import {
   generateServerEntry,
   RESOLVED_SERVER_ENTRY_MODULE_ID,
@@ -47,14 +43,10 @@ type ConfigEnvLike = {
 };
 
 function serverRuntimePath() {
-  const sourcePath = fileURLToPath(
-    new URL('../server-runtime.ts', import.meta.url),
-  );
+  const sourcePath = fileURLToPath(new URL('../server-runtime.ts', import.meta.url));
   if (existsSync(sourcePath)) return sourcePath;
 
-  return fileURLToPath(
-    new URL('./internal/server-runtime.mjs', import.meta.url),
-  );
+  return fileURLToPath(new URL('./internal/server-runtime.mjs', import.meta.url));
 }
 
 export function limette(options: LimetteOptions) {
@@ -107,8 +99,8 @@ export function limette(options: LimetteOptions) {
               ],
               conditions: resolution.ssr.resolve.conditions,
               external: ['limette'],
-              noExternal: resolution.ssr.noExternal.filter((dependency) =>
-                dependency !== 'limette'
+              noExternal: resolution.ssr.noExternal.filter(
+                (dependency) => dependency !== 'limette'
               ),
             },
             build: {
@@ -155,11 +147,7 @@ export function limette(options: LimetteOptions) {
     },
     resolveId(this: PluginContextLike, id: string) {
       if (command === 'build') {
-        const litPackageId = resolveLitPackageId(
-          root,
-          id,
-          this.environment?.name === 'server',
-        );
+        const litPackageId = resolveLitPackageId(root, id, this.environment?.name === 'server');
         if (litPackageId) return litPackageId;
       }
 
@@ -168,15 +156,15 @@ export function limette(options: LimetteOptions) {
       }
 
       if (id.startsWith(CLIENT_ENTRY_MODULE_PREFIX)) {
-        return `${RESOLVED_CLIENT_ENTRY_MODULE_PREFIX}${
-          id.slice(CLIENT_ENTRY_MODULE_PREFIX.length)
-        }`;
+        return `${RESOLVED_CLIENT_ENTRY_MODULE_PREFIX}${id.slice(
+          CLIENT_ENTRY_MODULE_PREFIX.length
+        )}`;
       }
 
       if (id.startsWith(ISLAND_ENTRY_MODULE_PREFIX)) {
-        return `${RESOLVED_ISLAND_ENTRY_MODULE_PREFIX}${
-          id.slice(ISLAND_ENTRY_MODULE_PREFIX.length)
-        }`;
+        return `${RESOLVED_ISLAND_ENTRY_MODULE_PREFIX}${id.slice(
+          ISLAND_ENTRY_MODULE_PREFIX.length
+        )}`;
       }
 
       const tailwindRouteId = tailwindRouteIdFromModuleId(id);
@@ -193,9 +181,7 @@ export function limette(options: LimetteOptions) {
       return undefined;
     },
     async load(this: PluginContextLike, id: string) {
-      const tailwindFile = options.tailwind
-        ? resolve(root, options.tailwind)
-        : undefined;
+      const tailwindFile = options.tailwind ? resolve(root, options.tailwind) : undefined;
       const tailwindRouteId = tailwindFile
         ? tailwindRouteIdFromResolvedId(id, tailwindFile)
         : undefined;
@@ -205,9 +191,7 @@ export function limette(options: LimetteOptions) {
           routesDir: options.routesDir,
           resolve: (id, importer) => this.resolve(id, importer),
         });
-        const route = manifest.routes.find((route) =>
-          route.id === tailwindRouteId
-        );
+        const route = manifest.routes.find((route) => route.id === tailwindRouteId);
         if (!route) {
           throw new Error(`Unknown Limette Tailwind entry: ${tailwindRouteId}`);
         }
@@ -219,7 +203,7 @@ export function limette(options: LimetteOptions) {
         const resolvedApp = await this.resolve(options.app, importer);
         if (!resolvedApp) {
           throw new Error(
-            `Could not resolve configured Limette app module "${options.app}" from "${root}".`,
+            `Could not resolve configured Limette app module "${options.app}" from "${root}".`
           );
         }
 
@@ -228,10 +212,7 @@ export function limette(options: LimetteOptions) {
           routesDir: options.routesDir,
           resolve: (id, importer) => this.resolve(id, importer),
         });
-        const manifestPath = resolve(
-          root,
-          'dist/client/.vite/manifest.json',
-        );
+        const manifestPath = resolve(root, 'dist/client/.vite/manifest.json');
         const assets = resolveServerEntryAssets({
           manifest: await readViteManifest({ manifestPath }),
           routes: manifest,
@@ -289,30 +270,27 @@ export function limette(options: LimetteOptions) {
       }
 
       const imports = [
-        ...route.styleImports.map((styleImport) =>
-          `import ${JSON.stringify(styleImport)};`
-        ),
+        ...route.styleImports.map((styleImport) => `import ${JSON.stringify(styleImport)};`),
         ...(route.islandImports.length
           ? [
-            `import 'limette/runtime/ssr-client/lit-element-hydrate-support.ts';`,
-            `import 'limette/runtime/ssr-client/lit-element-hydrate-support-patch.ts';`,
-          ]
+              `import 'limette/runtime/ssr-client/lit-element-hydrate-support.ts';`,
+              `import 'limette/runtime/ssr-client/lit-element-hydrate-support-patch.ts';`,
+            ]
           : []),
       ];
 
-      const islandLoads = route.islandImports.map((islandImport, index) =>
-        `const islandModule${index} = await import(${
-          JSON.stringify(islandImport.resolvedImport)
-        });`
+      const islandLoads = route.islandImports.map(
+        (islandImport, index) =>
+          `const islandModule${index} = await import(${JSON.stringify(
+            islandImport.resolvedImport
+          )});`
       );
       const registrations = route.islandImports.flatMap((island, index) => [
-        `const islandConstructor${index} = islandModule${index}[${
-          JSON.stringify(island.exportName)
-        }];`,
+        `const islandConstructor${index} = islandModule${index}[${JSON.stringify(
+          island.exportName
+        )}];`,
         `if (!customElements.get(${JSON.stringify(island.tagName)})) {`,
-        `  customElements.define(${
-          JSON.stringify(island.tagName)
-        }, islandConstructor${index});`,
+        `  customElements.define(${JSON.stringify(island.tagName)}, islandConstructor${index});`,
         `}`,
       ]);
 
@@ -322,12 +300,8 @@ export function limette(options: LimetteOptions) {
         ...registrations,
         `export const routeId = ${JSON.stringify(route.id)};`,
         `export const routePath = ${JSON.stringify(route.path)};`,
-        `export const islandImports = ${
-          JSON.stringify(route.islandImports, null, 2)
-        };`,
-        `export const styleImports = ${
-          JSON.stringify(route.styleImports, null, 2)
-        };`,
+        `export const islandImports = ${JSON.stringify(route.islandImports, null, 2)};`,
+        `export const styleImports = ${JSON.stringify(route.styleImports, null, 2)};`,
       ].join('\n');
     },
   };

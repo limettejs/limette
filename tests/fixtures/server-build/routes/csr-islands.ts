@@ -1,9 +1,6 @@
 import { PageComponent } from 'limette';
 import { html } from 'lit';
-import {
-  DescriptorClientOnly,
-  ShorthandClientOnly,
-} from '../islands/client-only.ts';
+import { DescriptorClientOnly, ShorthandClientOnly } from '../islands/client-only.ts';
 
 export default class CsrIslandsPage extends PageComponent {
   static override islands = {

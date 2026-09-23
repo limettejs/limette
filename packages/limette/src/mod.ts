@@ -9,12 +9,7 @@ export {
 export { deleteCookie, getCookies, setCookie } from './server/cookies.ts';
 export type { Cookie } from './server/cookies.ts';
 export { HttpError } from './server/error.ts';
-export type {
-  Context,
-  DefaultState,
-  RedirectStatus,
-  RenderContext,
-} from './server/context.ts';
+export type { Context, DefaultState, RedirectStatus, RenderContext } from './server/context.ts';
 export type { AppWrapperComponent } from './server/ssr.ts';
 export type { RouteConfig, RouteModule } from './server/router.ts';
 export type { RouteHandler, RouteHandlers } from './server/handlers.ts';

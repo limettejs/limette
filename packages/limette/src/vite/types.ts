@@ -12,13 +12,11 @@ export type ViteDevServerLike = {
     resolveId: (
       id: string,
       importer?: string,
-      options?: { ssr?: boolean },
-    ) => Promise<
-      {
-        id: string;
-        external?: boolean | 'absolute' | 'relative';
-      } | null
-    >;
+      options?: { ssr?: boolean }
+    ) => Promise<{
+      id: string;
+      external?: boolean | 'absolute' | 'relative';
+    } | null>;
   };
   ssrLoadModule: (url: string) => Promise<Record<string, unknown>>;
   transformRequest: (url: string) => Promise<{ code: string } | null>;
@@ -38,8 +36,5 @@ export type HotUpdateContextLike = {
 export type PluginContextLike = {
   environment?: { name: string };
   emitFile?: (file: { type: 'chunk'; id: string; name: string }) => string;
-  resolve: (
-    id: string,
-    importer?: string,
-  ) => Promise<{ id: string } | null>;
+  resolve: (id: string, importer?: string) => Promise<{ id: string } | null>;
 };

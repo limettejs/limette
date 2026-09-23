@@ -1,25 +1,30 @@
 {
   "name": "limette",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "A full-stack framework for Lit Web Components.",
   "keywords": [
-    "lit",
-    "web-components",
-    "ssr",
     "islands",
-    "vite"
+    "lit",
+    "ssr",
+    "vite",
+    "web-components"
   ],
-  "type": "module",
-  "types": "./dist/index.d.mts",
-  "license": "MIT",
   "homepage": "https://limette.dev",
+  "bugs": {
+    "url": "https://github.com/limettejs/limette/issues"
+  },
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/limettejs/limette.git"
   },
-  "bugs": {
-    "url": "https://github.com/limettejs/limette/issues"
-  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "types": "./dist/index.d.mts",
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
@@ -62,11 +67,12 @@
       "default": "./dist/runtime/ssr-client/lit-element-hydrate-support-patch.mjs"
     }
   },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ],
+  "dependencies": {
+    "@lit-labs/ssr": "4.1.0",
+    "@lit-labs/ssr-client": "1.1.8",
+    "@lit-labs/ssr-dom-shim": "1.6.0",
+    "linkedom": "0.18.13"
+  },
   "peerDependencies": {
     "lit": "^3.2.1",
     "vite": "^8.0.0"
@@ -75,11 +81,5 @@
     "vite": {
       "optional": true
     }
-  },
-  "dependencies": {
-    "@lit-labs/ssr": "4.1.0",
-    "@lit-labs/ssr-client": "1.1.8",
-    "@lit-labs/ssr-dom-shim": "1.6.0",
-    "linkedom": "0.18.13"
   }
 }

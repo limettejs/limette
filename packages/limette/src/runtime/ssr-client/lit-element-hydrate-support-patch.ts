@@ -13,9 +13,7 @@ interface PatchableLitElement extends HTMLElement {
   createRenderRoot(): Element | ShadowRoot;
 }
 
-type LitElementHydrateSupport = (options: {
-  LitElement: PatchableLitElement;
-}) => void;
+type LitElementHydrateSupport = (options: { LitElement: PatchableLitElement }) => void;
 
 const globalWithHydration = globalThis as typeof globalThis & {
   litElementHydrateSupport?: LitElementHydrateSupport;

@@ -1,4 +1,1 @@
-export {
-  incomingMessageToRequest,
-  writeResponseToServerResponse,
-} from '../adapters/node-http.ts';
+export { incomingMessageToRequest, writeResponseToServerResponse } from '../adapters/node-http.ts';

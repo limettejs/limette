@@ -2,9 +2,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { viteCommand } from './_vite-command.ts';
 
-const fixtureRoot = fileURLToPath(
-  new URL('../fixtures/server-build/', import.meta.url),
-);
+const fixtureRoot = fileURLToPath(new URL('../fixtures/server-build/', import.meta.url));
 const islandPath = join(fixtureRoot, 'islands/status.ts');
 const originalIsland = await Deno.readTextFile(islandPath);
 const islandCssPath = join(fixtureRoot, 'islands/status.css');
@@ -16,31 +14,31 @@ const after = 'Status changed by Vite island refresh</p>';
 const changedIsland = originalIsland.replace(before, after);
 const changedIslandCss = originalIslandCss.replace(
   'fixture-source: status-island',
-  'fixture-source: status-island-hmr',
+  'fixture-source: status-island-hmr'
 );
-const changedCsrIsland = originalCsrIsland.replace(
-  'Client count:',
-  'Changed client count:',
-);
+const changedCsrIsland = originalCsrIsland.replace('Client count:', 'Changed client count:');
 const port = 5181;
 const origin = `http://127.0.0.1:${port}`;
-const command = viteCommand([
-  '--config',
-  join(fixtureRoot, 'vite.config.ts'),
-  '--base',
-  '/',
-  '--host',
-  '127.0.0.1',
-  '--port',
-  String(port),
-  '--strictPort',
-  '--logLevel',
-  'error',
-], {
-  cwd: fixtureRoot,
-  stdout: 'null',
-  stderr: 'piped',
-});
+const command = viteCommand(
+  [
+    '--config',
+    join(fixtureRoot, 'vite.config.ts'),
+    '--base',
+    '/',
+    '--host',
+    '127.0.0.1',
+    '--port',
+    String(port),
+    '--strictPort',
+    '--logLevel',
+    'error',
+  ],
+  {
+    cwd: fixtureRoot,
+    stdout: 'null',
+    stderr: 'piped',
+  }
+);
 const child = command.spawn();
 const stderr = captureText(child.stderr);
 let socket: WebSocket | undefined;
@@ -75,12 +73,9 @@ function captureText(stream: ReadableStream<Uint8Array>) {
 }
 
 function hmrDiagnostics() {
-  const messages = recentHmrMessages.length
-    ? recentHmrMessages.join(', ')
-    : '(none)';
+  const messages = recentHmrMessages.length ? recentHmrMessages.join(', ') : '(none)';
   const errors = stderr.current().trim();
-  return `Recent HMR messages: ${messages}` +
-    (errors ? `\nVite stderr:\n${errors}` : '');
+  return `Recent HMR messages: ${messages}` + (errors ? `\nVite stderr:\n${errors}` : '');
 }
 
 function waitForNextFullReload(description: string) {
@@ -91,9 +86,8 @@ function waitForNextFullReload(description: string) {
       if (index !== -1) fullReloadWaiters.splice(index, 1);
       reject(
         new Error(
-          `${description} did not trigger a full reload within 15 seconds.\n` +
-            hmrDiagnostics(),
-        ),
+          `${description} did not trigger a full reload within 15 seconds.\n` + hmrDiagnostics()
+        )
       );
     }, 15_000);
     resolveReload = () => {
@@ -114,12 +108,9 @@ async function waitForHmrEvent(promise: Promise<void>, description: string) {
         timeout = setTimeout(
           () =>
             reject(
-              new Error(
-                `${description} did not arrive within 15 seconds.\n` +
-                  hmrDiagnostics(),
-              ),
+              new Error(`${description} did not arrive within 15 seconds.\n` + hmrDiagnostics())
             ),
-          15_000,
+          15_000
         );
       }),
     ]);
@@ -146,36 +137,29 @@ async function waitForPage(expected: string, path = '/') {
 
   throw new Error(
     `Vite dev did not render ${JSON.stringify(expected)}; ` +
-      `last status=${lastStatus}, body=${lastHtml.slice(0, 200)}`,
+      `last status=${lastStatus}, body=${lastHtml.slice(0, 200)}`
   );
 }
 
 function islandShadow(html: string) {
-  const match = html.match(
-    /<test-status[^>]*>([\s\S]*?)<\/test-status>/,
-  );
+  const match = html.match(/<test-status[^>]*>([\s\S]*?)<\/test-status>/);
   assert(match, 'The SSR island shadow root was not rendered.');
   return match[1];
 }
 
 function islandStyleUrls(html: string) {
-  return [...islandShadow(html).matchAll(/@import url\("([^"]+)"\)/g)]
-    .map((match) => match[1]);
+  return [...islandShadow(html).matchAll(/@import url\("([^"]+)"\)/g)].map((match) => match[1]);
 }
 
 try {
   const initialHtml = await waitForPage(before);
-  const initialCsrHtml = await waitForPage(
-    '<shorthand-client-only',
-    '/csr-islands',
-  );
+  const initialCsrHtml = await waitForPage('<shorthand-client-only', '/csr-islands');
   assert(
-    !initialCsrHtml.includes('Client count:') &&
-      initialCsrHtml.includes('<descriptor-client-only'),
-    'A default or omitted-policy island deep-rendered in Vite dev.',
+    !initialCsrHtml.includes('Client count:') && initialCsrHtml.includes('<descriptor-client-only'),
+    'A default or omitted-policy island deep-rendered in Vite dev.'
   );
   const csrClientEntry = initialCsrHtml.match(
-    /<script type="module" src="([^" ]*\/@limette\/client-entry\/[^" ]+)"/,
+    /<script type="module" src="([^" ]*\/@limette\/client-entry\/[^" ]+)"/
   )?.[1];
   assert(csrClientEntry, 'The CSR island route did not emit a client entry.');
   const csrEntryResponse = await fetch(`${origin}${csrClientEntry}`);
@@ -183,36 +167,31 @@ try {
   const csrEntryCode = await csrEntryResponse.text();
   assert(
     csrEntryCode.includes('/islands/client-only.ts'),
-    'The CSR island client entry did not reference its island module.',
+    'The CSR island client entry did not reference its island module.'
   );
-  const initialCsrModuleResponse = await fetch(
-    `${origin}/islands/client-only.ts`,
-  );
-  assert(
-    initialCsrModuleResponse.ok,
-    'The CSR island client module did not load.',
-  );
+  const initialCsrModuleResponse = await fetch(`${origin}/islands/client-only.ts`);
+  assert(initialCsrModuleResponse.ok, 'The CSR island client module did not load.');
   const initialCsrModule = await initialCsrModuleResponse.text();
   assert(
     initialCsrModule.includes('Client count:'),
-    'The CSR island client module did not contain its initial implementation.',
+    'The CSR island client module did not contain its initial implementation.'
   );
   assert(
     (initialHtml.match(/src="\/@vite\/client"/g) ?? []).length === 1,
-    'The island route did not load exactly one Vite client.',
+    'The island route did not load exactly one Vite client.'
   );
   const initialIslandStyles = islandStyleUrls(initialHtml);
   assert(
     initialIslandStyles.includes('/islands/status.css?direct') &&
       initialIslandStyles.includes('/islands/shared.css?direct'),
-    'The SSR island shadow root did not include all island CSS dependencies.',
+    'The SSR island shadow root did not include all island CSS dependencies.'
   );
   assert(
     !islandShadow(initialHtml).includes('/styles/home.css'),
-    'Route CSS leaked into the island shadow root.',
+    'Route CSS leaked into the island shadow root.'
   );
   const clientEntry = initialHtml.match(
-    /<script type="module" src="([^" ]*\/@limette\/client-entry\/[^"]+)"/,
+    /<script type="module" src="([^" ]*\/@limette\/client-entry\/[^"]+)"/
   )?.[1];
   assert(clientEntry, 'The island route did not emit a Vite client entry.');
 
@@ -221,15 +200,17 @@ try {
   const entryCode = await entryResponse.text();
   assert(
     !entryCode.includes('/@vite/client'),
-    'The island entry retained a duplicate Vite client import.',
+    'The island entry retained a duplicate Vite client import.'
   );
   const hydrationIndex = entryCode.indexOf('lit-element-hydrate-support');
   const islandIndex = entryCode.indexOf('/islands/status.ts');
   const registrationIndex = entryCode.indexOf('customElements.define');
   assert(
-    hydrationIndex !== -1 && islandIndex > hydrationIndex &&
-      registrationIndex > islandIndex && entryCode.includes('test-status'),
-    'The dev client entry did not install hydration support before registering islands.',
+    hydrationIndex !== -1 &&
+      islandIndex > hydrationIndex &&
+      registrationIndex > islandIndex &&
+      entryCode.includes('test-status'),
+    'The dev client entry did not install hydration support before registering islands.'
   );
   const islandResponse = await fetch(`${origin}/islands/status.ts`);
   assert(islandResponse.ok, 'The island client module did not load.');
@@ -237,9 +218,8 @@ try {
   for (const styleUrl of initialIslandStyles) {
     const styleResponse = await fetch(`${origin}${styleUrl}`);
     assert(
-      styleResponse.ok &&
-        (styleResponse.headers.get('content-type') ?? '').includes('text/css'),
-      `Vite did not serve island CSS ${styleUrl}.`,
+      styleResponse.ok && (styleResponse.headers.get('content-type') ?? '').includes('text/css'),
+      `Vite did not serve island CSS ${styleUrl}.`
     );
     await styleResponse.text();
   }
@@ -253,23 +233,18 @@ try {
   const cssUpdate = new Promise<void>((resolve) => {
     resolveCssUpdate = resolve;
   });
-  socket = new WebSocket(
-    `ws://127.0.0.1:${port}${hmrBase}?token=${token}`,
-    'vite-hmr',
-  );
+  socket = new WebSocket(`ws://127.0.0.1:${port}${hmrBase}?token=${token}`, 'vite-hmr');
   socket.onmessage = (event) => {
     const message = JSON.parse(String(event.data)) as {
       type?: string;
       path?: string;
       updates?: Array<{ path?: string; acceptedPath?: string }>;
     };
-    const updatePaths = message.updates?.flatMap((update) =>
-      [update.path, update.acceptedPath].filter(Boolean)
-    ) ?? [];
+    const updatePaths =
+      message.updates?.flatMap((update) => [update.path, update.acceptedPath].filter(Boolean)) ??
+      [];
     recentHmrMessages.push(
-      [message.type ?? 'unknown', message.path, ...updatePaths]
-        .filter(Boolean)
-        .join(':'),
+      [message.type ?? 'unknown', message.path, ...updatePaths].filter(Boolean).join(':')
     );
     if (recentHmrMessages.length > 20) {
       recentHmrMessages.shift();
@@ -279,9 +254,10 @@ try {
     }
     if (
       message.type === 'update' &&
-      message.updates?.some((update) =>
-        update.path?.includes('/islands/status.css') ||
-        update.acceptedPath?.includes('/islands/status.css')
+      message.updates?.some(
+        (update) =>
+          update.path?.includes('/islands/status.css') ||
+          update.acceptedPath?.includes('/islands/status.css')
       )
     ) {
       resolveCssUpdate();
@@ -291,44 +267,31 @@ try {
     socket!.onopen = () => {
       resolve();
     };
-    socket!.onerror = () =>
-      reject(new Error('Vite HMR websocket failed.'));
+    socket!.onerror = () => reject(new Error('Vite HMR websocket failed.'));
   });
 
-  assert(
-    changedIslandCss !== originalIslandCss,
-    'Island CSS refresh fixture did not change.',
-  );
+  assert(changedIslandCss !== originalIslandCss, 'Island CSS refresh fixture did not change.');
   await Deno.writeTextFile(islandCssPath, changedIslandCss);
   islandCssChanged = true;
   let updatedCss = '';
   for (let attempt = 0; attempt < 50; attempt++) {
-    updatedCss = await (
-      await fetch(`${origin}/islands/status.css?direct`)
-    ).text();
+    updatedCss = await (await fetch(`${origin}/islands/status.css?direct`)).text();
     if (updatedCss.includes('status-island-hmr')) break;
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  assert(
-    updatedCss.includes('status-island-hmr'),
-    'Vite continued serving stale island CSS.',
-  );
+  assert(updatedCss.includes('status-island-hmr'), 'Vite continued serving stale island CSS.');
   await waitForHmrEvent(cssUpdate, 'The island CSS HMR update');
   const cssUpdatedHtml = await waitForPage(before);
   assert(
-    JSON.stringify(islandStyleUrls(cssUpdatedHtml)) ===
-      JSON.stringify(initialIslandStyles),
-    'SSR changed or lost its island-specific CSS URLs after a CSS edit.',
+    JSON.stringify(islandStyleUrls(cssUpdatedHtml)) === JSON.stringify(initialIslandStyles),
+    'SSR changed or lost its island-specific CSS URLs after a CSS edit.'
   );
   assert(
     !islandShadow(cssUpdatedHtml).includes('/styles/home.css'),
-    'Route CSS entered the island shadow root after a CSS edit.',
+    'Route CSS entered the island shadow root after a CSS edit.'
   );
 
-  assert(
-    changedIsland !== originalIsland,
-    'Island refresh fixture did not change.',
-  );
+  assert(changedIsland !== originalIsland, 'Island refresh fixture did not change.');
   const islandReload = waitForNextFullReload('The SSR island update');
   await Deno.writeTextFile(islandPath, changedIsland);
   islandChanged = true;
@@ -336,36 +299,28 @@ try {
   const updatedHtml = await waitForPage(after);
   assert(
     !updatedHtml.includes(before),
-    'SSR retained the previous island constructor after its module changed.',
+    'SSR retained the previous island constructor after its module changed.'
   );
   await islandReload;
 
-  assert(
-    changedCsrIsland !== originalCsrIsland,
-    'CSR island refresh fixture did not change.',
-  );
+  assert(changedCsrIsland !== originalCsrIsland, 'CSR island refresh fixture did not change.');
   const csrIslandReload = waitForNextFullReload('The CSR island update');
   await Deno.writeTextFile(csrIslandPath, changedCsrIsland);
   csrIslandChanged = true;
   let updatedCsrModule = '';
   for (let attempt = 0; attempt < 50; attempt++) {
-    updatedCsrModule = await (
-      await fetch(`${origin}/islands/client-only.ts`)
-    ).text();
+    updatedCsrModule = await (await fetch(`${origin}/islands/client-only.ts`)).text();
     if (updatedCsrModule.includes('Changed client count:')) break;
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
   assert(
     updatedCsrModule.includes('Changed client count:'),
-    'Vite continued serving the stale CSR-only island constructor.',
+    'Vite continued serving the stale CSR-only island constructor.'
   );
-  const updatedCsrHtml = await waitForPage(
-    '<shorthand-client-only',
-    '/csr-islands',
-  );
+  const updatedCsrHtml = await waitForPage('<shorthand-client-only', '/csr-islands');
   assert(
     !updatedCsrHtml.includes('Changed client count:'),
-    'A refreshed CSR-only island began deep-rendering on the server.',
+    'A refreshed CSR-only island began deep-rendering on the server.'
   );
   await csrIslandReload;
 } finally {
@@ -389,7 +344,7 @@ try {
       !errors.includes('already has "test-counter" defined') &&
       !errors.includes('already has "shorthand-client-only" defined') &&
       !errors.includes('already has "descriptor-client-only" defined'),
-    `Vite dev repeated an island registration:\n${errors}`,
+    `Vite dev repeated an island registration:\n${errors}`
   );
   if (errors) console.error(errors);
 }

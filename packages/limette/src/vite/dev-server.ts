@@ -1,8 +1,5 @@
 import { isAbsolute, relative, resolve } from 'node:path';
-import {
-  incomingMessageToRequest,
-  writeResponseToServerResponse,
-} from './node-adapter.ts';
+import { incomingMessageToRequest, writeResponseToServerResponse } from './node-adapter.ts';
 import { loadServerModule } from './module-loader.ts';
 import { materializeDevRoutes } from './routes.ts';
 import type { DiscoverRoutesOptions } from './manifest.ts';
@@ -22,8 +19,7 @@ export type LimetteDevOptions = DiscoverRoutesOptions & {
 
 function isInsidePath(parent: string, child: string) {
   const relativePath = relative(parent, child);
-  return relativePath === '' ||
-    (!relativePath.startsWith('..') && !isAbsolute(relativePath));
+  return relativePath === '' || (!relativePath.startsWith('..') && !isAbsolute(relativePath));
 }
 
 function viteClientPath(base: string) {
@@ -41,26 +37,18 @@ const bfcacheRecoveryScript = `<script data-limette-bfcache-recovery>(() => {
   });
 })();</script>`;
 
-async function injectViteClient(
-  response: Response,
-  server: ViteDevServerLike,
-) {
+async function injectViteClient(response: Response, server: ViteDevServerLike) {
   if (!response.headers.get('content-type')?.includes('text/html')) {
     return response;
   }
 
   const html = await response.text();
   const clientPath = viteClientPath(server.config?.base ?? '/');
-  const hasViteClient =
-    /<script\b[^>]*\bsrc=["'][^"']*\/@vite\/client(?:[?"'])/i
-      .test(html);
+  const hasViteClient = /<script\b[^>]*\bsrc=["'][^"']*\/@vite\/client(?:[?"'])/i.test(html);
   const devScripts = `${bfcacheRecoveryScript}${
     hasViteClient ? '' : `<script type="module" src="${clientPath}"></script>`
   }`;
-  const injected = html.replace(
-    /<\/head\s*>/i,
-    `${devScripts}</head>`,
-  );
+  const injected = html.replace(/<\/head\s*>/i, `${devScripts}</head>`);
   const output = injected === html ? `${devScripts}${html}` : injected;
   const headers = new Headers(response.headers);
   headers.delete('content-length');
@@ -77,15 +65,13 @@ async function loadAppModule(
   root: string,
   appModule: string,
   appExport = 'app',
-  version?: number,
+  version?: number
 ) {
   const module = await loadServerModule(server, root, appModule, version);
   const app = module[appExport];
 
   if (!app) {
-    throw new Error(
-      `Expected Limette app export "${appExport}" in ${appModule}.`,
-    );
+    throw new Error(`Expected Limette app export "${appExport}" in ${appModule}.`);
   }
 
   return app as App;
@@ -111,12 +97,12 @@ export function createLimetteDevServer(options: LimetteDevOptions = {}) {
   function isServerFile(file: string) {
     const absoluteFile = resolve(file);
     const routesPath = resolve(root, options.routesDir ?? 'routes');
-    const appModulePath = options.dev?.appModule
-      ? resolve(root, options.dev.appModule)
-      : undefined;
+    const appModulePath = options.dev?.appModule ? resolve(root, options.dev.appModule) : undefined;
 
-    return isInsidePath(routesPath, absoluteFile) ||
-      (appModulePath ? absoluteFile === appModulePath : false);
+    return (
+      isInsidePath(routesPath, absoluteFile) ||
+      (appModulePath ? absoluteFile === appModulePath : false)
+    );
   }
 
   function sendFullReload(server: ViteDevServerLike) {
@@ -127,19 +113,14 @@ export function createLimetteDevServer(options: LimetteDevOptions = {}) {
 
   async function createDevHandler(server: ViteDevServerLike) {
     const version = Date.now();
-    const app = options.dev!.app ?? await options.dev!.loadApp?.() ??
-      await loadAppModule(
-        server,
-        root,
-        options.dev!.appModule!,
-        options.dev!.appExport,
-        version,
-      );
+    const app =
+      options.dev!.app ??
+      (await options.dev!.loadApp?.()) ??
+      (await loadAppModule(server, root, options.dev!.appModule!, options.dev!.appExport, version));
     await materializeDevRoutes(app, {
       ...options,
       root,
-      resolve: (id, importer) =>
-        server.pluginContainer?.resolveId(id, importer, { ssr: true }),
+      resolve: (id, importer) => server.pluginContainer?.resolveId(id, importer, { ssr: true }),
       loadFile: (path) => loadServerModule(server, root, path, version),
     });
 
@@ -171,27 +152,18 @@ export function createLimetteDevServer(options: LimetteDevOptions = {}) {
     }
 
     return () => {
-      server.middlewares.use(
-        async (...args) => {
-          const [req, res, next] = args as [
-            IncomingMessage,
-            ServerResponse,
-            () => void,
-          ];
-          const handler = await getDevHandler(server);
-          if (!handler) {
-            next();
-            return;
-          }
+      server.middlewares.use(async (...args) => {
+        const [req, res, next] = args as [IncomingMessage, ServerResponse, () => void];
+        const handler = await getDevHandler(server);
+        if (!handler) {
+          next();
+          return;
+        }
 
-          const request = await incomingMessageToRequest(req);
-          const response = await injectViteClient(
-            await handler(request),
-            server,
-          );
-          await writeResponseToServerResponse(response, res);
-        },
-      );
+        const request = await incomingMessageToRequest(req);
+        const response = await injectViteClient(await handler(request), server);
+        await writeResponseToServerResponse(response, res);
+      });
     };
   }
 

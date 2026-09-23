@@ -29,7 +29,7 @@ try {
           return html\`\${this.outlet}\`;
         }
       }
-    `,
+    `
   );
 
   await writeFile(
@@ -51,7 +51,7 @@ try {
           return html\`\${this.outlet}\`;
         }
       }
-    `,
+    `
   );
 
   await writeFile(
@@ -73,7 +73,7 @@ try {
           return html\`<server-card data-shared=\${shared}></server-card>\`;
         }
       }
-    `,
+    `
   );
 
   await writeFile(
@@ -95,78 +95,63 @@ try {
           return html\`<card-island></card-island>\`;
         }
       }
-    `,
+    `
   );
 
   await writeFile(
     'shared/island-barrel.js',
     `export { CardIsland } from '../islands/card.js';
-     export * from './star-reexport.js';`,
+     export * from './star-reexport.js';`
   );
-  await writeFile(
-    'shared/star-reexport.js',
-    `export * from './star-target.js';`,
-  );
+  await writeFile('shared/star-reexport.js', `export * from './star-target.js';`);
   await writeFile(
     'shared/star-target.js',
     `import StarIsland from '../islands/star.js';
      export class StarServerComponent {
        static islands = { 'star-island': StarIsland };
-     }`,
+     }`
   );
   await writeFile(
     'shared/page-shared.js',
     `import '../styles/page-shared.css';
      import './cycle-a.js';
-     export const shared = 'shared';`,
+     export const shared = 'shared';`
   );
   await writeFile(
     'shared/cycle-a.js',
     `import './cycle-b.js';
-     export const cycleA = true;`,
+     export const cycleA = true;`
   );
   await writeFile(
     'shared/cycle-b.js',
     `import './cycle-a.js';
-     export const cycleB = true;`,
+     export const cycleB = true;`
   );
 
-  await writeFile(
-    'islands/app.js',
-    'export class AppIsland extends HTMLElement {}',
-  );
-  await writeFile(
-    'islands/layout.js',
-    'export class LayoutIsland extends HTMLElement {}',
-  );
+  await writeFile('islands/app.js', 'export class AppIsland extends HTMLElement {}');
+  await writeFile('islands/layout.js', 'export class LayoutIsland extends HTMLElement {}');
   await writeFile(
     'islands/card.js',
     `import './card.css';
      import { NestedIsland } from './nested.js';
      export class CardIsland extends HTMLElement {
        static islands = { 'nested-island': NestedIsland };
-     }`,
+     }`
   );
-  await writeFile(
-    'islands/nested.js',
-    'export class NestedIsland extends HTMLElement {}',
-  );
-  await writeFile(
-    'islands/star.js',
-    'export default class StarIsland extends HTMLElement {}',
-  );
+  await writeFile('islands/nested.js', 'export class NestedIsland extends HTMLElement {}');
+  await writeFile('islands/star.js', 'export default class StarIsland extends HTMLElement {}');
   await writeFile('islands/card.css', '.card {}');
   await writeFile('styles/page-shared.css', '.page-shared {}');
   await writeFile(
     'node_modules/.vite/deps/limette.js',
     `export class CompiledFrameworkCode {
        static islands = createRuntimeIslandMap();
-     }`,
+     }`
   );
   await writeFile(
     'dist/generated.js',
     `import '../styles/generated.css';
-     export const generated = true;`,
+     export const generated = true;`
   );
   await writeFile('styles/generated.css', '.generated {}');
 
@@ -176,17 +161,13 @@ try {
     logLevel: 'silent',
     resolve: {
       alias: {
-        'limette': join(
-          root,
-          'node_modules/.vite/deps/limette.js',
-        ),
+        limette: join(root, 'node_modules/.vite/deps/limette.js'),
         '@shared': join(root, 'shared'),
       },
     },
     server: { middlewareMode: true },
   });
-  const resolve = (id: string, importer: string) =>
-    vite.pluginContainer.resolveId(id, importer);
+  const resolve = (id: string, importer: string) => vite.pluginContainer.resolveId(id, importer);
   const manifest = await discoverRoutes({
     root,
     resolve,
@@ -211,7 +192,7 @@ try {
     unsupportedRoute,
     `export default class Unsupported {
        static islands = createIslands();
-     }`,
+     }`
   );
   let unsupportedError = '';
   try {
@@ -229,7 +210,7 @@ try {
        static islands = {
          'dynamic-ssr-island': { component: AppIsland, ssr: enabled },
        };
-     }`,
+     }`
   );
   let dynamicSsrError = '';
   try {
@@ -259,55 +240,39 @@ try {
     throw new Error('Expected root layout to be inherited by home route.');
   }
 
-  const islandImports = homeRoute.islandImports.map((islandImport) =>
-    islandImport.resolvedImport
-  );
+  const islandImports = homeRoute.islandImports.map((islandImport) => islandImport.resolvedImport);
 
-  for (
-    const [tagName, exportName] of [
-      ['app-island', 'AppIsland'],
-      ['card-island', 'CardIsland'],
-      ['star-island', 'default'],
-    ] as const
-  ) {
-    const island = homeRoute.islandImports.find((entry) =>
-      entry.tagName === tagName
-    );
+  for (const [tagName, exportName] of [
+    ['app-island', 'AppIsland'],
+    ['card-island', 'CardIsland'],
+    ['star-island', 'default'],
+  ] as const) {
+    const island = homeRoute.islandImports.find((entry) => entry.tagName === tagName);
     if (island?.exportName !== exportName) {
       throw new Error(
-        `Expected ${tagName} to use export ${exportName}; found ${island?.exportName}.`,
+        `Expected ${tagName} to use export ${exportName}; found ${island?.exportName}.`
       );
     }
   }
 
-  const policies = new Map(
-    homeRoute.islandImports.map((island) => [island.tagName, island.ssr]),
-  );
+  const policies = new Map(homeRoute.islandImports.map((island) => [island.tagName, island.ssr]));
   if (
     policies.get('app-island') !== false ||
     policies.get('layout-island') !== false ||
     policies.get('card-island') !== true
   ) {
-    throw new Error(`Unexpected discovered SSR policies: ${
-      JSON.stringify([
-        ...policies,
-      ])
-    }`);
+    throw new Error(`Unexpected discovered SSR policies: ${JSON.stringify([...policies])}`);
   }
 
-  for (
-    const expectedImport of [
-      '/islands/app.js',
-      '/islands/layout.js',
-      '/shared/island-barrel.js',
-      '/islands/nested.js',
-      '/islands/star.js',
-    ]
-  ) {
+  for (const expectedImport of [
+    '/islands/app.js',
+    '/islands/layout.js',
+    '/shared/island-barrel.js',
+    '/islands/nested.js',
+    '/islands/star.js',
+  ]) {
     if (!islandImports.includes(expectedImport)) {
-      throw new Error(
-        `Missing island import: ${expectedImport}. Found: ${islandImports}`,
-      );
+      throw new Error(`Missing island import: ${expectedImport}. Found: ${islandImports}`);
     }
   }
 
@@ -321,13 +286,9 @@ try {
     throw new Error('Discovery traversed generated build output.');
   }
   if (
-    homeRoute.styleImports.some((style) =>
-      style.includes('fake.css') || style.includes('card.css')
-    )
+    homeRoute.styleImports.some((style) => style.includes('fake.css') || style.includes('card.css'))
   ) {
-    throw new Error(
-      'Discovery included a false-positive or island-owned stylesheet.',
-    );
+    throw new Error('Discovery included a false-positive or island-owned stylesheet.');
   }
 } finally {
   await Deno.remove(root, { recursive: true });

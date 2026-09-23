@@ -14,4 +14,4 @@
  *
  * Without this guard, alert pauses the server until return is pressed in the console.
  */
-export const IS_BROWSER = typeof globalThis.Deno === "undefined";
+export const IS_BROWSER = typeof globalThis.Deno === 'undefined';

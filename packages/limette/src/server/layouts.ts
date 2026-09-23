@@ -10,10 +10,7 @@ export interface LayoutModule<State = DefaultState, Platform = unknown> {
   default: LayoutComponentClass<State, Platform>;
 }
 
-export interface LayoutComponentClass<
-  State = DefaultState,
-  Platform = unknown,
-> {
+export interface LayoutComponentClass<State = DefaultState, Platform = unknown> {
   new (): LayoutComponent<State, Platform>;
   islands?: IslandsDefinition;
 }

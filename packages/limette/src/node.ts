@@ -1,10 +1,7 @@
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
-import {
-  incomingMessageToRequest,
-  writeResponseToServerResponse,
-} from './adapters/node-http.ts';
+import { incomingMessageToRequest, writeResponseToServerResponse } from './adapters/node-http.ts';
 import { staticDirectoryHandler } from './adapters/node-static-files.ts';
 import type { StaticDirectoryHandlerOptions } from './adapters/static-files.ts';
 import type { AppHandler } from './server/app.ts';
@@ -20,9 +17,7 @@ export type { StaticDirectoryHandlerOptions };
 
 function logStarted(t0: number, port: number, hostname = 'localhost') {
   const duration = ((performance.now() - t0) / 1000).toFixed(2);
-  console.log(
-    `Limette app started (${duration}s)\n\t http://${hostname}:${port}\n`,
-  );
+  console.log(`Limette app started (${duration}s)\n\t http://${hostname}:${port}\n`);
 }
 
 function listen(server: Server, port: number, hostname?: string) {
@@ -45,18 +40,15 @@ function listen(server: Server, port: number, hostname?: string) {
 
 export async function serve(
   handler: AppHandler,
-  { hostname, onListen, port, staticFiles }: ServeOptions = {},
+  { hostname, onListen, port, staticFiles }: ServeOptions = {}
 ) {
   const t0 = performance.now();
-  const serveStatic = staticFiles
-    ? staticDirectoryHandler(staticFiles)
-    : undefined;
+  const serveStatic = staticFiles ? staticDirectoryHandler(staticFiles) : undefined;
   const createAppServer = () =>
     createServer(async (req, res) => {
       try {
         const request = await incomingMessageToRequest(req);
-        const response = await serveStatic?.(request) ??
-          await handler(request);
+        const response = (await serveStatic?.(request)) ?? (await handler(request));
         await writeResponseToServerResponse(response, res);
       } catch (error) {
         console.error(error);
@@ -77,11 +69,7 @@ export async function serve(
         firstError = undefined;
         break;
       } catch (error) {
-        if (
-          error instanceof Error &&
-          'code' in error &&
-          error.code === 'EADDRINUSE'
-        ) {
+        if (error instanceof Error && 'code' in error && error.code === 'EADDRINUSE') {
           if (!firstError) firstError = error;
           server = createAppServer();
           continue;

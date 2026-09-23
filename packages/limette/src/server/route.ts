@@ -3,10 +3,7 @@ import type { MiddlewareModule } from './middlewares.ts';
 import type { RouteModule } from './router.ts';
 import type { DefaultState } from './context.ts';
 
-export interface RuntimeRouteDefinition<
-  State = DefaultState,
-  Platform = unknown,
-> {
+export interface RuntimeRouteDefinition<State = DefaultState, Platform = unknown> {
   readonly id: string;
   readonly path: string;
   readonly file: string;

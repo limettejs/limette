@@ -34,11 +34,17 @@ class TestApp extends AppComponent {
       <link rel="canonical" href="https://example.test/app" />
       <link rel="stylesheet" href="/application.css" />
       <link rel="preload" href="/chunk.js" as="script" />
-      <script>globalThis.appHead = true;</script>
-      <script key="structured-data" type="application/ld+json">
-        {"owner":"app"}
+      <script>
+        globalThis.appHead = true;
       </script>
-      <style>.app-head { color: red; }</style>
+      <script key="structured-data" type="application/ld+json">
+        { "owner": "app" }
+      </script>
+      <style>
+        .app-head {
+          color: red;
+        }
+      </style>
       <meta name="app-instance" content="${this.instance}" />
     `;
   }
@@ -48,14 +54,14 @@ class TestApp extends AppComponent {
       <!DOCTYPE html>
       <html>
         <head>
-                <meta charset="windows-1252" />
-                <meta name="viewport" content="width=device-width" />
-                ${this.assets.styles}
-              </head>
+          <meta charset="windows-1252" />
+          <meta name="viewport" content="width=device-width" />
+          ${this.assets.styles}
+        </head>
         <body>
           <span data-app-instance="${this.instance}"></span>
           ${this.outlet} ${this.assets.scripts}
-              </body>
+        </body>
       </html>
     `;
   }
@@ -71,16 +77,20 @@ class OuterLayout extends LayoutComponent {
       <meta property="og:title" content="Outer OG title" />
       <link rel="canonical" href="https://example.test/outer" />
       <link rel="stylesheet" href="/application.css" />
-      <script>globalThis.outerHead = true;</script>
-      <style>.outer-head { color: green; }</style>
+      <script>
+        globalThis.outerHead = true;
+      </script>
+      <style>
+        .outer-head {
+          color: green;
+        }
+      </style>
       <meta name="outer-instance" content="${this.instance}" />
     `;
   }
 
   override render() {
-    return html`<section data-outer-instance="${this.instance}">
-      ${this.outlet}
-    </section>`;
+    return html`<section data-outer-instance="${this.instance}">${this.outlet}</section>`;
   }
 }
 
@@ -94,16 +104,20 @@ class InnerLayout extends LayoutComponent {
       <title>Inner title</title>
       <base href="/inner/" />
       <meta name="description" content="Inner description" />
-      <script>globalThis.innerHead = true;</script>
-      <style>.inner-head { color: blue; }</style>
+      <script>
+        globalThis.innerHead = true;
+      </script>
+      <style>
+        .inner-head {
+          color: blue;
+        }
+      </style>
       <meta name="inner-instance" content="${this.instance}" />
     `;
   }
 
   override render() {
-    return html`<section data-inner-instance="${this.instance}">
-      ${this.outlet}
-    </section>`;
+    return html`<section data-inner-instance="${this.instance}">${this.outlet}</section>`;
   }
 }
 
@@ -120,11 +134,17 @@ class RouteA extends PageComponent {
       <meta name="route-a-only" content="present" />
       <meta key="primary-og-image" property="og:image" content="/route-a.jpg" />
       <link rel="canonical" href="https://example.test/a" />
-      <script>globalThis.routeHead = true;</script>
-      <script key="structured-data" type="application/ld+json">
-        {"owner":"route-a"}
+      <script>
+        globalThis.routeHead = true;
       </script>
-      <style>.route-head { color: purple; }</style>
+      <script key="structured-data" type="application/ld+json">
+        { "owner": "route-a" }
+      </script>
+      <style>
+        .route-head {
+          color: purple;
+        }
+      </style>
       <meta name="route-instance" content="${this.instance}" />
     `;
   }
@@ -144,10 +164,7 @@ class RouteB extends PageComponent {
   }
 }
 
-function route(
-  id: 'a' | 'b',
-  component: typeof RouteA | typeof RouteB,
-): RuntimeRouteDefinition {
+function route(id: 'a' | 'b', component: typeof RouteA | typeof RouteB): RuntimeRouteDefinition {
   const tagName = `head-test-${id}`;
   return {
     id,
@@ -198,11 +215,7 @@ function context(id: 'a' | 'b') {
 
 async function renderRoute(id: 'a' | 'b') {
   const component = id === 'a' ? RouteA : RouteB;
-  return await renderContent(
-    TestApp,
-    route(id, component),
-    context(id),
-  );
+  return await renderContent(TestApp, route(id, component), context(id));
 }
 
 function parseDocument(source: string) {
@@ -211,10 +224,7 @@ function parseDocument(source: string) {
 
 function one(document: Document, selector: string) {
   const elements = document.querySelectorAll(selector);
-  assert(
-    elements.length === 1,
-    `Expected one ${selector}, got ${elements.length}.`,
-  );
+  assert(elements.length === 1, `Expected one ${selector}, got ${elements.length}.`);
   return elements[0];
 }
 
@@ -226,108 +236,86 @@ describe('head composition', () => {
 
     assert(
       lifecycle.join(',') === 'app,outer,inner,route',
-      `Head lifecycle order was ${lifecycle.join(',')}.`,
+      `Head lifecycle order was ${lifecycle.join(',')}.`
     );
-    assert(
-      one(documentA, 'title').textContent === 'Route A title',
-      'Route title did not win.',
-    );
-    assert(
-      one(documentA, 'base').getAttribute('href') === '/inner/',
-      'Inner base did not win.',
-    );
+    assert(one(documentA, 'title').textContent === 'Route A title', 'Route title did not win.');
+    assert(one(documentA, 'base').getAttribute('href') === '/inner/', 'Inner base did not win.');
     assert(
       one(documentA, 'meta[charset]').getAttribute('charset') === 'utf-16',
-      'Route charset did not win.',
+      'Route charset did not win.'
     );
     assert(
-      one(documentA, 'meta[name="description"]').getAttribute('content') ===
-        'Route A description',
-      'Route description did not win.',
+      one(documentA, 'meta[name="description"]').getAttribute('content') === 'Route A description',
+      'Route description did not win.'
     );
     assert(
-      one(documentA, 'meta[name="robots"]').getAttribute('content') ===
-        'index,follow',
-      'Unrelated app metadata was lost.',
+      one(documentA, 'meta[name="robots"]').getAttribute('content') === 'index,follow',
+      'Unrelated app metadata was lost.'
     );
     assert(
-      one(documentA, 'meta[property="og:title"]').getAttribute('content') ===
-        'Route A OG title',
-      'Route Open Graph title did not win.',
+      one(documentA, 'meta[property="og:title"]').getAttribute('content') === 'Route A OG title',
+      'Route Open Graph title did not win.'
     );
 
-    const images = Array.from(
-      documentA.querySelectorAll('meta[property="og:image"]'),
-    );
-    assert(
-      images.length === 2,
-      `Expected two keyed OG images, got ${images.length}.`,
-    );
+    const images = Array.from(documentA.querySelectorAll('meta[property="og:image"]'));
+    assert(images.length === 2, `Expected two keyed OG images, got ${images.length}.`);
     assert(
       images.some((image) => image.getAttribute('content') === '/route-a.jpg'),
-      'Same-key route image did not replace the app image.',
+      'Same-key route image did not replace the app image.'
     );
     assert(
       images.some((image) => image.getAttribute('content') === '/two.jpg'),
-      'Differently keyed image was lost.',
+      'Differently keyed image was lost.'
     );
     assert(
-      one(documentA, 'link[rel="canonical"]').getAttribute('href') ===
-        'https://example.test/a',
-      'Route canonical did not win.',
+      one(documentA, 'link[rel="canonical"]').getAttribute('href') === 'https://example.test/a',
+      'Route canonical did not win.'
     );
     assert(
       documentA.querySelectorAll('link[href="/application.css"]').length === 1,
-      'Duplicate logical stylesheet accumulated.',
+      'Duplicate logical stylesheet accumulated.'
     );
     assert(
-      documentA.querySelectorAll('link[rel="preload"][href="/chunk.js"]')
-        .length ===
-        1,
-      'Preload link was lost.',
+      documentA.querySelectorAll('link[rel="preload"][href="/chunk.js"]').length === 1,
+      'Preload link was lost.'
     );
     assert(
-      documentA.querySelectorAll('link[href="/assets/framework.css"]')
-        .length === 1,
-      'Framework route CSS was lost.',
+      documentA.querySelectorAll('link[href="/assets/framework.css"]').length === 1,
+      'Framework route CSS was lost.'
     );
     assert(
-      documentA.querySelectorAll('link[href="/assets/tailwind.css"]').length ===
-        1,
-      'Framework Tailwind CSS was lost.',
+      documentA.querySelectorAll('link[href="/assets/tailwind.css"]').length === 1,
+      'Framework Tailwind CSS was lost.'
     );
     assert(
       documentA.querySelectorAll('head > script:not([src])').length === 5,
-      'Unkeyed inline scripts did not coexist with keyed JSON-LD.',
+      'Unkeyed inline scripts did not coexist with keyed JSON-LD.'
     );
     assert(
       documentA.querySelectorAll('head > style').length === 4,
-      'Unkeyed inline styles did not coexist.',
+      'Unkeyed inline styles did not coexist.'
     );
     assert(
-      one(documentA, 'script[type="application/ld+json"]').textContent
-        ?.includes(
-          'route-a',
-        ),
-      'Keyed JSON-LD was not replaced.',
+      one(documentA, 'script[type="application/ld+json"]').textContent?.includes('route-a'),
+      'Keyed JSON-LD was not replaced.'
     );
     assert(
       !documentA.head.innerHTML.includes(' key='),
-      'A Limette head key leaked into final HTML.',
+      'A Limette head key leaked into final HTML.'
     );
     assert(
       !htmlA.includes('data-limette-head-asset'),
-      'An internal framework asset marker leaked into final HTML.',
+      'An internal framework asset marker leaked into final HTML.'
     );
 
     for (const owner of ['app', 'outer', 'inner', 'route']) {
-      const headInstance = one(documentA, `meta[name="${owner}-instance"]`)
-        .getAttribute('content');
-      const renderedInstance = one(documentA, `[data-${owner}-instance]`)
-        .getAttribute(`data-${owner}-instance`);
+      const headInstance = one(documentA, `meta[name="${owner}-instance"]`).getAttribute('content');
+      const renderedInstance = one(documentA, `[data-${owner}-instance]`).getAttribute(
+        `data-${owner}-instance`
+      );
       assert(
         headInstance === renderedInstance,
-        `${owner} head() did not use its rendering instance.`,
+        `${owner} head() did not use its rendering instance.`
       );
     }
 
@@ -335,37 +323,33 @@ describe('head composition', () => {
     const documentB = parseDocument(htmlB) as unknown as Document;
     assert(
       one(documentB, 'title').textContent === 'Route B title',
-      'Route B title did not render.',
+      'Route B title did not render.'
     );
     assert(
       !documentB.querySelector('meta[name="route-a-only"]'),
-      'Route A-only metadata survived Route B rendering.',
+      'Route A-only metadata survived Route B rendering.'
     );
     assert(
       !documentB.head.textContent?.includes('route-a'),
-      'Route A-only JSON-LD survived Route B rendering.',
+      'Route A-only JSON-LD survived Route B rendering.'
     );
     assert(
       documentB.body.textContent?.includes('Route B') &&
         !documentB.body.textContent?.includes('Route A'),
-      'Route B received a stale structural outlet from Route A.',
+      'Route B received a stale structural outlet from Route A.'
     );
 
     const isolatedRenders = await Promise.all(
-      Array.from(
-        { length: 20 },
-        (_, index) => renderRoute(index % 2 ? 'a' : 'b'),
-      ),
+      Array.from({ length: 20 }, (_, index) => renderRoute(index % 2 ? 'a' : 'b'))
     );
     for (let index = 0; index < isolatedRenders.length; index++) {
       const expected = index % 2 ? 'Route A' : 'Route B';
       const unexpected = index % 2 ? 'Route B' : 'Route A';
       const body =
-        (parseDocument(isolatedRenders[index]) as unknown as Document)
-          .body.textContent ?? '';
+        (parseDocument(isolatedRenders[index]) as unknown as Document).body.textContent ?? '';
       assert(
         body.includes(expected) && !body.includes(unexpected),
-        `Concurrent ${expected} render received another request's outlet.`,
+        `Concurrent ${expected} render received another request's outlet.`
       );
     }
   });

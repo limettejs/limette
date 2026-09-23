@@ -100,9 +100,7 @@ export class UrlPatternRouter<State = DefaultState, Platform = unknown> {
 
   addError(pathname: string | URLPattern, fn: Middleware<State, Platform>) {
     this.#errors.push({
-      path: typeof pathname === 'string'
-        ? new URLPattern({ pathname })
-        : pathname,
+      path: typeof pathname === 'string' ? new URLPattern({ pathname }) : pathname,
       handler: fn,
     });
   }
@@ -110,16 +108,12 @@ export class UrlPatternRouter<State = DefaultState, Platform = unknown> {
   add(
     method: Method | 'ALL',
     pathname: string | URLPattern,
-    handlers: RouteHandler<State, Platform>[],
+    handlers: RouteHandler<State, Platform>[]
   ) {
-    const path = typeof pathname === 'string'
-      ? new URLPattern({ pathname })
-      : pathname;
+    const path = typeof pathname === 'string' ? new URLPattern({ pathname }) : pathname;
     const key = `${method}\u0000${patternIdentity(path)}`;
     if (this.#routeKeys.has(key)) {
-      throw new Error(
-        `Duplicate route registration for ${method} ${path.pathname}.`,
-      );
+      throw new Error(`Duplicate route registration for ${method} ${path.pathname}.`);
     }
     this.#routeKeys.add(key);
     this.#routes.push({
@@ -154,11 +148,7 @@ export class UrlPatternRouter<State = DefaultState, Platform = unknown> {
     }
   }
 
-  #matchCompatible(
-    method: string,
-    url: URL,
-    selectedIndex?: number,
-  ): RouteResult<State, Platform> {
+  #matchCompatible(method: string, url: URL, selectedIndex?: number): RouteResult<State, Platform> {
     const result = this.#createResult();
 
     for (let index = 0; index < this.#routes.length; index++) {
@@ -166,9 +156,7 @@ export class UrlPatternRouter<State = DefaultState, Platform = unknown> {
       const route = this.#routes[index];
       if (
         route.method !== 'ALL' &&
-        (selectedIndex === undefined
-          ? route.method !== method
-          : index !== selectedIndex)
+        (selectedIndex === undefined ? route.method !== method : index !== selectedIndex)
       ) {
         continue;
       }
@@ -200,11 +188,11 @@ export class UrlPatternRouter<State = DefaultState, Platform = unknown> {
     let result: RouteResult<State, Platform>;
 
     if (method === 'HEAD') {
-      const selectedIndex = this.#findExactMatch('HEAD', url) ??
-        this.#findExactMatch('GET', url);
-      result = selectedIndex === undefined
-        ? this.#matchCompatible(method, url)
-        : this.#matchCompatible(method, url, selectedIndex);
+      const selectedIndex = this.#findExactMatch('HEAD', url) ?? this.#findExactMatch('GET', url);
+      result =
+        selectedIndex === undefined
+          ? this.#matchCompatible(method, url)
+          : this.#matchCompatible(method, url, selectedIndex);
     } else {
       result = this.#matchCompatible(method, url);
     }
@@ -222,9 +210,7 @@ export class UrlPatternRouter<State = DefaultState, Platform = unknown> {
 
     if (allowed.has('GET')) allowed.add('HEAD');
     if (allowed.size > 0) allowed.add('OPTIONS');
-    result.allowedMethods = ALLOW_METHOD_ORDER.filter((method) =>
-      allowed.has(method)
-    );
+    result.allowedMethods = ALLOW_METHOD_ORDER.filter((method) => allowed.has(method));
 
     return result;
   }

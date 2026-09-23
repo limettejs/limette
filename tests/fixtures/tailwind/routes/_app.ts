@@ -6,10 +6,12 @@ export default class TailwindApp extends AppComponent {
     return html`
       <!DOCTYPE html>
       <html>
-        <head>${this.assets.styles}</head>
+        <head>
+          ${this.assets.styles}
+        </head>
         <body class="bg-[#abcdef]">
-                ${this.outlet}${this.assets.scripts}
-              </body>
+          ${this.outlet}${this.assets.scripts}
+        </body>
       </html>
     `;
   }

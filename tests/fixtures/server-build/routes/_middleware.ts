@@ -5,10 +5,9 @@ export const handler = async (ctx: Context) => {
   response.headers.set('x-server-middleware', 'applied');
   response.headers.set(
     'x-runtime-info',
-    typeof ctx.platform === 'object' && ctx.platform !== null &&
-      'remoteAddr' in ctx.platform
+    typeof ctx.platform === 'object' && ctx.platform !== null && 'remoteAddr' in ctx.platform
       ? 'deno'
-      : 'generic',
+      : 'generic'
   );
   return response;
 };

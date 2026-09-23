@@ -12,10 +12,7 @@ type ViteCommandOptions = {
 const nodeCommand = Deno.build.os === 'windows' ? 'node.exe' : 'node';
 const viteCli = join(repositoryRoot, 'node_modules/vite/bin/vite.js');
 
-export function viteCommand(
-  args: string[],
-  options: ViteCommandOptions = {},
-) {
+export function viteCommand(args: string[], options: ViteCommandOptions = {}) {
   return new Deno.Command(nodeCommand, {
     args: [viteCli, ...args],
     cwd: options.cwd ?? exampleRoot,

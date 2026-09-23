@@ -12,13 +12,12 @@ function normalizedPath(path: string) {
 function isInsideRoot(root: string, path: string) {
   const normalizedRoot = normalizedPath(root);
   const normalizedCandidate = normalizedPath(path);
-  return normalizedCandidate === normalizedRoot ||
-    normalizedCandidate.startsWith(`${normalizedRoot}/`);
+  return (
+    normalizedCandidate === normalizedRoot || normalizedCandidate.startsWith(`${normalizedRoot}/`)
+  );
 }
 
-export function staticDirectoryHandler(
-  options: StaticDirectoryHandlerOptions,
-) {
+export function staticDirectoryHandler(options: StaticDirectoryHandlerOptions) {
   const root = Deno.realPath(options.root).catch(() => undefined);
 
   return async (request: Request): Promise<Response | undefined> => {
@@ -33,14 +32,9 @@ export function staticDirectoryHandler(
     let path: string;
     try {
       path = await Deno.realPath(
-        `${
-          canonicalRoot.replace(/[\\/]+$/g, '')
-        }/${staticRequest.relativePath}`,
+        `${canonicalRoot.replace(/[\\/]+$/g, '')}/${staticRequest.relativePath}`
       );
-      if (
-        !isInsideRoot(canonicalRoot, path) ||
-        !(await Deno.stat(path)).isFile
-      ) {
+      if (!isInsideRoot(canonicalRoot, path) || !(await Deno.stat(path)).isFile) {
         return undefined;
       }
     } catch {

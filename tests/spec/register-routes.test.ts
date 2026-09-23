@@ -20,7 +20,7 @@ function assert(condition: unknown, message: string): asserts condition {
 function handlerRoute(
   path: string,
   response: (ctx: Context) => Response,
-  middlewares: readonly MiddlewareModule[] = [],
+  middlewares: readonly MiddlewareModule[] = []
 ): RuntimeRouteDefinition {
   return {
     id: path,
@@ -87,22 +87,17 @@ describe('runtime route definitions', () => {
             calls.push('static');
             return new Response('static');
           },
-          [firstMiddleware, secondMiddleware],
+          [firstMiddleware, secondMiddleware]
         ),
         handlerRoute('/:id', (ctx) => new Response(`dynamic:${ctx.params.id}`)),
       ],
     });
 
-    const staticResponse = await routeApp.handler()(
-      new Request('http://localhost/about'),
-    );
-    assert(
-      await staticResponse.text() === 'static',
-      'Static route was shadowed.',
-    );
+    const staticResponse = await routeApp.handler()(new Request('http://localhost/about'));
+    assert((await staticResponse.text()) === 'static', 'Static route was shadowed.');
     assert(
       calls.join(',') === 'first-a,first-b,second,static',
-      `Unexpected middleware order: ${calls.join(',')}`,
+      `Unexpected middleware order: ${calls.join(',')}`
     );
 
     let invalidMiddlewareError = '';
@@ -110,33 +105,27 @@ describe('runtime route definitions', () => {
       registerRouteDefinitions(new App(), {
         appWrapper: TestAppWrapper,
         routes: [
-          handlerRoute(
-            '/invalid-middleware',
-            () => new Response('unreachable'),
-            [{
+          handlerRoute('/invalid-middleware', () => new Response('unreachable'), [
+            {
               handler: [() => new Response('valid'), 'invalid'],
-            } as unknown as MiddlewareModule],
-          ),
+            } as unknown as MiddlewareModule,
+          ]),
         ],
       });
     } catch (error) {
-      invalidMiddlewareError = error instanceof Error
-        ? error.message
-        : String(error);
+      invalidMiddlewareError = error instanceof Error ? error.message : String(error);
     }
     assert(
       invalidMiddlewareError.includes('Invalid filesystem middleware') &&
         invalidMiddlewareError.includes('./routes/invalid-middleware.ts') &&
         invalidMiddlewareError.includes('only functions'),
-      `Invalid middleware did not fail clearly: ${invalidMiddlewareError}`,
+      `Invalid middleware did not fail clearly: ${invalidMiddlewareError}`
     );
 
-    const dynamicResponse = await routeApp.handler()(
-      new Request('http://localhost/limette'),
-    );
+    const dynamicResponse = await routeApp.handler()(new Request('http://localhost/limette'));
     assert(
-      await dynamicResponse.text() === 'dynamic:limette',
-      'Dynamic route did not receive its route parameter.',
+      (await dynamicResponse.text()) === 'dynamic:limette',
+      'Dynamic route did not receive its route parameter.'
     );
 
     const suppliedOrderApp = new App();
@@ -148,11 +137,11 @@ describe('runtime route definitions', () => {
       ],
     });
     const suppliedOrderResponse = await suppliedOrderApp.handler()(
-      new Request('http://localhost/about'),
+      new Request('http://localhost/about')
     );
     assert(
-      await suppliedOrderResponse.text() === 'first:about',
-      'Runtime definitions were not registered in their supplied order.',
+      (await suppliedOrderResponse.text()) === 'first:about',
+      'Runtime definitions were not registered in their supplied order.'
     );
   });
 
@@ -169,10 +158,7 @@ describe('runtime route definitions', () => {
       coexistenceCalls.push('all:after');
       return response;
     });
-    coexistenceApp.get(
-      '/users/:id',
-      (ctx) => new Response(`imperative:${ctx.params.id}`),
-    );
+    coexistenceApp.get('/users/:id', (ctx) => new Response(`imperative:${ctx.params.id}`));
     coexistenceApp.post('/health', () => new Response('imperative POST'));
     registerRouteDefinitions(coexistenceApp, {
       appWrapper: TestAppWrapper,
@@ -186,49 +172,45 @@ describe('runtime route definitions', () => {
             coexistenceCalls.push('filesystem-route');
             return new Response('wrapped filesystem');
           },
-          [{
-            handler: async (ctx) => {
-              coexistenceCalls.push('filesystem-middleware');
-              return await ctx.next();
+          [
+            {
+              handler: async (ctx) => {
+                coexistenceCalls.push('filesystem-middleware');
+                return await ctx.next();
+              },
             },
-          }],
+          ]
         ),
       ],
     });
 
     const coexistenceHandler = coexistenceApp.handler();
     assert(
-      await (await coexistenceHandler(
-        new Request('http://localhost/users/new'),
-      )).text() === 'imperative:new',
-      'An overlapping filesystem route took precedence over an imperative route.',
+      (await (await coexistenceHandler(new Request('http://localhost/users/new'))).text()) ===
+        'imperative:new',
+      'An overlapping filesystem route took precedence over an imperative route.'
     );
     assert(
-      await (await coexistenceHandler(
-        new Request('http://localhost/filesystem-only'),
-      )).text() === 'filesystem only',
-      'An imperative and filesystem route could not coexist in one App.',
+      (await (await coexistenceHandler(new Request('http://localhost/filesystem-only'))).text()) ===
+        'filesystem only',
+      'An imperative and filesystem route could not coexist in one App.'
     );
     assert(
-      await (await coexistenceHandler(
-            new Request('http://localhost/health'),
-          )).text() === 'filesystem GET' &&
-        await (await coexistenceHandler(
-            new Request('http://localhost/health', { method: 'POST' }),
-          )).text() === 'imperative POST',
-      'Different imperative/filesystem methods could not share one pathname.',
+      (await (await coexistenceHandler(new Request('http://localhost/health'))).text()) ===
+        'filesystem GET' &&
+        (await (
+          await coexistenceHandler(new Request('http://localhost/health', { method: 'POST' }))
+        ).text()) === 'imperative POST',
+      'Different imperative/filesystem methods could not share one pathname.'
     );
 
     coexistenceCalls.length = 0;
     assert(
-      await (await coexistenceHandler(
-            new Request('http://localhost/wrapped/item'),
-          )).text() === 'wrapped filesystem' &&
+      (await (await coexistenceHandler(new Request('http://localhost/wrapped/item'))).text()) ===
+        'wrapped filesystem' &&
         coexistenceCalls.join(',') ===
           'global,all:before,filesystem-middleware,filesystem-route,all:after',
-      `Imperative/global middleware order changed: ${
-        coexistenceCalls.join(',')
-      }`,
+      `Imperative/global middleware order changed: ${coexistenceCalls.join(',')}`
     );
 
     const duplicateApp = new App().fsRoutes();
@@ -244,7 +226,7 @@ describe('runtime route definitions', () => {
     }
     assert(
       duplicateError.includes('Duplicate route registration for GET /health'),
-      `An imperative/filesystem duplicate did not fail clearly: ${duplicateError}`,
+      `An imperative/filesystem duplicate did not fail clearly: ${duplicateError}`
     );
   });
 
@@ -295,7 +277,7 @@ describe('runtime route definitions', () => {
       scripts?: readonly string[];
       styles?: readonly string[];
       islandStyles?: Readonly<Record<string, readonly string[]>>;
-    } = {},
+    } = {}
   ): RuntimeRouteDefinition {
     return {
       id: path,
@@ -353,11 +335,11 @@ describe('runtime route definitions', () => {
     ).text();
     assert(
       !noIslandHtml.includes('<script type="module"'),
-      'A no-island route received a client script.',
+      'A no-island route received a client script.'
     );
     assert(
       noIslandHtml.includes('/assets/without-island.css'),
-      'A no-island route lost its stylesheet.',
+      'A no-island route lost its stylesheet.'
     );
 
     const islandHtml = await (
@@ -365,42 +347,35 @@ describe('runtime route definitions', () => {
     ).text();
     assert(
       islandHtml.includes('<script type="module" src="/assets/with-island.js"'),
-      'The island route lost its client entry.',
+      'The island route lost its client entry.'
     );
     assert(
-      islandHtml.includes(
-        '<link rel="stylesheet" href="/assets/with-island.css"',
-      ),
-      'The island route lost its stylesheet.',
+      islandHtml.includes('<link rel="stylesheet" href="/assets/with-island.css"'),
+      'The island route lost its stylesheet.'
     );
     assert(
       islandHtml.includes('@import url(&quot;/assets/island-only.css&quot;)') ||
         islandHtml.includes('@import url("/assets/island-only.css")'),
-      'The island stylesheet was not retained for shadow rendering.',
+      'The island stylesheet was not retained for shadow rendering.'
     );
     assert(
-      !islandHtml.includes(
-        '@import url(&quot;/assets/with-island.css&quot;)',
-      ) &&
+      !islandHtml.includes('@import url(&quot;/assets/with-island.css&quot;)') &&
         !islandHtml.includes('@import url("/assets/with-island.css")'),
-      'The document stylesheet leaked into island shadow rendering.',
+      'The document stylesheet leaked into island shadow rendering.'
     );
     assert(
       islandHtml.indexOf('data-layout="outer"') >= 0 &&
-        islandHtml.indexOf('data-layout="outer"') <
-          islandHtml.indexOf('data-layout="inner"') &&
-        islandHtml.indexOf('data-layout="inner"') <
-          islandHtml.indexOf('<main>'),
-      'App outlet did not preserve the outer → inner → page composition order.',
+        islandHtml.indexOf('data-layout="outer"') < islandHtml.indexOf('data-layout="inner"') &&
+        islandHtml.indexOf('data-layout="inner"') < islandHtml.indexOf('<main>'),
+      'App outlet did not preserve the outer → inner → page composition order.'
     );
     assert(
       islandHtml.includes('./routes/with-island.ts'),
-      'The application-relative route filename was not exposed to the wrapper.',
+      'The application-relative route filename was not exposed to the wrapper.'
     );
     assert(
-      islandHtml.includes('shadowroot="open"') ||
-        islandHtml.includes('shadowrootmode="open"'),
-      'Precomputed island tag metadata was not used during rendering.',
+      islandHtml.includes('shadowroot="open"') || islandHtml.includes('shadowrootmode="open"'),
+      'Precomputed island tag metadata was not used during rendering.'
     );
   });
 });

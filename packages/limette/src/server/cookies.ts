@@ -31,9 +31,7 @@ export interface Cookie {
 }
 
 function serializeCookie(cookie: Cookie) {
-  const parts = [
-    `${cookie.name}=${encodeURIComponent(cookie.value)}`,
-  ];
+  const parts = [`${cookie.name}=${encodeURIComponent(cookie.value)}`];
 
   if (cookie.domain) parts.push(`Domain=${cookie.domain}`);
   if (cookie.expires) parts.push(`Expires=${cookie.expires.toUTCString()}`);
@@ -53,7 +51,7 @@ export function setCookie(headers: Headers, cookie: Cookie) {
 export function deleteCookie(
   headers: Headers,
   name: string,
-  attributes: Omit<Cookie, 'name' | 'value' | 'expires' | 'maxAge'> = {},
+  attributes: Omit<Cookie, 'name' | 'value' | 'expires' | 'maxAge'> = {}
 ) {
   setCookie(headers, {
     ...attributes,

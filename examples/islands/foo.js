@@ -59,10 +59,7 @@ export class IslandFoo extends LitElement {
           </button>
         </section>
 
-        <island-bar
-          class="mt-5"
-          @change-name=${() => (this.name = 'Ingrid')}
-        ></island-bar>
+        <island-bar class="mt-5" @change-name=${() => (this.name = 'Ingrid')}></island-bar>
       </div>
     `;
   }

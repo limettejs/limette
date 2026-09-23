@@ -12,25 +12,17 @@ export type IslandComponentClass = CustomElementConstructor;
 export type IslandDefinition =
   | IslandComponentClass
   | {
-    component: IslandComponentClass;
-    ssr?: boolean;
-  };
+      component: IslandComponentClass;
+      ssr?: boolean;
+    };
 export type IslandsDefinition = Record<string, IslandDefinition>;
 
 /** @internal */
-export function islandComponent(
-  definition: IslandDefinition,
-): IslandComponentClass {
+export function islandComponent(definition: IslandDefinition): IslandComponentClass {
   return typeof definition === 'function' ? definition : definition.component;
 }
-export type ServerRenderResult =
-  | TemplateResult
-  | DirectiveResult<typeof UnsafeHTMLDirective>;
-export type HeadRenderResult =
-  | TemplateResult
-  | typeof nothing
-  | null
-  | undefined;
+export type ServerRenderResult = TemplateResult | DirectiveResult<typeof UnsafeHTMLDirective>;
+export type HeadRenderResult = TemplateResult | typeof nothing | null | undefined;
 
 export interface ServerComponentClass extends CustomElementConstructor {
   islands?: IslandsDefinition;
