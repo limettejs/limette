@@ -95,6 +95,7 @@ try {
   await Deno.mkdir(packageDirectory, { recursive: true });
   const packOutput = await command([
     'pack',
+    '--workspace=limette',
     '--ignore-scripts',
     '--pack-destination',
     packageDirectory,

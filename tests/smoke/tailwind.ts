@@ -3,8 +3,8 @@ import { readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { discoverRoutes } from '../../src/vite/manifest.ts';
-import { tailwindEntryName } from '../../src/vite/tailwind.ts';
+import { discoverRoutes } from '../../packages/limette/src/vite/manifest.ts';
+import { tailwindEntryName } from '../../packages/limette/src/vite/tailwind.ts';
 import { repositoryRoot } from './_paths.ts';
 
 const fixtureRoot = fileURLToPath(

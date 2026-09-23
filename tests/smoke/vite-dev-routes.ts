@@ -1,9 +1,9 @@
 import { fileURLToPath } from 'node:url';
-import { App } from '../../src/mod.ts';
+import { App } from '../../packages/limette/src/mod.ts';
 import {
   loadViteDevRoutes,
   materializeDevRoutes,
-} from '../../src/vite/routes.ts';
+} from '../../packages/limette/src/vite/routes.ts';
 import { exampleRoot, loadExampleFile } from './_paths.ts';
 import { viteCommand } from './_vite-command.ts';
 

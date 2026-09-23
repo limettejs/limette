@@ -1,10 +1,10 @@
-import * as core from '../../src/mod.ts';
-import * as denoAdapter from '../../src/deno.ts';
-import * as nodeAdapter from '../../src/node.ts';
-import * as browserRuntime from '../../src/runtime/mod.ts';
-import * as serverRuntime from '../../src/server-runtime.ts';
-import * as viteIntegration from '../../src/vite/mod.ts';
-import packageJson from '../../package.json' with { type: 'json' };
+import * as core from '../../packages/limette/src/mod.ts';
+import * as denoAdapter from '../../packages/limette/src/deno.ts';
+import * as nodeAdapter from '../../packages/limette/src/node.ts';
+import * as browserRuntime from '../../packages/limette/src/runtime/mod.ts';
+import * as serverRuntime from '../../packages/limette/src/server-runtime.ts';
+import * as viteIntegration from '../../packages/limette/src/vite/mod.ts';
+import packageJson from '../../packages/limette/package.json' with { type: 'json' };
 import { describe, expect, it } from 'vitest';
 
 function assert(condition: unknown, message: string): asserts condition {

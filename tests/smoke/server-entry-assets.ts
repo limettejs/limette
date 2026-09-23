@@ -1,6 +1,6 @@
-import { resolveServerEntryAssets } from '../../src/vite/assets.ts';
-import type { ViteManifest, ViteManifestChunk } from '../../src/vite/assets.ts';
-import type { LimetteRouteManifest } from '../../src/vite/manifest.ts';
+import { resolveServerEntryAssets } from '../../packages/limette/src/vite/assets.ts';
+import type { ViteManifest, ViteManifestChunk } from '../../packages/limette/src/vite/assets.ts';
+import type { LimetteRouteManifest } from '../../packages/limette/src/vite/manifest.ts';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);

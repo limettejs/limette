@@ -3,7 +3,7 @@ import {
   type Context,
   type RedirectStatus,
   type RenderContext,
-} from '../../src/mod.ts';
+} from '../../packages/limette/src/mod.ts';
 import { describe, expect, it } from 'vitest';
 
 function assert(condition: unknown, message: string): asserts condition {

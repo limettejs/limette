@@ -41,8 +41,10 @@ const neutralForbidden = [
   '/src/vite/',
   'npm:vite',
 ];
-const coreGraph = await moduleGraph('src/mod.ts');
-const serverRuntimeGraph = await moduleGraph('src/server-runtime.ts');
+const coreGraph = await moduleGraph('packages/limette/src/mod.ts');
+const serverRuntimeGraph = await moduleGraph(
+  'packages/limette/src/server-runtime.ts',
+);
 assertMissing('limette', coreGraph, neutralForbidden);
 assertMissing(
   'limette/internal/server-runtime',
@@ -50,7 +52,7 @@ assertMissing(
   neutralForbidden,
 );
 
-const nodeGraph = await moduleGraph('src/node.ts');
+const nodeGraph = await moduleGraph('packages/limette/src/node.ts');
 assert(
   nodeGraph.includes('"node:http"') &&
     nodeGraph.includes('"node:fs/promises"') &&
@@ -63,7 +65,7 @@ assertMissing('limette/node', nodeGraph, [
   'npm:vite',
 ]);
 
-const denoGraph = await moduleGraph('src/deno.ts');
+const denoGraph = await moduleGraph('packages/limette/src/deno.ts');
 assertMissing('limette/deno', denoGraph, [
   '"node:',
   '/src/node.ts',
@@ -71,7 +73,7 @@ assertMissing('limette/deno', denoGraph, [
   'npm:vite',
 ]);
 
-const viteGraph = await moduleGraph('src/vite/mod.ts');
+const viteGraph = await moduleGraph('packages/limette/src/vite/mod.ts');
 assert(
   viteGraph.includes('/src/vite/') &&
     viteGraph.includes('"node:fs') &&

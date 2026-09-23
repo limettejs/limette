@@ -1,10 +1,10 @@
 import { fileURLToPath } from 'node:url';
 import type { EnvironmentOptions, ViteBuilder } from 'vite';
-import { limette } from '../../../src/vite/plugin.ts';
+import { limette } from '../../../packages/limette/src/vite/plugin.ts';
 
 const serverRuntimeModule = 'limette/internal/server-runtime';
 const serverRuntimeSource = fileURLToPath(
-  new URL('../../../src/server-runtime.ts', import.meta.url),
+  new URL('../../../packages/limette/src/server-runtime.ts', import.meta.url),
 );
 
 function workerServerEnvironment(
@@ -52,7 +52,7 @@ export default {
       {
         find: /^@limette\/core$/,
         replacement: fileURLToPath(
-          new URL('../../../src/mod.ts', import.meta.url),
+          new URL('../../../packages/limette/src/mod.ts', import.meta.url),
         ),
       },
     ],
@@ -78,7 +78,7 @@ export default {
           id === serverRuntimeModule ||
           id === fileURLToPath(
               new URL(
-                '../../../dist/internal/server-runtime.mjs',
+                '../../../packages/limette/dist/internal/server-runtime.mjs',
                 import.meta.url,
               ),
             )
