@@ -12,11 +12,7 @@ const runtimeDirectory = join(temporaryRoot, 'runtime-consumer');
 const viteDirectory = join(temporaryRoot, 'vite-consumer');
 const npmCache = join(temporaryRoot, 'npm-cache');
 
-async function command(
-  args: string[],
-  cwd: string,
-  env?: Record<string, string>,
-) {
+async function command(args: string[], cwd: string, env?: Record<string, string>) {
   const output = await new Deno.Command(npm, {
     args,
     cwd,
@@ -25,11 +21,7 @@ async function command(
     stderr: 'piped',
   }).output();
   if (!output.success) {
-    throw new Error(
-      `${npm} ${args.join(' ')} failed:\n${
-        new TextDecoder().decode(output.stderr)
-      }`,
-    );
+    throw new Error(`${npm} ${args.join(' ')} failed:\n${new TextDecoder().decode(output.stderr)}`);
   }
   return new TextDecoder().decode(output.stdout).trim();
 }
@@ -73,7 +65,7 @@ async function runDeno(path: string, cwd: string) {
 function dependencyVersions(
   tree: { dependencies?: Record<string, unknown> },
   names: ReadonlySet<string>,
-  found = new Map<string, Set<string>>(),
+  found = new Map<string, Set<string>>()
 ) {
   for (const [name, value] of Object.entries(tree.dependencies ?? {})) {
     if (!value || typeof value !== 'object') continue;
@@ -93,35 +85,32 @@ function dependencyVersions(
 
 try {
   await Deno.mkdir(packageDirectory, { recursive: true });
-  const packOutput = await command([
-    'pack',
-    '--workspace=limette',
-    '--ignore-scripts',
-    '--pack-destination',
-    packageDirectory,
-  ], repositoryRoot);
-  const archive = join(
-    packageDirectory,
-    basename(packOutput.split('\n').at(-1)!),
+  const packOutput = await command(
+    ['pack', '--workspace=limette', '--ignore-scripts', '--pack-destination', packageDirectory],
+    repositoryRoot
   );
+  const archive = join(packageDirectory, basename(packOutput.split('\n').at(-1)!));
 
   for (const directory of [runtimeDirectory, viteDirectory]) {
     await Deno.mkdir(directory, { recursive: true });
     await Deno.writeTextFile(
       join(directory, 'package.json'),
-      JSON.stringify({ private: true, type: 'module' }),
+      JSON.stringify({ private: true, type: 'module' })
     );
   }
 
-  await command([
-    'install',
-    '--ignore-scripts',
-    '--no-package-lock',
-    '--no-audit',
-    '--no-fund',
-    '--omit=optional',
-    archive,
-  ], runtimeDirectory);
+  await command(
+    [
+      'install',
+      '--ignore-scripts',
+      '--no-package-lock',
+      '--no-audit',
+      '--no-fund',
+      '--omit=optional',
+      archive,
+    ],
+    runtimeDirectory
+  );
   for (const absent of ['vite', 'typescript', 'tailwindcss']) {
     let exists = true;
     try {
@@ -148,7 +137,7 @@ if (
   redirect.headers.get('location') !== '../login' ||
   typeof serve !== 'function'
 ) process.exit(1);
-`,
+`
   );
   await runNode(runtimeTest, runtimeDirectory);
 
@@ -162,7 +151,7 @@ const response = await app.handler()(new Request('http://localhost/ok'));
 if (await response.text() !== 'deno-ok' || typeof serve !== 'function') {
   Deno.exit(1);
 }
-`,
+`
   );
   await runDeno(denoRuntimeTest, runtimeDirectory);
 
@@ -219,20 +208,23 @@ app.post(new URLPattern({ pathname: '/typed' }), routeHandler);
 // @ts-expect-error Route registration requires at least one handler.
 app.get('/missing-handler');
 void [middleware, routeHandler, routeHandlers, appHandler, context, renderContext, app];
-`,
+`
   );
   await runDenoCheck(runtimeTypeTest, runtimeDirectory);
 
-  await command([
-    'install',
-    '--ignore-scripts',
-    '--no-package-lock',
-    '--no-audit',
-    '--no-fund',
-    archive,
-    'vite@^8.0.0',
-    'typescript@^6.0.3',
-  ], viteDirectory);
+  await command(
+    [
+      'install',
+      '--ignore-scripts',
+      '--no-package-lock',
+      '--no-audit',
+      '--no-fund',
+      archive,
+      'vite@^8.0.0',
+      'typescript@^6.0.3',
+    ],
+    viteDirectory
+  );
   const litPackages = new Set([
     'lit',
     'lit-html',
@@ -241,9 +233,9 @@ void [middleware, routeHandler, routeHandlers, appHandler, context, renderContex
     '@lit-labs/ssr',
     '@lit-labs/ssr-client',
   ]);
-  const installedTree = JSON.parse(
-    await command(['ls', '--all', '--json'], viteDirectory),
-  ) as { dependencies?: Record<string, unknown> };
+  const installedTree = JSON.parse(await command(['ls', '--all', '--json'], viteDirectory)) as {
+    dependencies?: Record<string, unknown>;
+  };
   const installedVersions = dependencyVersions(installedTree, litPackages);
   for (const name of litPackages) {
     const versions = installedVersions.get(name);
@@ -251,7 +243,7 @@ void [middleware, routeHandler, routeHandlers, appHandler, context, renderContex
       versions?.size === 1,
       `Packed Vite consumer resolved incompatible ${name} versions: ${
         versions ? [...versions].join(', ') : 'missing'
-      }.`,
+      }.`
     );
   }
   const viteTest = join(viteDirectory, 'test.mjs');
@@ -260,7 +252,7 @@ void [middleware, routeHandler, routeHandlers, appHandler, context, renderContex
     `import { limette } from 'limette/vite';
 const plugin = limette({ app: './app.ts' });
 if (plugin.name !== 'limette') process.exit(1);
-`,
+`
   );
   await runNode(viteTest, viteDirectory);
 
@@ -268,14 +260,14 @@ if (plugin.name !== 'limette') process.exit(1);
     join(viteDirectory, 'app.ts'),
     `import { App } from 'limette';
 export const app = new App().fsRoutes();
-`,
+`
   );
   await Deno.writeTextFile(
     join(viteDirectory, 'vite.config.ts'),
     `import { defineConfig } from 'vite';
 import { limette } from 'limette/vite';
 export default defineConfig({ plugins: [limette({ app: './app.ts' })] });
-`,
+`
   );
   await Deno.mkdir(join(viteDirectory, 'routes'), { recursive: true });
   await Deno.writeTextFile(
@@ -287,7 +279,7 @@ export default class extends AppComponent {
     return html\`<!doctype html><html><head>\${this.assets.styles}</head><body>\${this.outlet}\${this.assets.scripts}</body></html>\`;
   }
 }
-`,
+`
   );
   await Deno.writeTextFile(
     join(viteDirectory, 'routes/index.ts'),
@@ -297,12 +289,9 @@ import './index.css';
 export default class extends PageComponent {
   render() { return html\`<h1>Packed Vite consumer</h1>\`; }
 }
-`,
+`
   );
-  await Deno.writeTextFile(
-    join(viteDirectory, 'routes/index.css'),
-    'h1 { color: green; }\n',
-  );
+  await Deno.writeTextFile(join(viteDirectory, 'routes/index.css'), 'h1 { color: green; }\n');
   await command(['exec', 'vite', '--', 'build'], viteDirectory);
   await Deno.stat(join(viteDirectory, 'dist/server/entry.js'));
 
@@ -314,7 +303,7 @@ const response = await handler(new Request('http://localhost/'));
 if (!response.ok || !(await response.text()).includes('Packed Vite consumer')) {
   process.exit(1);
 }
-`,
+`
   );
   await runNode(viteRuntimeTest, viteDirectory);
 
@@ -327,22 +316,25 @@ import { serve as denoServe } from 'limette/deno';
 import { limette } from 'limette/vite';
 const handler = new App().handler() satisfies AppHandler;
 void [handler, nodeServe, denoServe, limette];
-`,
+`
   );
-  await command([
-    'exec',
-    'tsc',
-    '--',
-    '--noEmit',
-    '--target',
-    'ES2022',
-    '--module',
-    'NodeNext',
-    '--moduleResolution',
-    'NodeNext',
-    '--skipLibCheck',
-    typescriptTest,
-  ], viteDirectory);
+  await command(
+    [
+      'exec',
+      'tsc',
+      '--',
+      '--noEmit',
+      '--target',
+      'ES2022',
+      '--module',
+      'NodeNext',
+      '--moduleResolution',
+      'NodeNext',
+      '--skipLibCheck',
+      typescriptTest,
+    ],
+    viteDirectory
+  );
 } finally {
   await Deno.remove(temporaryRoot, { recursive: true });
 }

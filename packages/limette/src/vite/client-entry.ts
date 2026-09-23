@@ -1,11 +1,9 @@
 import type { ViteDevServerLike } from './types.ts';
 
 export const CLIENT_ENTRY_MODULE_PREFIX = 'virtual:limette/client-entry/';
-export const RESOLVED_CLIENT_ENTRY_MODULE_PREFIX =
-  `\0${CLIENT_ENTRY_MODULE_PREFIX}`;
+export const RESOLVED_CLIENT_ENTRY_MODULE_PREFIX = `\0${CLIENT_ENTRY_MODULE_PREFIX}`;
 export const ISLAND_ENTRY_MODULE_PREFIX = 'virtual:limette/island-entry/';
-export const RESOLVED_ISLAND_ENTRY_MODULE_PREFIX =
-  `\0${ISLAND_ENTRY_MODULE_PREFIX}`;
+export const RESOLVED_ISLAND_ENTRY_MODULE_PREFIX = `\0${ISLAND_ENTRY_MODULE_PREFIX}`;
 const CLIENT_ENTRY_DEV_PREFIX = '/@limette/client-entry/';
 
 export function clientEntryName(routeId: string) {
@@ -43,13 +41,9 @@ export function configureClientEntryMiddleware(server: ViteDevServerLike) {
     }
 
     const routeId = decodeURIComponent(
-      url.pathname
-        .slice(CLIENT_ENTRY_DEV_PREFIX.length)
-        .replace(/\.js$/, ''),
+      url.pathname.slice(CLIENT_ENTRY_DEV_PREFIX.length).replace(/\.js$/, '')
     );
-    const result = await server.transformRequest(
-      `${CLIENT_ENTRY_MODULE_PREFIX}${routeId}`,
-    );
+    const result = await server.transformRequest(`${CLIENT_ENTRY_MODULE_PREFIX}${routeId}`);
 
     if (!result) {
       res.statusCode = 404;

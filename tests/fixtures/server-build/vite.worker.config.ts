@@ -4,13 +4,10 @@ import { limette } from '../../../packages/limette/src/vite/plugin.ts';
 
 const serverRuntimeModule = 'limette/internal/server-runtime';
 const serverRuntimeSource = fileURLToPath(
-  new URL('../../../packages/limette/src/server-runtime.ts', import.meta.url),
+  new URL('../../../packages/limette/src/server-runtime.ts', import.meta.url)
 );
 
-function workerServerEnvironment(
-  name: string,
-  config: EnvironmentOptions,
-) {
+function workerServerEnvironment(name: string, config: EnvironmentOptions) {
   if (name !== 'server') return;
 
   config.keepProcessEnv = false;
@@ -19,22 +16,20 @@ function workerServerEnvironment(
   config.resolve.external = [];
   config.resolve.noExternal = true;
   const resolveConfig = config.resolve as typeof config.resolve & {
-    alias?:
-      | Record<string, string>
-      | Array<{ find: string; replacement: string }>;
+    alias?: Record<string, string> | Array<{ find: string; replacement: string }>;
   };
   resolveConfig.alias = Array.isArray(resolveConfig.alias)
     ? [
-      {
-        find: serverRuntimeModule,
-        replacement: serverRuntimeSource,
-      },
-      ...resolveConfig.alias,
-    ]
+        {
+          find: serverRuntimeModule,
+          replacement: serverRuntimeSource,
+        },
+        ...resolveConfig.alias,
+      ]
     : {
-      ...resolveConfig.alias,
-      [serverRuntimeModule]: serverRuntimeSource,
-    };
+        ...resolveConfig.alias,
+        [serverRuntimeModule]: serverRuntimeSource,
+      };
   config.build ??= {};
   config.build.target = 'esnext';
 }
@@ -52,7 +47,7 @@ export default {
       {
         find: /^@limette\/core$/,
         replacement: fileURLToPath(
-          new URL('../../../packages/limette/src/mod.ts', import.meta.url),
+          new URL('../../../packages/limette/src/mod.ts', import.meta.url)
         ),
       },
     ],
@@ -76,11 +71,9 @@ export default {
       resolveId(id: string) {
         if (
           id === serverRuntimeModule ||
-          id === fileURLToPath(
-              new URL(
-                '../../../packages/limette/dist/internal/server-runtime.mjs',
-                import.meta.url,
-              ),
+          id ===
+            fileURLToPath(
+              new URL('../../../packages/limette/dist/internal/server-runtime.mjs', import.meta.url)
             )
         ) {
           return serverRuntimeSource;

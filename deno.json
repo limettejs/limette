@@ -19,13 +19,7 @@
     "vite": "npm:vite@^8.0.0"
   },
   "compilerOptions": {
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "dom.asynciterable",
-      "deno.ns",
-      "deno.unstable"
-    ]
+    "lib": ["dom", "dom.iterable", "dom.asynciterable", "deno.ns", "deno.unstable"]
   },
   "fmt": {
     "singleQuote": true

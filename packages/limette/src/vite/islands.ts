@@ -16,14 +16,14 @@ export type IslandImport = {
 export type ModuleResolution =
   | string
   | {
-    id: string;
-    external?: boolean | 'absolute' | 'relative';
-  }
+      id: string;
+      external?: boolean | 'absolute' | 'relative';
+    }
   | null
   | undefined;
 export type ResolveModule = (
   moduleSpecifier: string,
-  importer: string,
+  importer: string
 ) => ModuleResolution | Promise<ModuleResolution>;
 
 type AstNode = { type: string; [key: string]: unknown };
@@ -66,28 +66,24 @@ function isSourceModule(specifier: string) {
 
 function isNode(value: unknown): value is AstNode {
   return Boolean(
-    value && typeof value === 'object' &&
-      typeof (value as { type?: unknown }).type === 'string',
+    value && typeof value === 'object' && typeof (value as { type?: unknown }).type === 'string'
   );
 }
 
 function stringValue(node: unknown) {
-  return isNode(node) && typeof node.value === 'string'
-    ? node.value
-    : undefined;
+  return isNode(node) && typeof node.value === 'string' ? node.value : undefined;
 }
 
 function identifierName(node: unknown) {
-  return isNode(node) && node.type === 'Identifier' &&
-      typeof node.name === 'string'
+  return isNode(node) && node.type === 'Identifier' && typeof node.name === 'string'
     ? node.name
     : undefined;
 }
 
 function booleanValue(node: unknown) {
   return isNode(node) &&
-      (node.type === 'BooleanLiteral' || node.type === 'Literal') &&
-      typeof node.value === 'boolean'
+    (node.type === 'BooleanLiteral' || node.type === 'Literal') &&
+    typeof node.value === 'boolean'
     ? node.value
     : undefined;
 }
@@ -123,18 +119,15 @@ function parseIslandEntries(property: AstNode, file: string) {
   if (!isNode(expression) || expression.type !== 'ObjectExpression') {
     throw new Error(
       `Unable to statically analyze "static islands" in ${file}. ` +
-        'Use an object literal whose values are imported island classes.',
+        'Use an object literal whose values are imported island classes.'
     );
   }
   const entries: Array<{ tagName: string; local: string; ssr: boolean }> = [];
-  for (const entry of expression.properties as unknown[] ?? []) {
-    if (
-      !isNode(entry) || entry.type !== 'Property' || entry.computed ||
-      entry.kind !== 'init'
-    ) {
+  for (const entry of (expression.properties as unknown[]) ?? []) {
+    if (!isNode(entry) || entry.type !== 'Property' || entry.computed || entry.kind !== 'init') {
       throw new Error(
         `Unable to statically analyze an island entry in ${file}. ` +
-          'Computed keys, spreads, and methods are not supported.',
+          'Computed keys, spreads, and methods are not supported.'
       );
     }
     const tagName = stringValue(entry.key) ?? identifierName(entry.key);
@@ -145,18 +138,19 @@ function parseIslandEntries(property: AstNode, file: string) {
     if (isNode(value) && value.type === 'ObjectExpression') {
       local = undefined;
       let hasComponent = false;
-      for (const option of value.properties as unknown[] ?? []) {
+      for (const option of (value.properties as unknown[]) ?? []) {
         if (
-          !isNode(option) || option.type !== 'Property' || option.computed ||
+          !isNode(option) ||
+          option.type !== 'Property' ||
+          option.computed ||
           option.kind !== 'init'
         ) {
           throw new Error(
             `Unable to statically analyze island descriptor "${tagName}" in ${file}. ` +
-              'Computed keys, spreads, and methods are not supported.',
+              'Computed keys, spreads, and methods are not supported.'
           );
         }
-        const optionName = stringValue(option.key) ??
-          identifierName(option.key);
+        const optionName = stringValue(option.key) ?? identifierName(option.key);
         if (optionName === 'component') {
           local = identifierName(unwrapExpression(option.value));
           hasComponent = true;
@@ -165,14 +159,14 @@ function parseIslandEntries(property: AstNode, file: string) {
           if (configuredSsr === undefined) {
             throw new Error(
               `Unable to statically analyze "ssr" for island "${tagName}" in ${file}. ` +
-                'Use the boolean literal true or false.',
+                'Use the boolean literal true or false.'
             );
           }
           ssr = configuredSsr;
         } else {
           throw new Error(
             `Unable to statically analyze island descriptor "${tagName}" in ${file}. ` +
-              'Only "component" and "ssr" are supported.',
+              'Only "component" and "ssr" are supported.'
           );
         }
       }
@@ -181,7 +175,7 @@ function parseIslandEntries(property: AstNode, file: string) {
     if (!tagName || !local) {
       throw new Error(
         `Unable to statically analyze an island entry in ${file}. ` +
-          'Use an imported class identifier or { component: ImportedClass, ssr: true }.',
+          'Use an imported class identifier or { component: ImportedClass, ssr: true }.'
       );
     }
     entries.push({ tagName, local, ssr });
@@ -191,27 +185,23 @@ function parseIslandEntries(property: AstNode, file: string) {
 
 function isTypeOnlyImport(node: AstNode) {
   if (node.importKind === 'type') return true;
-  const specifiers = node.specifiers as AstNode[] ?? [];
-  return specifiers.length > 0 &&
-    specifiers.every((specifier) => specifier.importKind === 'type');
+  const specifiers = (node.specifiers as AstNode[]) ?? [];
+  return specifiers.length > 0 && specifiers.every((specifier) => specifier.importKind === 'type');
 }
 
 function isTypeOnlyExport(node: AstNode) {
   if (node.exportKind === 'type') return true;
-  const specifiers = node.specifiers as AstNode[] ?? [];
-  return specifiers.length > 0 &&
-    specifiers.every((specifier) => specifier.exportKind === 'type');
+  const specifiers = (node.specifiers as AstNode[]) ?? [];
+  return specifiers.length > 0 && specifiers.every((specifier) => specifier.exportKind === 'type');
 }
 
 function parseModule(file: string, code: string): ParsedModule {
   const result = parseSync(file, code);
   if (result.errors.length > 0) {
     throw new Error(
-      `Unable to parse ${file} for Limette discovery: ${
-        result.errors.map((error: { message: string }) => error.message).join(
-          '; ',
-        )
-      }`,
+      `Unable to parse ${file} for Limette discovery: ${result.errors
+        .map((error: { message: string }) => error.message)
+        .join('; ')}`
     );
   }
 
@@ -229,25 +219,22 @@ function parseModule(file: string, code: string): ParsedModule {
       const typeOnly = isTypeOnlyImport(statement);
       references.push({ moduleSpecifier, typeOnly });
       if (typeOnly) continue;
-      for (const specifier of statement.specifiers as AstNode[] ?? []) {
+      for (const specifier of (statement.specifiers as AstNode[]) ?? []) {
         if (specifier.importKind === 'type') continue;
         const local = identifierName(specifier.local);
-        const exportName = specifier.type === 'ImportDefaultSpecifier'
-          ? 'default'
-          : specifier.type === 'ImportSpecifier'
-          ? identifierName(specifier.imported) ??
-            stringValue(specifier.imported)
-          : undefined;
+        const exportName =
+          specifier.type === 'ImportDefaultSpecifier'
+            ? 'default'
+            : specifier.type === 'ImportSpecifier'
+              ? (identifierName(specifier.imported) ?? stringValue(specifier.imported))
+              : undefined;
         if (local && exportName) {
           bindings.push({ local, exportName, moduleSpecifier });
         }
       }
       continue;
     }
-    if (
-      statement.type === 'ExportNamedDeclaration' ||
-      statement.type === 'ExportAllDeclaration'
-    ) {
+    if (statement.type === 'ExportNamedDeclaration' || statement.type === 'ExportAllDeclaration') {
       const moduleSpecifier = stringValue(statement.source);
       if (moduleSpecifier) {
         references.push({
@@ -278,32 +265,23 @@ async function fileExists(path: string) {
 
 function isInsideRoot(root: string, path: string) {
   const relativePath = relative(root, path);
-  return relativePath === '' ||
-    (!relativePath.startsWith('..') && !isAbsolute(relativePath));
+  return relativePath === '' || (!relativePath.startsWith('..') && !isAbsolute(relativePath));
 }
 
 function isApplicationSourcePath(path: string) {
   const segments = normalizePath(path).split('/');
-  return !segments.some((segment) => NON_SOURCE_DIRECTORIES.has(segment)) &&
-    segments[0] !== 'dist';
+  return !segments.some((segment) => NON_SOURCE_DIRECTORIES.has(segment)) && segments[0] !== 'dist';
 }
 
 async function localFileFor(root: string, path: string) {
-  if (!isAbsolute(path) || !await fileExists(path)) return undefined;
-  const [realRoot, realPath] = await Promise.all([
-    realpath(root),
-    realpath(path),
-  ]);
+  if (!isAbsolute(path) || !(await fileExists(path))) return undefined;
+  const [realRoot, realPath] = await Promise.all([realpath(root), realpath(path)]);
   if (!isInsideRoot(realRoot, realPath)) return undefined;
   const relativePath = normalizePath(relative(realRoot, realPath));
   return isApplicationSourcePath(relativePath) ? relativePath : undefined;
 }
 
-async function resolveLocalFallback(
-  root: string,
-  sourceFile: string,
-  moduleSpecifier: string,
-) {
+async function resolveLocalFallback(root: string, sourceFile: string, moduleSpecifier: string) {
   const specifier = stripImportQuery(moduleSpecifier);
   if (!specifier.startsWith('.') && !specifier.startsWith('/')) return;
   const resolved = specifier.startsWith('/')
@@ -327,8 +305,7 @@ function resolvedId(resolution: ModuleResolution) {
 }
 
 function isExternalResolution(resolution: ModuleResolution) {
-  return typeof resolution === 'object' && resolution !== null &&
-    Boolean(resolution.external);
+  return typeof resolution === 'object' && resolution !== null && Boolean(resolution.external);
 }
 
 async function resolveReference({
@@ -342,28 +319,20 @@ async function resolveReference({
   moduleSpecifier: string;
   resolveModule?: ResolveModule;
 }): Promise<ResolvedReference> {
-  const resolution = resolveModule
-    ? await resolveModule(moduleSpecifier, sourceFile)
-    : undefined;
+  const resolution = resolveModule ? await resolveModule(moduleSpecifier, sourceFile) : undefined;
   const viteId = resolvedId(resolution);
   let resolved = isExternalResolution(resolution)
     ? undefined
-    : viteId ?? await resolveLocalFallback(
-      root,
-      sourceFile,
-      moduleSpecifier,
-    );
+    : (viteId ?? (await resolveLocalFallback(root, sourceFile, moduleSpecifier)));
   if (resolved?.startsWith('file:')) resolved = fileURLToPath(resolved);
   if (resolved?.startsWith('\0')) resolved = undefined;
   const resolvedPath = resolved && stripImportQuery(resolved);
-  const localFile = resolvedPath
-    ? await localFileFor(root, resolvedPath)
-    : undefined;
+  const localFile = resolvedPath ? await localFileFor(root, resolvedPath) : undefined;
   return {
     localFile,
     importId: localFile
       ? `/${localFile}${importQuery(resolved ?? moduleSpecifier)}`
-      : viteId ?? moduleSpecifier,
+      : (viteId ?? moduleSpecifier),
   };
 }
 
@@ -391,9 +360,7 @@ async function discoverIslandImportsForFileInternal({
   if (visited.has(sourceKey)) return [];
   visited.add(sourceKey);
   const resolvedBySpecifier = new Map<string, ResolvedReference>();
-  for (
-    const reference of parsed.references.filter((entry) => !entry.typeOnly)
-  ) {
+  for (const reference of parsed.references.filter((entry) => !entry.typeOnly)) {
     resolvedBySpecifier.set(
       reference.moduleSpecifier,
       await resolveReference({
@@ -401,7 +368,7 @@ async function discoverIslandImportsForFileInternal({
         sourceFile,
         moduleSpecifier: reference.moduleSpecifier,
         resolveModule,
-      }),
+      })
     );
   }
 
@@ -409,31 +376,30 @@ async function discoverIslandImportsForFileInternal({
   for (const resolved of resolvedBySpecifier.values()) {
     if (!resolved.localFile || !isSourceModule(resolved.localFile)) continue;
     imports.push(
-      ...await discoverIslandImportsForFileInternal({
+      ...(await discoverIslandImportsForFileInternal({
         root,
         file: resolved.localFile,
         visited,
         resolveModule,
-      }),
+      }))
     );
   }
   for (const islandEntry of parsed.islandEntries) {
-    const binding = parsed.bindings.find((entry) =>
-      entry.local === islandEntry.local
-    );
+    const binding = parsed.bindings.find((entry) => entry.local === islandEntry.local);
     if (!binding) {
       throw new Error(
         `Unable to resolve island "${islandEntry.local}" in ${sourceKey}. ` +
-          'Island values must be imported class identifiers.',
+          'Island values must be imported class identifiers.'
       );
     }
-    const resolved = resolvedBySpecifier.get(binding.moduleSpecifier) ??
-      await resolveReference({
+    const resolved =
+      resolvedBySpecifier.get(binding.moduleSpecifier) ??
+      (await resolveReference({
         root,
         sourceFile,
         moduleSpecifier: binding.moduleSpecifier,
         resolveModule,
-      });
+      }));
     imports.push({
       tagName: islandEntry.tagName,
       local: islandEntry.local,
@@ -464,28 +430,24 @@ async function discoverStyleImportsForFileInternal({
   if (visited.has(sourceKey) || excluded.has(sourceKey)) return [];
   visited.add(sourceKey);
   const styles: string[] = [];
-  for (
-    const reference of parsed.references.filter((entry) => !entry.typeOnly)
-  ) {
+  for (const reference of parsed.references.filter((entry) => !entry.typeOnly)) {
     const resolved = await resolveReference({
       root,
       sourceFile,
       moduleSpecifier: reference.moduleSpecifier,
       resolveModule,
     });
-    if (
-      isCssImport(reference.moduleSpecifier) || isCssImport(resolved.importId)
-    ) {
+    if (isCssImport(reference.moduleSpecifier) || isCssImport(resolved.importId)) {
       styles.push(resolved.importId);
     } else if (resolved.localFile && isSourceModule(resolved.localFile)) {
       styles.push(
-        ...await discoverStyleImportsForFileInternal({
+        ...(await discoverStyleImportsForFileInternal({
           root,
           file: resolved.localFile,
           visited,
           excluded,
           resolveModule,
-        }),
+        }))
       );
     }
   }
@@ -507,9 +469,7 @@ async function discoverSourceFilesForFileInternal({
   if (visited.has(sourceKey)) return [];
   visited.add(sourceKey);
   const files = [sourceKey];
-  for (
-    const reference of parsed.references.filter((entry) => !entry.typeOnly)
-  ) {
+  for (const reference of parsed.references.filter((entry) => !entry.typeOnly)) {
     const resolved = await resolveReference({
       root,
       sourceFile,
@@ -518,12 +478,12 @@ async function discoverSourceFilesForFileInternal({
     });
     if (resolved.localFile && isSourceModule(resolved.localFile)) {
       files.push(
-        ...await discoverSourceFilesForFileInternal({
+        ...(await discoverSourceFilesForFileInternal({
           root,
           file: resolved.localFile,
           visited,
           resolveModule,
-        }),
+        }))
       );
     }
   }
@@ -556,16 +516,18 @@ export async function discoverIslandImportsForFiles({
   files: string[];
   resolve?: ResolveModule;
 }) {
-  const imports = (await Promise.all(
-    files.map((file) =>
-      discoverIslandImportsForFileInternal({
-        root,
-        file,
-        visited: new Set(),
-        resolveModule,
-      })
-    ),
-  )).flat();
+  const imports = (
+    await Promise.all(
+      files.map((file) =>
+        discoverIslandImportsForFileInternal({
+          root,
+          file,
+          visited: new Set(),
+          resolveModule,
+        })
+      )
+    )
+  ).flat();
   const seen = new Set<string>();
   return imports.filter((islandImport) => {
     const identity = `${islandImport.tagName}:${islandImport.resolvedImport}`;
@@ -586,19 +548,20 @@ export async function discoverStyleImportsForFiles({
   excludeFiles?: string[];
   resolve?: ResolveModule;
 }) {
-  const excluded = new Set(
-    excludeFiles.map((file) => normalizePath(file.replace(/^\/+/, ''))),
-  );
-  const styles =
-    (await Promise.all(files.map((file) =>
-      discoverStyleImportsForFileInternal({
-        root,
-        file,
-        visited: new Set(),
-        excluded,
-        resolveModule,
-      })
-    ))).flat();
+  const excluded = new Set(excludeFiles.map((file) => normalizePath(file.replace(/^\/+/, ''))));
+  const styles = (
+    await Promise.all(
+      files.map((file) =>
+        discoverStyleImportsForFileInternal({
+          root,
+          file,
+          visited: new Set(),
+          excluded,
+          resolveModule,
+        })
+      )
+    )
+  ).flat();
   return [...new Set(styles)];
 }
 
@@ -612,15 +575,17 @@ export async function discoverSourceFilesForFiles({
   resolve?: ResolveModule;
 }) {
   const visited = new Set<string>();
-  const sourceFiles = (await Promise.all(
-    files.map((file) =>
-      discoverSourceFilesForFileInternal({
-        root,
-        file,
-        visited,
-        resolveModule,
-      })
-    ),
-  )).flat();
+  const sourceFiles = (
+    await Promise.all(
+      files.map((file) =>
+        discoverSourceFilesForFileInternal({
+          root,
+          file,
+          visited,
+          resolveModule,
+        })
+      )
+    )
+  ).flat();
   return [...new Set(sourceFiles)];
 }

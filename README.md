@@ -51,7 +51,7 @@ Build the application with Vite, then wrap the generated request handler in
 `worker-entry.js`:
 
 ```js
-import handler from "./dist/server/entry.js";
+import handler from './dist/server/entry.js';
 
 export default {
   fetch(request, env, ctx) {

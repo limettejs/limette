@@ -18,46 +18,28 @@ describe('public module surfaces', () => {
     }
 
     assert(
-      JSON.stringify(Object.keys(nodeAdapter).sort()) ===
-        JSON.stringify(['serve']),
-      `Unexpected limette/node exports: ${Object.keys(nodeAdapter).join(', ')}`,
+      JSON.stringify(Object.keys(nodeAdapter).sort()) === JSON.stringify(['serve']),
+      `Unexpected limette/node exports: ${Object.keys(nodeAdapter).join(', ')}`
     );
     assert(
-      JSON.stringify(Object.keys(denoAdapter).sort()) ===
-        JSON.stringify(['serve']),
-      `Unexpected limette/deno exports: ${Object.keys(denoAdapter).join(', ')}`,
+      JSON.stringify(Object.keys(denoAdapter).sort()) === JSON.stringify(['serve']),
+      `Unexpected limette/deno exports: ${Object.keys(denoAdapter).join(', ')}`
     );
     assert(
-      JSON.stringify(Object.keys(viteIntegration).sort()) ===
-        JSON.stringify(['limette']),
-      `Unexpected limette/vite exports: ${
-        Object.keys(viteIntegration).join(', ')
-      }`,
+      JSON.stringify(Object.keys(viteIntegration).sort()) === JSON.stringify(['limette']),
+      `Unexpected limette/vite exports: ${Object.keys(viteIntegration).join(', ')}`
     );
     assert(
-      JSON.stringify(Object.keys(browserRuntime).sort()) ===
-        JSON.stringify(['IS_BROWSER']),
-      `Unexpected limette/runtime exports: ${
-        Object.keys(browserRuntime).join(', ')
-      }`,
+      JSON.stringify(Object.keys(browserRuntime).sort()) === JSON.stringify(['IS_BROWSER']),
+      `Unexpected limette/runtime exports: ${Object.keys(browserRuntime).join(', ')}`
     );
     assert(
       JSON.stringify(Object.keys(serverRuntime).sort()) ===
         JSON.stringify(['registerRouteDefinitions']),
-      `Unexpected internal server runtime exports: ${
-        Object.keys(serverRuntime).join(', ')
-      }`,
+      `Unexpected internal server runtime exports: ${Object.keys(serverRuntime).join(', ')}`
     );
 
-    for (
-      const path of [
-        '.',
-        './vite',
-        './node',
-        './deno',
-        './internal/server-runtime',
-      ]
-    ) {
+    for (const path of ['.', './vite', './node', './deno', './internal/server-runtime']) {
       assert(path in packageJson.exports, `Missing package export ${path}.`);
     }
   });

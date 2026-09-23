@@ -12,12 +12,12 @@ export default {
     vite: fromPackage('src/vite/mod.ts'),
     'internal/server-runtime': fromPackage('src/server-runtime.ts'),
     runtime: fromPackage('src/runtime/mod.ts'),
-    'runtime/ssr-client/lit-element-hydrate-support':
-      fromPackage('src/runtime/ssr-client/lit-element-hydrate-support.ts'),
-    'runtime/ssr-client/lit-element-hydrate-support-patch':
-      fromPackage(
-        'src/runtime/ssr-client/lit-element-hydrate-support-patch.ts',
-      ),
+    'runtime/ssr-client/lit-element-hydrate-support': fromPackage(
+      'src/runtime/ssr-client/lit-element-hydrate-support.ts'
+    ),
+    'runtime/ssr-client/lit-element-hydrate-support-patch': fromPackage(
+      'src/runtime/ssr-client/lit-element-hydrate-support-patch.ts'
+    ),
   },
   clean: true,
   deps: {

@@ -11,25 +11,18 @@ type LmtShadowRootMode = 'open' | 'closed' | 'disabled';
 
 function renderRouteStyle(
   stylesheets: readonly string[],
-  shadow: ThunkedRenderResult,
+  shadow: ThunkedRenderResult
 ): ThunkedRenderResult {
   return [
-    `<style>${
-      stylesheets.map((stylesheet) => `@import url("${stylesheet}");`).join('')
-    }</style>`,
+    `<style>${stylesheets.map((stylesheet) => `@import url("${stylesheet}");`).join('')}</style>`,
     ...shadow,
   ];
 }
 
-export const LimetteElementRenderer = <
-  State = DefaultState,
-  Platform = unknown,
->(
+export const LimetteElementRenderer = <State = DefaultState, Platform = unknown>(
   route: RuntimeRouteDefinition<State, Platform>,
   ctx: Context<State, Platform>,
-  onRouteHead?: (
-    result: HeadRenderResult | Promise<HeadRenderResult>,
-  ) => void,
+  onRouteHead?: (result: HeadRenderResult | Promise<HeadRenderResult>) => void
 ) =>
   class LimetteElementRenderer extends LitElementRenderer {
     static routeHeadCollected = false;
@@ -37,10 +30,10 @@ export const LimetteElementRenderer = <
     constructor(tagName: string) {
       super(tagName);
 
-      const RenderComponent = !route.islands.includes(tagName) ||
-          route.ssrIslands.includes(tagName)
-        ? route.renderComponents?.[tagName]
-        : undefined;
+      const RenderComponent =
+        !route.islands.includes(tagName) || route.ssrIslands.includes(tagName)
+          ? route.renderComponents?.[tagName]
+          : undefined;
       if (RenderComponent) {
         // CustomElementRegistry#define reads this during registration, which
         // finalizes Lit's reactive property metadata. Development constructors
@@ -51,10 +44,7 @@ export const LimetteElementRenderer = <
     }
 
     override connectedCallback(): void {
-      if (
-        route.islands.includes(this.tagName) &&
-        !route.ssrIslands.includes(this.tagName)
-      ) {
+      if (route.islands.includes(this.tagName) && !route.ssrIslands.includes(this.tagName)) {
         this.element.setAttribute('skip-hydration', '');
       }
 
@@ -66,9 +56,7 @@ export const LimetteElementRenderer = <
      * If `renderShadow()` returns undefined, no declarative shadow root is
      * emitted.
      */
-    override renderShadow(
-      renderInfo: RenderInfo,
-    ): ThunkedRenderResult | undefined {
+    override renderShadow(renderInfo: RenderInfo): ThunkedRenderResult | undefined {
       // A component is an island if it's included in route.islands.
       const isIsland = route.islands.includes(this.tagName);
       const ssrIsland = route.ssrIslands.includes(this.tagName);
@@ -112,8 +100,7 @@ export const LimetteElementRenderer = <
       }
 
       const shadow = super.renderShadow(renderInfo);
-      return shadow !== undefined &&
-          shadowStyles.length > 0 && (!isIsland || ssrIsland)
+      return shadow !== undefined && shadowStyles.length > 0 && (!isIsland || ssrIsland)
         ? renderRouteStyle(shadowStyles, shadow)
         : shadow;
     }

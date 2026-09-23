@@ -7,20 +7,23 @@ const origin = `http://127.0.0.1:${port}`;
 const homeRoutePath = join(exampleRoot, 'routes/index.js');
 const originalHomeRoute = await Deno.readTextFile(homeRoutePath);
 let homeRouteChanged = false;
-const command = viteCommand([
-  '--config',
-  'vite.config.ts',
-  '--host',
-  '127.0.0.1',
-  '--port',
-  String(port),
-  '--strictPort',
-  '--logLevel',
-  'error',
-], {
-  stdout: 'null',
-  stderr: 'piped',
-});
+const command = viteCommand(
+  [
+    '--config',
+    'vite.config.ts',
+    '--host',
+    '127.0.0.1',
+    '--port',
+    String(port),
+    '--strictPort',
+    '--logLevel',
+    'error',
+  ],
+  {
+    stdout: 'null',
+    stderr: 'piped',
+  }
+);
 const child = command.spawn();
 const stderr = new Response(child.stderr).text();
 
@@ -53,7 +56,7 @@ try {
     throw new Error(
       `Expected Vite dev server to render the page. Last error: ${
         lastError instanceof Error ? lastError.message : String(lastError)
-      }\nVite stderr:\n${await stderr}`,
+      }\nVite stderr:\n${await stderr}`
     );
   }
 
@@ -70,12 +73,11 @@ try {
   const staticConflictResponse = await fetch(`${origin}/foo/bar`);
   const staticConflictHtml = await staticConflictResponse.text();
   if (
-    !staticConflictResponse.ok || !staticConflictHtml.includes('Foo/Bar') ||
+    !staticConflictResponse.ok ||
+    !staticConflictHtml.includes('Foo/Bar') ||
     staticConflictHtml.includes('<h1>Params</h1>')
   ) {
-    throw new Error(
-      'Vite dev routing did not prefer /foo/bar over /foo/:id.',
-    );
+    throw new Error('Vite dev routing did not prefer /foo/bar over /foo/:id.');
   }
 
   for (let i = 0; i < 20; i++) {
@@ -85,15 +87,14 @@ try {
     if (!repeatedResponse.ok || routeTag(repeatedHtml) !== initialRouteTag) {
       throw new Error(
         `Expected repeated requests to reuse ${initialRouteTag}; got status ` +
-          `${repeatedResponse.status} and tag ${routeTag(repeatedHtml)}.`,
+          `${repeatedResponse.status} and tag ${routeTag(repeatedHtml)}.`
       );
     }
   }
-  const viteClientScripts = html.match(
-    /<script type="module" src="\/@vite\/client"><\/script>/g,
-  ) ?? [];
+  const viteClientScripts =
+    html.match(/<script type="module" src="\/@vite\/client"><\/script>/g) ?? [];
   const scriptPath = html.match(
-    /<script type="module" src="([^" ]*\/@limette\/client-entry\/[^"]+)"/,
+    /<script type="module" src="([^" ]*\/@limette\/client-entry\/[^"]+)"/
   )?.[1];
 
   if (viteClientScripts.length !== 1) {
@@ -114,25 +115,19 @@ try {
   const entryResponse = await fetch(`${origin}${scriptPath}`);
 
   if (!entryResponse.ok) {
-    throw new Error(
-      `Expected Vite entry to load, got ${entryResponse.status}.`,
-    );
+    throw new Error(`Expected Vite entry to load, got ${entryResponse.status}.`);
   }
 
   const code = await entryResponse.text();
 
   if (code.includes('/@vite/client') || !code.includes('island-foo')) {
-    throw new Error(
-      'Expected island code without a duplicate Vite client import.',
-    );
+    throw new Error('Expected island code without a duplicate Vite client import.');
   }
 
   const missingResponse = await fetch(`${origin}/missing-chunk.js`);
 
   if (missingResponse.status !== 404) {
-    throw new Error(
-      `Expected missing chunk request to return 404, got ${missingResponse.status}.`,
-    );
+    throw new Error(`Expected missing chunk request to return 404, got ${missingResponse.status}.`);
   }
 
   const recoveryResponse = await fetch(`${origin}/`);
@@ -141,10 +136,9 @@ try {
     throw new Error('Expected dev server to keep running after a 404.');
   }
 
-  const updatedHomeRoute = originalHomeRoute.replace(
-    'SSR content',
-    'SSR content changed by Vite dev smoke',
-  ).replace('<title>Home</title>', '<title>Updated home</title>');
+  const updatedHomeRoute = originalHomeRoute
+    .replace('SSR content', 'SSR content changed by Vite dev smoke')
+    .replace('<title>Home</title>', '<title>Updated home</title>');
 
   if (updatedHomeRoute === originalHomeRoute) {
     throw new Error('Expected home route fixture to contain SSR content.');
@@ -192,12 +186,10 @@ try {
   }
   await child.status;
   const errors = await stderr;
-  for (
-    const forbidden of [
-      'emitFile() is not supported in serve mode',
-      'Unable to statically analyze "static islands"',
-    ]
-  ) {
+  for (const forbidden of [
+    'emitFile() is not supported in serve mode',
+    'Unable to statically analyze "static islands"',
+  ]) {
     if (errors.includes(forbidden)) {
       throw new Error(`Vite dev logged ${forbidden}.\n${errors}`);
     }

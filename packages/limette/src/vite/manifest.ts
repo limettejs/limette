@@ -12,8 +12,7 @@ import type { ResolveModule } from './islands.ts';
 const ROUTE_EXT_PATTERN = /\.(?:ts|js)$/;
 const TEST_FILE_PATTERN = /[._]test\.(?:[tj]sx?|[mc][tj]s)$/;
 const DECLARATION_FILE_PATTERN = /\.d\.ts$/;
-const DYNAMIC_IDENTIFIER_PATTERN =
-  /^[$_\p{ID_Start}][$\u200C\u200D_\p{ID_Continue}]*$/u;
+const DYNAMIC_IDENTIFIER_PATTERN = /^[$_\p{ID_Start}][$\u200C\u200D_\p{ID_Continue}]*$/u;
 
 type RouteSegment =
   | { kind: 'static'; value: string }
@@ -64,25 +63,18 @@ function compareCodePoints(a: string, b: string) {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
-function dynamicName(
-  segment: string,
-  match: RegExpMatchArray | null,
-  relativeFile: string,
-) {
+function dynamicName(segment: string, match: RegExpMatchArray | null, relativeFile: string) {
   const name = match?.[1];
   if (!name || !DYNAMIC_IDENTIFIER_PATTERN.test(name)) {
     throw new Error(
       `Invalid dynamic route segment "${segment}" in "${relativeFile}". ` +
-        'Use a non-empty identifier in [param], [[param]], or [...param].',
+        'Use a non-empty identifier in [param], [[param]], or [...param].'
     );
   }
   return name;
 }
 
-function parseRouteSegment(
-  segment: string,
-  relativeFile: string,
-): RouteSegment {
+function parseRouteSegment(segment: string, relativeFile: string): RouteSegment {
   const optional = segment.match(/^\[\[([^\[\]]*)\]\]$/);
   if (optional) {
     return {
@@ -110,7 +102,7 @@ function parseRouteSegment(
   if (segment.includes('[') || segment.includes(']')) {
     throw new Error(
       `Invalid route segment "${segment}" in "${relativeFile}". ` +
-        'Dynamic syntax must occupy the whole segment and use [param], [[param]], or [...param].',
+        'Dynamic syntax must occupy the whole segment and use [param], [[param]], or [...param].'
     );
   }
 
@@ -120,25 +112,27 @@ function parseRouteSegment(
 function routePattern(segments: readonly RouteSegment[]) {
   if (segments.length === 0) return '/';
 
-  return segments.map((segment, index) => {
-    switch (segment.kind) {
-      case 'static':
-        return `/${segment.value}`;
-      case 'required':
-        return `/:${segment.name}`;
-      case 'optional':
-        return index === 0 ? `/{:${segment.name}}?` : `{/:${segment.name}}?`;
-      case 'catch-all':
-        return `/:${segment.name}*`;
-    }
-  }).join('');
+  return segments
+    .map((segment, index) => {
+      switch (segment.kind) {
+        case 'static':
+          return `/${segment.value}`;
+        case 'required':
+          return `/:${segment.name}`;
+        case 'optional':
+          return index === 0 ? `/{:${segment.name}}?` : `{/:${segment.name}}?`;
+        case 'catch-all':
+          return `/:${segment.name}*`;
+      }
+    })
+    .join('');
 }
 
 function matcherSignature(segments: readonly RouteSegment[]) {
   return JSON.stringify(
     segments.map((segment) =>
       segment.kind === 'static' ? ['static', segment.value] : [segment.kind]
-    ),
+    )
   );
 }
 
@@ -160,7 +154,7 @@ async function walkFiles(dir: string): Promise<string[]> {
   for (const entry of entries) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) {
-      files.push(...await walkFiles(path));
+      files.push(...(await walkFiles(path)));
     } else if (entry.isFile()) {
       files.push(path);
     }
@@ -174,28 +168,24 @@ function parseRouteFile(file: string, routesPath: string): RouteFile {
   const withoutExt = relativeFile.replace(ROUTE_EXT_PATTERN, '');
   const fileSegments = withoutExt.split('/');
   if (fileSegments.at(-1) === 'index') fileSegments.pop();
-  const segments = fileSegments.map((segment) =>
-    parseRouteSegment(segment, relativeFile)
-  );
+  const segments = fileSegments.map((segment) => parseRouteSegment(segment, relativeFile));
   const parameterNames = new Set<string>();
   for (const segment of segments) {
     if (segment.kind === 'static') continue;
     if (parameterNames.has(segment.name)) {
       throw new Error(
         `Duplicate route parameter "${segment.name}" in "${relativeFile}". ` +
-          'Each filesystem route parameter name must be unique.',
+          'Each filesystem route parameter name must be unique.'
       );
     }
     parameterNames.add(segment.name);
   }
-  const catchAllIndex = segments.findIndex((segment) =>
-    segment.kind === 'catch-all'
-  );
+  const catchAllIndex = segments.findIndex((segment) => segment.kind === 'catch-all');
 
   if (catchAllIndex !== -1 && catchAllIndex !== segments.length - 1) {
     throw new Error(
       `Invalid catch-all route in "${relativeFile}": ` +
-        `"${fileSegments[catchAllIndex]}" must be the final route segment.`,
+        `"${fileSegments[catchAllIndex]}" must be the final route segment.`
     );
   }
 
@@ -224,7 +214,7 @@ function directoriesForRouteFile(file: string, routesPath: string) {
 function findInheritedFiles(
   routeFile: string,
   routesPath: string,
-  filesByDirectory: Map<string, string>,
+  filesByDirectory: Map<string, string>
 ) {
   return directoriesForRouteFile(routeFile, routesPath)
     .map((directory) => filesByDirectory.get(directory))
@@ -253,20 +243,19 @@ function compareRoutesBySpecificity(a: RouteFile, b: RouteFile) {
   for (let index = 0; index < sharedLength; index++) {
     const aSegment = a.segments[index];
     const bSegment = b.segments[index];
-    const specificity = SEGMENT_SPECIFICITY[aSegment.kind] -
-      SEGMENT_SPECIFICITY[bSegment.kind];
+    const specificity = SEGMENT_SPECIFICITY[aSegment.kind] - SEGMENT_SPECIFICITY[bSegment.kind];
     if (specificity !== 0) return specificity;
 
     if (
-      aSegment.kind === 'static' && bSegment.kind === 'static' &&
+      aSegment.kind === 'static' &&
+      bSegment.kind === 'static' &&
       aSegment.value !== bSegment.value
     ) {
       return compareCodePoints(a.relativeFile, b.relativeFile);
     }
   }
 
-  return a.segments.length - b.segments.length ||
-    compareCodePoints(a.relativeFile, b.relativeFile);
+  return a.segments.length - b.segments.length || compareCodePoints(a.relativeFile, b.relativeFile);
 }
 
 function setSpecialFile(
@@ -274,21 +263,21 @@ function setSpecialFile(
   directory: string,
   file: string,
   kind: 'layout' | 'middleware',
-  root: string,
+  root: string
 ) {
   const existing = files.get(directory);
   if (existing) {
     throw new Error(
       `Duplicate ${kind} files in "${directory || '.'}": ` +
         `"${normalizePath(relative(root, existing))}" and ` +
-        `"${normalizePath(relative(root, file))}". Keep only one.`,
+        `"${normalizePath(relative(root, file))}". Keep only one.`
     );
   }
   files.set(directory, file);
 }
 
 export async function discoverRoutes(
-  options: DiscoverRoutesOptions = {},
+  options: DiscoverRoutesOptions = {}
 ): Promise<LimetteRouteManifest> {
   const root = options.root ?? process.cwd();
   const routesPath = join(root, options.routesDir ?? 'routes');
@@ -299,19 +288,15 @@ export async function discoverRoutes(
 
   if (hasAppTs && hasAppJs) {
     throw new Error(
-      `Duplicate app wrapper files: "${
-        normalizePath(relative(root, appTs))
-      }" ` +
-        `and "${normalizePath(relative(root, appJs))}". Keep only one.`,
+      `Duplicate app wrapper files: "${normalizePath(relative(root, appTs))}" ` +
+        `and "${normalizePath(relative(root, appJs))}". Keep only one.`
     );
   }
 
   if (!hasAppTs && !hasAppJs) {
     throw new Error(
-      `Missing app wrapper in "${
-        normalizePath(relative(root, routesPath))
-      }". ` +
-        'Create either "_app.ts" or "_app.js".',
+      `Missing app wrapper in "${normalizePath(relative(root, routesPath))}". ` +
+        'Create either "_app.ts" or "_app.js".'
     );
   }
 
@@ -335,9 +320,7 @@ export async function discoverRoutes(
   }
 
   const routeFiles = files
-    .filter((file) =>
-      specialFileKind(normalizePath(relative(routesPath, file))) === undefined
-    )
+    .filter((file) => specialFileKind(normalizePath(relative(routesPath, file))) === undefined)
     .map((file) => parseRouteFile(file, routesPath));
   const routesByMatcher = new Map<string, RouteFile>();
 
@@ -347,7 +330,7 @@ export async function discoverRoutes(
       throw new Error(
         `Filesystem route conflict between "${existing.relativeFile}" and ` +
           `"${routeFile.relativeFile}": both define the equivalent matcher ` +
-          `"${routeFile.path}" (${routeFile.matcherSignature}).`,
+          `"${routeFile.path}" (${routeFile.matcherSignature}).`
       );
     }
     routesByMatcher.set(routeFile.matcherSignature, routeFile);
@@ -355,26 +338,27 @@ export async function discoverRoutes(
 
   routeFiles.sort(compareRoutesBySpecificity);
 
-  const routes: LimetteRouteManifestEntry[] = routeFiles
-    .map((routeFile): LimetteRouteManifestEntry => {
+  const routes: LimetteRouteManifestEntry[] = routeFiles.map(
+    (routeFile): LimetteRouteManifestEntry => {
       const file = join(routesPath, routeFile.relativeFile);
-      const layouts = findInheritedFiles(file, routesPath, layoutFiles).map((
-        file,
-      ) => normalizePath(relative(root, file)));
+      const layouts = findInheritedFiles(file, routesPath, layoutFiles).map((file) =>
+        normalizePath(relative(root, file))
+      );
 
       return {
         id: routeId(routeFile.path),
         path: routeFile.path,
         routeFile: normalizePath(relative(root, file)),
         layouts,
-        middlewares: findInheritedFiles(file, routesPath, middlewareFiles).map((
-          file,
-        ) => normalizePath(relative(root, file))),
+        middlewares: findInheritedFiles(file, routesPath, middlewareFiles).map((file) =>
+          normalizePath(relative(root, file))
+        ),
         islandImports: [],
         sourceFiles: [],
         styleImports: [],
       };
-    });
+    }
+  );
 
   const appFile = normalizePath(relative(root, hasAppTs ? appTs : appJs));
 

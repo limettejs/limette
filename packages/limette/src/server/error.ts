@@ -1,139 +1,139 @@
 export function getMessage(status: number): string {
   switch (status) {
     case 100:
-      return "Continue";
+      return 'Continue';
     case 101:
-      return "Switching Protocols";
+      return 'Switching Protocols';
     case 102:
-      return "Processing (WebDAV)";
+      return 'Processing (WebDAV)';
     case 103:
-      return "Early Hints";
+      return 'Early Hints';
     case 200:
-      return "OK";
+      return 'OK';
     case 201:
-      return "Created";
+      return 'Created';
     case 202:
-      return "Accepted";
+      return 'Accepted';
     case 203:
-      return "Non-Authoritative Information";
+      return 'Non-Authoritative Information';
     case 204:
-      return "No Content";
+      return 'No Content';
     case 205:
-      return "Reset Content";
+      return 'Reset Content';
     case 206:
-      return "Partial Content";
+      return 'Partial Content';
     case 207:
-      return "Multi-Status (WebDAV)";
+      return 'Multi-Status (WebDAV)';
     case 208:
-      return "Already Reported (WebDAV)";
+      return 'Already Reported (WebDAV)';
     case 226:
-      return "IM Used (HTTP Delta encoding)";
+      return 'IM Used (HTTP Delta encoding)';
     case 300:
-      return "Multiple Choices";
+      return 'Multiple Choices';
     case 301:
-      return "Moved Permanently";
+      return 'Moved Permanently';
     case 302:
-      return "Found";
+      return 'Found';
     case 303:
-      return "See Other";
+      return 'See Other';
     case 304:
-      return "Not Modified";
+      return 'Not Modified';
     case 305:
-      return "Use Proxy Deprecated";
+      return 'Use Proxy Deprecated';
     case 306:
-      return "unused";
+      return 'unused';
     case 307:
-      return "Temporary Redirect";
+      return 'Temporary Redirect';
     case 308:
-      return "Permanent Redirect";
+      return 'Permanent Redirect';
     case 400:
-      return "Bad Request";
+      return 'Bad Request';
     case 401:
-      return "Unauthorized";
+      return 'Unauthorized';
     case 402:
-      return "Payment Required Experimental";
+      return 'Payment Required Experimental';
     case 403:
-      return "Forbidden";
+      return 'Forbidden';
     case 404:
-      return "Not Found";
+      return 'Not Found';
     case 405:
-      return "Method Not Allowed";
+      return 'Method Not Allowed';
     case 406:
-      return "Not Acceptable";
+      return 'Not Acceptable';
     case 407:
-      return "Proxy Authentication Required";
+      return 'Proxy Authentication Required';
     case 408:
-      return "Request Timeout";
+      return 'Request Timeout';
     case 409:
-      return "Conflict";
+      return 'Conflict';
     case 410:
-      return "Gone";
+      return 'Gone';
     case 411:
-      return "Length Required";
+      return 'Length Required';
     case 412:
-      return "Precondition Failed";
+      return 'Precondition Failed';
     case 413:
-      return "Payload Too Large";
+      return 'Payload Too Large';
     case 414:
-      return "URI Too Long";
+      return 'URI Too Long';
     case 415:
-      return "Unsupported Media Type";
+      return 'Unsupported Media Type';
     case 416:
-      return "Range Not Satisfiable";
+      return 'Range Not Satisfiable';
     case 417:
-      return "Expectation Failed";
+      return 'Expectation Failed';
     case 418:
       return "I'm a teapot";
     case 421:
-      return "Misdirected Request";
+      return 'Misdirected Request';
     case 422:
-      return "Unprocessable Content (WebDAV)";
+      return 'Unprocessable Content (WebDAV)';
     case 423:
-      return "Locked (WebDAV)";
+      return 'Locked (WebDAV)';
     case 424:
-      return "Failed Dependency (WebDAV)";
+      return 'Failed Dependency (WebDAV)';
     case 425:
-      return "Too Early Experimental";
+      return 'Too Early Experimental';
     case 426:
-      return "Upgrade Required";
+      return 'Upgrade Required';
     case 428:
-      return "Precondition Required";
+      return 'Precondition Required';
     case 429:
-      return "Too Many Requests";
+      return 'Too Many Requests';
     case 431:
-      return "Request Header Fields Too Large";
+      return 'Request Header Fields Too Large';
     case 451:
-      return "Unavailable For Legal Reasons";
+      return 'Unavailable For Legal Reasons';
     case 500:
-      return "Internal Server Error";
+      return 'Internal Server Error';
     case 501:
-      return "Not Implemented";
+      return 'Not Implemented';
     case 502:
-      return "Bad Gateway";
+      return 'Bad Gateway';
     case 503:
-      return "Service Unavailable";
+      return 'Service Unavailable';
     case 504:
-      return "Gateway Timeout";
+      return 'Gateway Timeout';
     case 505:
-      return "HTTP Version Not Supported";
+      return 'HTTP Version Not Supported';
     case 506:
-      return "Variant Also Negotiates";
+      return 'Variant Also Negotiates';
     case 507:
-      return "Insufficient Storage (WebDAV)";
+      return 'Insufficient Storage (WebDAV)';
     case 508:
-      return "Loop Detected (WebDAV)";
+      return 'Loop Detected (WebDAV)';
     case 510:
-      return "Not Extended";
+      return 'Not Extended';
     case 511:
-      return "Network Authentication Required";
+      return 'Network Authentication Required';
     default:
-      return "Internal Server Error";
+      return 'Internal Server Error';
   }
 }
 
 export class HttpError {
   #error: Error | null = null;
-  name = "HttpError";
+  name = 'HttpError';
   message: string;
 
   constructor(

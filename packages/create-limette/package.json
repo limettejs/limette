@@ -3,12 +3,21 @@
   "version": "0.1.0",
   "description": "Create a new Limette application.",
   "keywords": [
+    "create",
     "limette",
     "lit",
-    "vite",
-    "create"
+    "vite"
   ],
-  "type": "module",
+  "homepage": "https://limette.dev",
+  "bugs": {
+    "url": "https://github.com/limettejs/limette/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/limettejs/limette.git",
+    "directory": "packages/create-limette"
+  },
   "bin": {
     "create-limette": "dist/index.mjs"
   },
@@ -17,17 +26,8 @@
     "README.md",
     "LICENSE"
   ],
+  "type": "module",
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
-  },
-  "license": "MIT",
-  "homepage": "https://limette.dev",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/limettejs/limette.git",
-    "directory": "packages/create-limette"
-  },
-  "bugs": {
-    "url": "https://github.com/limettejs/limette/issues"
   }
 }

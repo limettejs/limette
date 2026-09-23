@@ -5,11 +5,7 @@ function normalizePath(path: string) {
   return path.split(sep).join('/');
 }
 
-export function viteRootModuleUrl(
-  root: string,
-  path: string,
-  version?: number,
-) {
+export function viteRootModuleUrl(root: string, path: string, version?: number) {
   const absolutePath = resolve(root, path);
   const relativePath = normalizePath(relative(root, absolutePath));
   const search = version === undefined ? '' : `?lmt=${version}`;
@@ -25,7 +21,7 @@ export function loadServerModule(
   server: ViteDevServerLike,
   root: string,
   path: string,
-  version?: number,
+  version?: number
 ) {
   return server.ssrLoadModule(viteRootModuleUrl(root, path, version));
 }

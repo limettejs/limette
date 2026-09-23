@@ -19,7 +19,7 @@ interface ResolvedAppConfig {
 
 export type AppHandler<Platform = unknown> = (
   request: Request,
-  platform?: Platform,
+  platform?: Platform
 ) => Response | Promise<Response>;
 
 const DEFAULT_NOT_FOUND = () => {
@@ -66,10 +66,7 @@ function joinRoutePath(basePath: string, routePath: string) {
   return normalizedRoute ? `${basePath}/${normalizedRoute}` : basePath;
 }
 
-function canonicalizePathname(
-  pathname: string,
-  trailingSlash: TrailingSlash,
-) {
+function canonicalizePathname(pathname: string, trailingSlash: TrailingSlash) {
   if (pathname === '/') return pathname;
   if (trailingSlash === 'always') {
     return pathname.endsWith('/') ? pathname : `${pathname}/`;
@@ -114,10 +111,7 @@ export class App<State = DefaultState, Platform = unknown> {
     return this.#fsRoutesEnabled;
   }
 
-  error(
-    pathname: string | URLPattern,
-    middleware: Middleware<State, Platform>,
-  ): this {
+  error(pathname: string | URLPattern, middleware: Middleware<State, Platform>): this {
     this.#router.addError(pathname, middleware);
     return this;
   }
@@ -182,14 +176,12 @@ export class App<State = DefaultState, Platform = unknown> {
   #addRoute(
     method: Method | 'ALL',
     pathname: string | URLPattern,
-    handlers: RouteHandler<State, Platform>[],
+    handlers: RouteHandler<State, Platform>[]
   ): this {
-    const merged = typeof pathname === 'string'
-      ? joinRoutePath(this.config.basePath, pathname)
-      : pathname;
-    const canonical = typeof merged === 'string'
-      ? canonicalizePathname(merged, this.config.trailingSlash)
-      : merged;
+    const merged =
+      typeof pathname === 'string' ? joinRoutePath(this.config.basePath, pathname) : pathname;
+    const canonical =
+      typeof merged === 'string' ? canonicalizePathname(merged, this.config.trailingSlash) : merged;
     this.#router.add(method, canonical, handlers);
     return this;
   }
@@ -197,10 +189,7 @@ export class App<State = DefaultState, Platform = unknown> {
   handler(): AppHandler<Platform> {
     return async (request: Request, platform = undefined as Platform) => {
       const url = new URL(request.url);
-      const redirectLocation = canonicalRedirectLocation(
-        url,
-        this.config.trailingSlash,
-      );
+      const redirectLocation = canonicalRedirectLocation(url, this.config.trailingSlash);
       if (redirectLocation) {
         return new Response(null, {
           status: 308,
@@ -215,13 +204,13 @@ export class App<State = DefaultState, Platform = unknown> {
 
       const next = decodingError
         ? () => {
-          throw decodingError;
-        }
+            throw decodingError;
+          }
         : method === 'OPTIONS' && matched.allowedMethods.length > 0
-        ? async () => new Response(null, { status: 204, headers: { allow } })
-        : matched.allowedMethods.length > 0
-        ? methodNotAllowed(allow)
-        : DEFAULT_NOT_FOUND;
+          ? async () => new Response(null, { status: 204, headers: { allow } })
+          : matched.allowedMethods.length > 0
+            ? methodNotAllowed(allow)
+            : DEFAULT_NOT_FOUND;
 
       const { params, handlers } = matched;
 
@@ -242,16 +231,12 @@ export class App<State = DefaultState, Platform = unknown> {
         const errorRoute = this.#router.matchError(url);
 
         if (errorRoute.handler) {
-          const error = err instanceof HttpError
-            ? err
-            : new HttpError(500, undefined, { cause: err });
+          const error =
+            err instanceof HttpError ? err : new HttpError(500, undefined, { cause: err });
           ctx._setError(error);
           try {
             if (error.status >= 500) console.error(err);
-            response = applyErrorHeaders(
-              await runMiddlewares([[errorRoute.handler]], ctx),
-              error,
-            );
+            response = applyErrorHeaders(await runMiddlewares([[errorRoute.handler]], ctx), error);
           } catch (e) {
             console.error(e);
             response = new Response('Internal server error', { status: 500 });

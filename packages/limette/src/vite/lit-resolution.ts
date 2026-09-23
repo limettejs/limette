@@ -8,7 +8,7 @@ type Alias = {
 };
 
 const PACKAGE_ENTRIES: Readonly<Record<string, string>> = {
-  'lit': 'index.js',
+  lit: 'index.js',
   'lit-html': 'lit-html.js',
   'lit-element': 'lit-element.js',
   '@lit/reactive-element': 'reactive-element.js',
@@ -28,15 +28,14 @@ const ALIAS_SOURCES: Readonly<Record<string, string[]>> = {
   'lit-html': ['lit', '@lit-labs/ssr'],
   'lit-element': ['lit'],
   '@lit/reactive-element': ['lit', 'lit-element', '@lit-labs/ssr'],
-  '@lit-labs/ssr-client': ['@lit-labs/ssr'],
-  '@lit-labs/ssr-dom-shim': ['@lit-labs/ssr', '@lit-labs/ssr-client'],
+  '@lit-labs/ssr': ['limette'],
+  '@lit-labs/ssr-client': ['limette', '@lit-labs/ssr'],
+  '@lit-labs/ssr-dom-shim': ['limette', '@lit-labs/ssr', '@lit-labs/ssr-client'],
 };
 
 function packageName(specifier: string) {
   const segments = specifier.split('/');
-  return specifier.startsWith('@')
-    ? `${segments[0]}/${segments[1]}`
-    : segments[0];
+  return specifier.startsWith('@') ? `${segments[0]}/${segments[1]}` : segments[0];
 }
 
 function escapeRegExp(value: string) {
@@ -70,11 +69,7 @@ function resolveFromRoot(root: string, specifier: string) {
   return resolveWith(require, specifier);
 }
 
-function resolveFromPackages(
-  root: string,
-  specifier: string,
-  fromSpecifiers: string[],
-) {
+function resolveFromPackages(root: string, specifier: string, fromSpecifiers: string[]) {
   try {
     return resolveFromRoot(root, specifier);
   } catch (rootError) {
@@ -92,11 +87,7 @@ function resolveFromPackages(
   }
 }
 
-function packageRootFromRoot(
-  root: string,
-  specifier: string,
-  fromSpecifiers: string[] = [],
-) {
+function packageRootFromRoot(root: string, specifier: string, fromSpecifiers: string[] = []) {
   const name = packageName(specifier);
   const require = createRequire(resolve(root, 'package.json'));
 
@@ -107,11 +98,7 @@ function packageRootFromRoot(
   }
 }
 
-function addPackageAlias(
-  aliases: Alias[],
-  root: string,
-  specifier: string,
-) {
+function addPackageAlias(aliases: Alias[], root: string, specifier: string) {
   const fromSpecifiers = ALIAS_SOURCES[specifier] ?? [];
 
   try {
@@ -125,7 +112,7 @@ function addPackageAlias(
       {
         find: new RegExp(`^${pattern}/(.*)$`),
         replacement: `${packageRoot}/$1`,
-      },
+      }
     );
   } catch {
     // Some package managers do not expose transitive packages at the app root.
@@ -136,28 +123,22 @@ function addPackageAlias(
 function litAliases(root: string, includeCore: boolean) {
   const aliases: Alias[] = [];
 
-  for (
-    const specifier of [
-      ...(includeCore ? CONDITIONAL_LIT_PACKAGES : []),
-      '@lit-labs/ssr',
-      '@lit-labs/ssr-client',
-      '@lit-labs/ssr-dom-shim',
-    ]
-  ) {
+  for (const specifier of [
+    ...(includeCore ? CONDITIONAL_LIT_PACKAGES : []),
+    '@lit-labs/ssr',
+    '@lit-labs/ssr-client',
+    '@lit-labs/ssr-dom-shim',
+  ]) {
     addPackageAlias(aliases, root, specifier);
   }
 
   return aliases;
 }
 
-export function resolveLitPackageId(
-  root: string,
-  id: string,
-  server: boolean,
-) {
+export function resolveLitPackageId(root: string, id: string, server: boolean) {
   const [specifier, query] = id.split('?', 2);
-  const packageSpecifier = CONDITIONAL_LIT_PACKAGES.find((candidate) =>
-    specifier === candidate || specifier.startsWith(`${candidate}/`)
+  const packageSpecifier = CONDITIONAL_LIT_PACKAGES.find(
+    (candidate) => specifier === candidate || specifier.startsWith(`${candidate}/`)
   );
   if (!packageSpecifier) return;
 
@@ -168,11 +149,7 @@ export function resolveLitPackageId(
     // condition makes other packages, notably ssr-client, import Node APIs.
     resolved = resolveFromPackages(root, specifier, fromSpecifiers);
   } else {
-    const packageRoot = packageRootFromRoot(
-      root,
-      packageSpecifier,
-      fromSpecifiers,
-    );
+    const packageRoot = packageRootFromRoot(root, packageSpecifier, fromSpecifiers);
     const subpath = specifier.slice(packageSpecifier.length + 1);
     resolved = subpath
       ? resolve(packageRoot, subpath)

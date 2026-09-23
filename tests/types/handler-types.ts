@@ -75,23 +75,15 @@ function contextTypeSurface(ctx: Context<AppState, AppPlatform>) {
   void ctx.render({ product: 'replacement' });
 }
 
-const synchronousAppHandler =
-  ((request, platform) =>
-    new Response(`${request.method}:${platform?.marker}`)) satisfies AppHandler<
-      AppPlatform
-    >;
-const asynchronousAppHandler =
-  (async () => new Response('async')) satisfies AppHandler<AppPlatform>;
-type NodeAdapterHandler = Parameters<
-  typeof import('../../packages/limette/src/node.ts').serve
->[0];
-type DenoAdapterHandler = Parameters<
-  typeof import('../../packages/limette/src/deno.ts').serve
->[0];
-const nodeAdapterHandler =
-  ((request) => new Response(request.url)) satisfies NodeAdapterHandler;
-const denoAdapterHandler =
-  (async (request) => new Response(request.url)) satisfies DenoAdapterHandler;
+const synchronousAppHandler = ((request, platform) =>
+  new Response(`${request.method}:${platform?.marker}`)) satisfies AppHandler<AppPlatform>;
+const asynchronousAppHandler = (async () =>
+  new Response('async')) satisfies AppHandler<AppPlatform>;
+type NodeAdapterHandler = Parameters<typeof import('../../packages/limette/src/node.ts').serve>[0];
+type DenoAdapterHandler = Parameters<typeof import('../../packages/limette/src/deno.ts').serve>[0];
+const nodeAdapterHandler = ((request) => new Response(request.url)) satisfies NodeAdapterHandler;
+const denoAdapterHandler = (async (request) =>
+  new Response(request.url)) satisfies DenoAdapterHandler;
 
 void synchronousMiddleware;
 void asynchronousMiddleware;

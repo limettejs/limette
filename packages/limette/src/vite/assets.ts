@@ -52,12 +52,7 @@ function collectImportedAssets({
     styles.add(css);
   }
 
-  for (
-    const importKey of [
-      ...(chunk.imports ?? []),
-      ...(chunk.dynamicImports ?? []),
-    ]
-  ) {
+  for (const importKey of [...(chunk.imports ?? []), ...(chunk.dynamicImports ?? [])]) {
     if (seen.has(importKey)) continue;
     seen.add(importKey);
 
@@ -79,24 +74,22 @@ function matchingEntry(
   viteManifest: ViteManifest,
   entryName: string,
   manifestPath: string,
-  description: string,
+  description: string
 ) {
-  const matchingEntries = Object.entries(viteManifest).filter(([, chunk]) =>
-    chunk.isEntry && chunk.name === entryName
+  const matchingEntries = Object.entries(viteManifest).filter(
+    ([, chunk]) => chunk.isEntry && chunk.name === entryName
   );
 
   if (matchingEntries.length > 1) {
     throw new Error(
-      `Vite manifest "${manifestPath}" contains multiple entries named "${entryName}" for ${description}.`,
+      `Vite manifest "${manifestPath}" contains multiple entries named "${entryName}" for ${description}.`
     );
   }
 
   return matchingEntries[0];
 }
 
-export async function readViteManifest(
-  options: ReadViteManifestOptions,
-) {
+export async function readViteManifest(options: ReadViteManifestOptions) {
   const content = await readFile(options.manifestPath, 'utf8');
 
   return JSON.parse(content) as ViteManifest;
@@ -110,26 +103,20 @@ interface ResolveRouteClientAssetsOptions {
   tailwind: boolean;
 }
 
-function resolveRouteClientAssets(
-  options: ResolveRouteClientAssetsOptions,
-): RouteClientAssets[] {
+function resolveRouteClientAssets(options: ResolveRouteClientAssetsOptions): RouteClientAssets[] {
   const { routeManifest, viteManifest, base, manifestPath, tailwind } = options;
-  const routesById = new Map(
-    routeManifest.routes.map((route) => [route.id, route]),
-  );
+  const routesById = new Map(routeManifest.routes.map((route) => [route.id, route]));
   const expectedRouteIds = new Set(
     routeManifest.routes
-      .filter((route) =>
-        route.islandImports.length > 0 || route.styleImports.length > 0
-      )
-      .map((route) => route.id),
+      .filter((route) => route.islandImports.length > 0 || route.styleImports.length > 0)
+      .map((route) => route.id)
   );
   const expectedIslandEntries = new Map<string, string>();
   for (const route of routeManifest.routes) {
     route.islandImports.forEach((island, index) => {
       expectedIslandEntries.set(
         islandEntryName(route.id, index),
-        `island "${island.tagName}" on Limette route "${route.path}" (${route.id})`,
+        `island "${island.tagName}" on Limette route "${route.path}" (${route.id})`
       );
     });
   }
@@ -140,28 +127,26 @@ function resolveRouteClientAssets(
     const routeId = chunk.name.slice('limette-route-'.length);
     if (!routeId || !/^[a-zA-Z0-9_-]+$/.test(routeId)) {
       throw new Error(
-        `Malformed Limette client entry identity "${chunk.name}" in Vite manifest "${manifestPath}".`,
+        `Malformed Limette client entry identity "${chunk.name}" in Vite manifest "${manifestPath}".`
       );
     }
 
     const route = routesById.get(routeId);
     if (!route) {
       throw new Error(
-        `Unknown or stale Limette client entry "${chunk.name}" for route ID "${routeId}" in Vite manifest "${manifestPath}".`,
+        `Unknown or stale Limette client entry "${chunk.name}" for route ID "${routeId}" in Vite manifest "${manifestPath}".`
       );
     }
 
     if (!expectedRouteIds.has(routeId)) {
       throw new Error(
-        `Unexpected Limette client entry "${chunk.name}" for route without client assets "${route.path}" (${routeId}) in Vite manifest "${manifestPath}".`,
+        `Unexpected Limette client entry "${chunk.name}" for route without client assets "${route.path}" (${routeId}) in Vite manifest "${manifestPath}".`
       );
     }
   }
 
   const expectedTailwindEntries = new Set(
-    tailwind
-      ? routeManifest.routes.map((route) => tailwindEntryName(route.id))
-      : [],
+    tailwind ? routeManifest.routes.map((route) => tailwindEntryName(route.id)) : []
   );
   for (const chunk of Object.values(viteManifest)) {
     if (!chunk.isEntry || !chunk.name?.startsWith('limette-tailwind-')) {
@@ -169,7 +154,7 @@ function resolveRouteClientAssets(
     }
     if (!expectedTailwindEntries.has(chunk.name)) {
       throw new Error(
-        `Unknown or stale Limette Tailwind entry "${chunk.name}" in Vite manifest "${manifestPath}".`,
+        `Unknown or stale Limette Tailwind entry "${chunk.name}" in Vite manifest "${manifestPath}".`
       );
     }
   }
@@ -179,26 +164,26 @@ function resolveRouteClientAssets(
 
     if (!expectedIslandEntries.has(chunk.name)) {
       throw new Error(
-        `Unknown, stale, or malformed Limette island entry "${chunk.name}" in Vite manifest "${manifestPath}".`,
+        `Unknown, stale, or malformed Limette island entry "${chunk.name}" in Vite manifest "${manifestPath}".`
       );
     }
   }
 
   return routeManifest.routes.map((route): RouteClientAssets => {
     const expectedEntryName = clientEntryName(route.id);
-    const [entryManifestKey, entryChunk] = matchingEntry(
-      viteManifest,
-      expectedEntryName,
-      manifestPath,
-      `Limette route "${route.path}" (${route.id})`,
-    ) ?? [];
+    const [entryManifestKey, entryChunk] =
+      matchingEntry(
+        viteManifest,
+        expectedEntryName,
+        manifestPath,
+        `Limette route "${route.path}" (${route.id})`
+      ) ?? [];
 
-    const needsClientEntry = route.islandImports.length > 0 ||
-      route.styleImports.length > 0;
+    const needsClientEntry = route.islandImports.length > 0 || route.styleImports.length > 0;
     if (needsClientEntry && !entryChunk) {
       throw new Error(
         `Missing Vite client entry "${expectedEntryName}" for Limette route "${route.path}" (${route.id}) in manifest "${manifestPath}". ` +
-          'Build the application with the Limette Vite plugin before resolving route assets.',
+          'Build the application with the Limette Vite plugin before resolving route assets.'
       );
     }
 
@@ -219,17 +204,18 @@ function resolveRouteClientAssets(
     const islandStyles: Record<string, string[]> = {};
     route.islandImports.forEach((island, islandIndex) => {
       const expectedIslandEntryName = islandEntryName(route.id, islandIndex);
-      const [islandManifestKey, islandEntryChunk] = matchingEntry(
-        viteManifest,
-        expectedIslandEntryName,
-        manifestPath,
-        `island "${island.tagName}" on Limette route "${route.path}" (${route.id})`,
-      ) ?? [];
+      const [islandManifestKey, islandEntryChunk] =
+        matchingEntry(
+          viteManifest,
+          expectedIslandEntryName,
+          manifestPath,
+          `island "${island.tagName}" on Limette route "${route.path}" (${route.id})`
+        ) ?? [];
 
       if (!islandEntryChunk) {
         throw new Error(
           `Missing Vite island entry "${expectedIslandEntryName}" for island "${island.tagName}" on Limette route "${route.path}" (${route.id}) in manifest "${manifestPath}". ` +
-            'Build the application with the Limette Vite plugin before resolving route assets.',
+            'Build the application with the Limette Vite plugin before resolving route assets.'
         );
       }
 
@@ -243,41 +229,37 @@ function resolveRouteClientAssets(
       });
       const existingStyles = islandStyles[island.tagName] ?? [];
       islandStyles[island.tagName] = Array.from(
-        new Set([
-          ...existingStyles,
-          ...Array.from(islandCss).map((asset) => joinUrl(base, asset)),
-        ]),
+        new Set([...existingStyles, ...Array.from(islandCss).map((asset) => joinUrl(base, asset))])
       );
     });
 
     const tailwindEntry = tailwind
       ? matchingEntry(
-        viteManifest,
-        tailwindEntryName(route.id),
-        manifestPath,
-        `Tailwind stylesheet for Limette route "${route.path}" (${route.id})`,
-      )?.[1]
+          viteManifest,
+          tailwindEntryName(route.id),
+          manifestPath,
+          `Tailwind stylesheet for Limette route "${route.path}" (${route.id})`
+        )?.[1]
       : undefined;
     if (tailwind && !tailwindEntry) {
       throw new Error(
-        `Missing Vite Tailwind entry "${
-          tailwindEntryName(route.id)
-        }" for Limette route "${route.path}" (${route.id}) in manifest "${manifestPath}".`,
+        `Missing Vite Tailwind entry "${tailwindEntryName(
+          route.id
+        )}" for Limette route "${route.path}" (${route.id}) in manifest "${manifestPath}".`
       );
     }
 
     return {
       routeId: route.id,
       routePath: route.path,
-      entry: route.islandImports.length > 0 && entryChunk?.file
-        ? joinUrl(base, entryChunk.file)
-        : undefined,
+      entry:
+        route.islandImports.length > 0 && entryChunk?.file
+          ? joinUrl(base, entryChunk.file)
+          : undefined,
       scripts: Array.from(scripts).map((asset) => joinUrl(base, asset)),
       styles: Array.from(styles).map((asset) => joinUrl(base, asset)),
       islandStyles,
-      tailwindStyle: tailwindEntry
-        ? joinUrl(base, tailwindEntry.file)
-        : undefined,
+      tailwindStyle: tailwindEntry ? joinUrl(base, tailwindEntry.file) : undefined,
     };
   });
 }
@@ -291,7 +273,7 @@ export interface ResolveServerEntryAssetsOptions {
 }
 
 export function resolveServerEntryAssets(
-  options: ResolveServerEntryAssetsOptions,
+  options: ResolveServerEntryAssetsOptions
 ): ServerEntryAssets {
   const routeAssets = resolveRouteClientAssets({
     routeManifest: options.routes,
@@ -310,6 +292,6 @@ export function resolveServerEntryAssets(
         islandStyles: assets.islandStyles,
         tailwindStyle: assets.tailwindStyle,
       },
-    ]),
+    ])
   );
 }

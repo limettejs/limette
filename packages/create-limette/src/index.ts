@@ -39,24 +39,18 @@ async function prompt(message: string, defaultValue?: string) {
 
 function option(name: string) {
   const prefix = `--${name}=`;
-  return args.find((argument) => argument.startsWith(prefix))?.slice(
-    prefix.length,
-  );
+  return args.find((argument) => argument.startsWith(prefix))?.slice(prefix.length);
 }
 
-async function choose(
-  label: string,
-  choices: readonly string[],
-  defaultChoice: string,
-) {
+async function choose(label: string, choices: readonly string[], defaultChoice: string) {
   console.log(`${label}:`);
   for (const choice of choices) {
     console.log(`${choice === defaultChoice ? '>' : ' '} ${choice}`);
   }
   const answer = await prompt(`Choose ${label.toLowerCase()}`, defaultChoice);
-  return choices.find((choice) =>
-    choice.toLowerCase() === answer?.trim().toLowerCase()
-  ) ?? defaultChoice;
+  return (
+    choices.find((choice) => choice.toLowerCase() === answer?.trim().toLowerCase()) ?? defaultChoice
+  );
 }
 
 function fail(message: string): never {
@@ -65,8 +59,8 @@ function fail(message: string): never {
   process.exit(1);
 }
 
-const projectName = args.find((argument) => !argument.startsWith('--')) ??
-  await prompt('Your project name?');
+const projectName =
+  args.find((argument) => !argument.startsWith('--')) ?? (await prompt('Your project name?'));
 if (typeof projectName !== 'string' || projectName.length < 1) {
   fail('Invalid project name!');
 }
@@ -79,14 +73,12 @@ const runtime = (runtimeOption ??
   (await choose('Runtime', ['Deno', 'Node'], 'Deno')).toLowerCase()) as Runtime;
 
 const tailwindOption = option('tailwind')?.toLowerCase();
-if (
-  tailwindOption && !['yes', 'no', 'true', 'false'].includes(tailwindOption)
-) {
+if (tailwindOption && !['yes', 'no', 'true', 'false'].includes(tailwindOption)) {
   fail('Tailwind must be "yes" or "no".');
 }
 const useTailwind = tailwindOption
   ? tailwindOption === 'yes' || tailwindOption === 'true'
-  : await choose('Use Tailwind CSS?', ['Yes', 'No'], 'Yes') === 'Yes';
+  : (await choose('Use Tailwind CSS?', ['Yes', 'No'], 'Yes')) === 'Yes';
 
 readline?.close();
 
@@ -134,12 +126,12 @@ const packageJson = {
     lit: `^${LIT_VERSION}`,
   },
   devDependencies: {
-    ...useTailwind
+    ...(useTailwind
       ? {
-        '@tailwindcss/vite': `^${TAILWIND_VERSION}`,
-        tailwindcss: `^${TAILWIND_VERSION}`,
-      }
-      : {},
+          '@tailwindcss/vite': `^${TAILWIND_VERSION}`,
+          tailwindcss: `^${TAILWIND_VERSION}`,
+        }
+      : {}),
     vite: `^${VITE_VERSION}`,
   },
 };
@@ -178,18 +170,14 @@ await serve(handler, {
 
 const viteConfigTs = `
 ${
-  useTailwind
-    ? 'import tailwindcss from "@tailwindcss/vite";\n'
-    : ''
+  useTailwind ? 'import tailwindcss from "@tailwindcss/vite";\n' : ''
 }import { defineConfig } from "vite";
 import { limette } from "limette/vite";
 
 export default defineConfig({
   plugins: [
 ${useTailwind ? '    tailwindcss(),\n' : ''}    limette({
-      app: "./app.ts",${
-  useTailwind ? '\n      tailwind: "./tailwind.css",' : ''
-}
+      app: "./app.ts",${useTailwind ? '\n      tailwind: "./tailwind.css",' : ''}
     }),
   ],
 });
@@ -293,9 +281,7 @@ export default class App extends AppComponent {
 }
 `;
 
-const headingClass = useTailwind
-  ? ' class="text-[37px] font-semibold tracking-tight"'
-  : '';
+const headingClass = useTailwind ? ' class="text-[37px] font-semibold tracking-tight"' : '';
 const indexRouteTs = `
 import { PageComponent } from "limette";
 import { html, css } from "lit";
@@ -401,20 +387,14 @@ export default class Foo extends PageComponent {
 const tailwindCss = `@import "tailwindcss";\n`;
 
 await writeFile(join(projectPath, '.gitignore'), gitignore);
-await writeFile(
-  join(projectPath, 'package.json'),
-  `${JSON.stringify(packageJson, null, 2)}\n`,
-);
+await writeFile(join(projectPath, 'package.json'), `${JSON.stringify(packageJson, null, 2)}\n`);
 await writeFile(join(projectPath, 'app.ts'), appTs);
 await writeFile(
   join(projectPath, runtime === 'deno' ? 'main.ts' : 'main.js'),
-  runtime === 'deno' ? denoMain : nodeMain,
+  runtime === 'deno' ? denoMain : nodeMain
 );
 await writeFile(join(projectPath, 'vite.config.ts'), viteConfigTs);
-await writeFile(
-  join(projectPath, 'islands/counter.ts'),
-  counterIslandTs,
-);
+await writeFile(join(projectPath, 'islands/counter.ts'), counterIslandTs);
 await writeFile(join(projectPath, 'routes/_app.ts'), _appRouteTs);
 await writeFile(join(projectPath, 'routes/index.ts'), indexRouteTs);
 await writeFile(join(projectPath, 'routes/foo.ts'), fooRouteTs);
@@ -423,11 +403,7 @@ if (useTailwind) {
 }
 
 if (process.env.LIMETTE_INIT_SKIP_INSTALL !== '1') {
-  const executable = runtime === 'deno'
-    ? 'deno'
-    : process.platform === 'win32'
-    ? 'npm.cmd'
-    : 'npm';
+  const executable = runtime === 'deno' ? 'deno' : process.platform === 'win32' ? 'npm.cmd' : 'npm';
   const output = spawnSync(executable, ['install'], {
     cwd: projectPath,
     encoding: 'utf8',

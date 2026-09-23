@@ -21,28 +21,18 @@ interface TestPlatform {
 
 const platform: TestPlatform = { marker: 'platform' };
 
-async function request(
-  app: App<TestState, TestPlatform>,
-  path: string,
-  method = 'GET',
-) {
+async function request(app: App<TestState, TestPlatform>, path: string, method = 'GET') {
   const response = await app.handler()(
     new Request(`https://example.test${path}`, { method }),
-    platform,
+    platform
   );
   return { response, text: await response.text() };
 }
 
 type AssertNever<Value extends never> = Value;
-type MissingRouteHandlerMethod = AssertNever<
-  Exclude<Method, keyof RouteHandlers>
->;
-type ExtraRouteHandlerMethod = AssertNever<
-  Exclude<keyof RouteHandlers, Method>
->;
-type MissingAppMethod = AssertNever<
-  Exclude<Lowercase<Method>, keyof App>
->;
+type MissingRouteHandlerMethod = AssertNever<Exclude<Method, keyof RouteHandlers>>;
+type ExtraRouteHandlerMethod = AssertNever<Exclude<keyof RouteHandlers, Method>>;
+type MissingAppMethod = AssertNever<Exclude<Lowercase<Method>, keyof App>>;
 void (undefined as unknown as MissingRouteHandlerMethod);
 void (undefined as unknown as ExtraRouteHandlerMethod);
 void (undefined as unknown as MissingAppMethod);
@@ -92,38 +82,30 @@ describe('imperative routing', () => {
       .put('/put', () => new Response('PUT'))
       .patch('/patch', async () => new Response('PATCH'))
       .delete('/delete', () => new Response('DELETE'))
-      .head(
-        '/head',
-        () => new Response(null, { headers: { 'x-method': 'HEAD' } }),
-      )
+      .head('/head', () => new Response(null, { headers: { 'x-method': 'HEAD' } }))
       .options('/options', () => new Response('OPTIONS'))
       .all('/all', (ctx) => new Response(`ALL:${ctx.request.method}`));
 
-    for (
-      const [method, path] of [
-        ['GET', '/get'],
-        ['POST', '/post'],
-        ['PUT', '/put'],
-        ['PATCH', '/patch'],
-        ['DELETE', '/delete'],
-        ['OPTIONS', '/options'],
-      ] as const
-    ) {
+    for (const [method, path] of [
+      ['GET', '/get'],
+      ['POST', '/post'],
+      ['PUT', '/put'],
+      ['PATCH', '/patch'],
+      ['DELETE', '/delete'],
+      ['OPTIONS', '/options'],
+    ] as const) {
       const result = await request(methodApp, path, method);
-      assert(
-        result.text === method,
-        `${method} imperative registration failed.`,
-      );
+      assert(result.text === method, `${method} imperative registration failed.`);
     }
     const headResult = await request(methodApp, '/head', 'HEAD');
     assert(
       headResult.response.headers.get('x-method') === 'HEAD',
-      'HEAD imperative registration failed.',
+      'HEAD imperative registration failed.'
     );
     const allResult = await request(methodApp, '/all', 'CUSTOM');
     assert(
       allResult.text === 'ALL:CUSTOM',
-      'ALL did not accept an unsupported incoming request method.',
+      'ALL did not accept an unsupported incoming request method.'
     );
   });
 
@@ -134,61 +116,50 @@ describe('imperative routing', () => {
       (ctx) =>
         new Response(`error:${ctx.error?.status}`, {
           status: ctx.error?.status,
-        }),
+        })
     );
     methodFirstApp.get('/users/new', () => new Response('GET static'));
-    methodFirstApp.post(
-      '/users/:id',
-      (ctx) => new Response(`POST dynamic:${ctx.params.id}`),
-    );
+    methodFirstApp.post('/users/:id', (ctx) => new Response(`POST dynamic:${ctx.params.id}`));
     assert(
-      (await request(methodFirstApp, '/users/new', 'POST')).text ===
-        'POST dynamic:new',
-      'An incompatible static route claimed a method-first match.',
+      (await request(methodFirstApp, '/users/new', 'POST')).text === 'POST dynamic:new',
+      'An incompatible static route claimed a method-first match.'
     );
     const notAllowed = await request(methodFirstApp, '/users/new', 'DELETE');
     assert(
       notAllowed.response.status === 405 &&
-        notAllowed.response.headers.get('allow') ===
-          'GET, HEAD, POST, OPTIONS' &&
+        notAllowed.response.headers.get('allow') === 'GET, HEAD, POST, OPTIONS' &&
         notAllowed.text === 'error:405',
-      'A path match did not produce 405 with the complete Allow header.',
+      'A path match did not produce 405 with the complete Allow header.'
     );
     assert(
-      (await request(methodFirstApp, '/missing', 'DELETE')).response.status ===
-        404,
-      'A missing pathname did not produce 404.',
+      (await request(methodFirstApp, '/missing', 'DELETE')).response.status === 404,
+      'A missing pathname did not produce 404.'
     );
 
     const headApp = new App<TestState, TestPlatform>();
+    headApp.get('/explicit', () => new Response('GET body', { headers: { 'x-method': 'GET' } }));
+    headApp.head('/explicit', () => new Response('HEAD body', { headers: { 'x-method': 'HEAD' } }));
     headApp.get(
-      '/explicit',
-      () => new Response('GET body', { headers: { 'x-method': 'GET' } }),
+      '/fallback',
+      (ctx) =>
+        new Response('GET body', {
+          headers: { 'x-request-method': ctx.request.method },
+        })
     );
-    headApp.head(
-      '/explicit',
-      () => new Response('HEAD body', { headers: { 'x-method': 'HEAD' } }),
-    );
-    headApp.get('/fallback', (ctx) =>
-      new Response('GET body', {
-        headers: { 'x-request-method': ctx.request.method },
-      }));
     const explicitHead = await request(headApp, '/explicit', 'HEAD');
     assert(
-      explicitHead.response.headers.get('x-method') === 'HEAD' &&
-        explicitHead.text === '',
-      'An explicit HEAD route did not win over GET with an empty final body.',
+      explicitHead.response.headers.get('x-method') === 'HEAD' && explicitHead.text === '',
+      'An explicit HEAD route did not win over GET with an empty final body.'
     );
     const fallbackHead = await request(headApp, '/fallback', 'HEAD');
     assert(
-      fallbackHead.response.headers.get('x-request-method') === 'HEAD' &&
-        fallbackHead.text === '',
-      'GET fallback did not receive the original HEAD request with an empty body.',
+      fallbackHead.response.headers.get('x-request-method') === 'HEAD' && fallbackHead.text === '',
+      'GET fallback did not receive the original HEAD request with an empty body.'
     );
     const missingHead = await request(headApp, '/missing', 'HEAD');
     assert(
       missingHead.response.status === 404 && missingHead.text === '',
-      'A final HEAD error response retained a body.',
+      'A final HEAD error response retained a body.'
     );
 
     const optionsCalls: string[] = [];
@@ -199,7 +170,7 @@ describe('imperative routing', () => {
       () =>
         new Response('explicit OPTIONS', {
           headers: { 'x-options': 'explicit' },
-        }),
+        })
     );
     optionsApp.all('/automatic', async (ctx) => {
       optionsCalls.push('all:before');
@@ -213,15 +184,14 @@ describe('imperative routing', () => {
     assert(
       explicitOptions.text === 'explicit OPTIONS' &&
         explicitOptions.response.headers.get('x-options') === 'explicit',
-      'An explicit OPTIONS route was replaced by automatic handling.',
+      'An explicit OPTIONS route was replaced by automatic handling.'
     );
     const automaticOptions = await request(optionsApp, '/automatic', 'OPTIONS');
     assert(
       automaticOptions.response.status === 204 &&
-        automaticOptions.response.headers.get('allow') ===
-          'GET, HEAD, POST, OPTIONS' &&
+        automaticOptions.response.headers.get('allow') === 'GET, HEAD, POST, OPTIONS' &&
         optionsCalls.join(',') === 'all:before,all:after',
-      'Automatic OPTIONS did not run through ALL or produce the expected Allow.',
+      'Automatic OPTIONS did not run through ALL or produce the expected Allow.'
     );
   });
 
@@ -246,13 +216,12 @@ describe('imperative routing', () => {
       () => {
         chainCalls.push('terminal');
         return new Response('chain');
-      },
+      }
     );
     assert(
       (await request(chainApp, '/chain')).text === 'chain' &&
-        chainCalls.join(',') ===
-          'first:before,second:before,terminal,second:after,first:after',
-      `Route-local handlers ran out of order: ${chainCalls.join(',')}`,
+        chainCalls.join(',') === 'first:before,second:before,terminal,second:after,first:after',
+      `Route-local handlers ran out of order: ${chainCalls.join(',')}`
     );
 
     const globalCalls: string[] = [];
@@ -275,14 +244,14 @@ describe('imperative routing', () => {
       (await request(globalApp, '/global')).text === 'global' &&
         globalCalls.join(',') ===
           'global-before-route,global-after-route:before,route,global-after-route:after',
-      'Global middleware did not remain independent of registration order.',
+      'Global middleware did not remain independent of registration order.'
     );
 
     const singleNextApp = new App<TestState, TestPlatform>();
     singleNextApp.get('/single-next', (ctx) => ctx.next());
     assert(
       (await request(singleNextApp, '/single-next')).response.status === 404,
-      'A single route handler did not use the common middleware execution path.',
+      'A single route handler did not use the common middleware execution path.'
     );
 
     const orderedAllCalls: string[] = [];
@@ -300,7 +269,7 @@ describe('imperative routing', () => {
     assert(
       (await request(orderedAllApp, '/ordered')).text === 'ordered' &&
         orderedAllCalls.join(',') === 'all:before,get,all:after',
-      'An ALL route registered before GET did not wrap it.',
+      'An ALL route registered before GET did not wrap it.'
     );
 
     const terminatingAllApp = new App<TestState, TestPlatform>();
@@ -311,9 +280,8 @@ describe('imperative routing', () => {
       return new Response('get');
     });
     assert(
-      (await request(terminatingAllApp, '/terminated')).text === 'terminated' &&
-        !terminatedGetRan,
-      'A terminating ALL route continued into the exact route.',
+      (await request(terminatingAllApp, '/terminated')).text === 'terminated' && !terminatedGetRan,
+      'A terminating ALL route continued into the exact route.'
     );
 
     const laterAllCalls: string[] = [];
@@ -329,23 +297,18 @@ describe('imperative routing', () => {
     assert(
       (await request(laterAllApp, '/later-all')).text === 'get' &&
         laterAllCalls.join(',') === 'get',
-      'A later ALL route was retroactively inserted before an exact route.',
+      'A later ALL route was retroactively inserted before an exact route.'
     );
 
     const exhaustedAllApp = new App<TestState, TestPlatform>();
     exhaustedAllApp.all('/exhausted', (ctx) => ctx.next());
     assert(
-      (await request(exhaustedAllApp, '/exhausted', 'CUSTOM')).response
-        .status ===
-        404,
-      'An exhausted ALL chain incorrectly changed the fallback to 405.',
+      (await request(exhaustedAllApp, '/exhausted', 'CUSTOM')).response.status === 404,
+      'An exhausted ALL chain incorrectly changed the fallback to 405.'
     );
   });
 
-  function expectDuplicate(
-    register: (app: App) => void,
-    trailingSlash?: TrailingSlash,
-  ) {
+  function expectDuplicate(register: (app: App) => void, trailingSlash?: TrailingSlash) {
     const app = new App({ trailingSlash });
     let message = '';
     try {
@@ -355,7 +318,7 @@ describe('imperative routing', () => {
     }
     assert(
       message.includes('Duplicate route registration'),
-      'Equivalent route registration did not fail clearly.',
+      'Equivalent route registration did not fail clearly.'
     );
   }
 
@@ -379,11 +342,11 @@ describe('imperative routing', () => {
     expectDuplicate((app) => {
       app.get(
         new URLPattern({ hostname: 'example.test', pathname: '/duplicate' }),
-        () => new Response('first'),
+        () => new Response('first')
       );
       app.get(
         new URLPattern({ hostname: 'example.test', pathname: '/duplicate' }),
-        () => new Response('second'),
+        () => new Response('second')
       );
     });
 
@@ -395,66 +358,58 @@ describe('imperative routing', () => {
 
   it('preserves imperative precedence and base-path behavior', async () => {
     const precedenceApp = new App<TestState, TestPlatform>();
-    precedenceApp.get(
-      '/users/:id',
-      (ctx) => new Response(`dynamic:${ctx.params.id}`),
-    );
+    precedenceApp.get('/users/:id', (ctx) => new Response(`dynamic:${ctx.params.id}`));
     precedenceApp.get('/users/new', () => new Response('static'));
     assert(
       (await request(precedenceApp, '/users/new')).text === 'dynamic:new',
-      'Imperative route precedence stopped following registration order.',
+      'Imperative route precedence stopped following registration order.'
     );
 
-    for (
-      const test of [
-        {
-          basePath: undefined,
-          route: '/users',
-          expectedBase: '',
-          url: '/users',
-        },
-        { basePath: '/', route: 'users', expectedBase: '', url: '/users' },
-        {
-          basePath: 'api',
-          route: 'users',
-          expectedBase: '/api',
-          url: '/api/users',
-        },
-        {
-          basePath: '/api',
-          route: '/users',
-          expectedBase: '/api',
-          url: '/api/users',
-        },
-        {
-          basePath: '/api/',
-          route: '/users',
-          expectedBase: '/api',
-          url: '/api/users',
-        },
-        { basePath: '/api/', route: '/', expectedBase: '/api', url: '/api' },
-      ]
-    ) {
+    for (const test of [
+      {
+        basePath: undefined,
+        route: '/users',
+        expectedBase: '',
+        url: '/users',
+      },
+      { basePath: '/', route: 'users', expectedBase: '', url: '/users' },
+      {
+        basePath: 'api',
+        route: 'users',
+        expectedBase: '/api',
+        url: '/api/users',
+      },
+      {
+        basePath: '/api',
+        route: '/users',
+        expectedBase: '/api',
+        url: '/api/users',
+      },
+      {
+        basePath: '/api/',
+        route: '/users',
+        expectedBase: '/api',
+        url: '/api/users',
+      },
+      { basePath: '/api/', route: '/', expectedBase: '/api', url: '/api' },
+    ]) {
       const app = new App<TestState, TestPlatform>({ basePath: test.basePath });
       app.get(test.route, () => new Response('base'));
       assert(
-        app.config.basePath === test.expectedBase &&
-          (await request(app, test.url)).text === 'base',
-        `basePath ${
-          String(test.basePath)
-        } did not join ${test.route} correctly.`,
+        app.config.basePath === test.expectedBase && (await request(app, test.url)).text === 'base',
+        `basePath ${String(test.basePath)} did not join ${test.route} correctly.`
       );
     }
 
     const patternApp = new App<TestState, TestPlatform>({ basePath: '/api' });
     patternApp.get(
       new URLPattern({ hostname: 'example.test', pathname: '/advanced' }),
-      () => new Response('advanced'),
+      () => new Response('advanced')
     );
     assert(
       (await request(patternApp, '/advanced')).text === 'advanced' &&
         (await request(patternApp, '/api/advanced')).response.status === 404,
-      'An explicit URLPattern was incorrectly rewritten with basePath.',
+      'An explicit URLPattern was incorrectly rewritten with basePath.'
     );
   });
 
@@ -467,45 +422,47 @@ describe('imperative routing', () => {
     });
     canonicalApp.get('/', () => new Response('root'));
     canonicalApp.get('/foo/bar', () => new Response('collapsed'));
-    canonicalApp.get('/faithful', (ctx) =>
-      new Response(
-        String(
-          ctx.url.href === ctx.request.url &&
-            ctx.url.pathname === '/faithful' &&
-            ctx.url.search === '?value=a%2Fb',
-        ),
-      ));
+    canonicalApp.get(
+      '/faithful',
+      (ctx) =>
+        new Response(
+          String(
+            ctx.url.href === ctx.request.url &&
+              ctx.url.pathname === '/faithful' &&
+              ctx.url.search === '?value=a%2Fb'
+          )
+        )
+    );
 
     const defaultRedirect = await request(canonicalApp, '/foo/?page=2');
     assert(
       defaultRedirect.response.status === 308 &&
         defaultRedirect.response.headers.get('location') === '/foo?page=2' &&
         canonicalHandlerCalls === 0,
-      'The default trailing-slash redirect did not preserve its query.',
+      'The default trailing-slash redirect did not preserve its query.'
     );
     assert(
       canonicalApp.config.trailingSlash === 'never' &&
         (await request(canonicalApp, '/')).text === 'root',
-      'The root pathname was redirected.',
+      'The root pathname was redirected.'
     );
     assert(
       (await request(canonicalApp, '/foo')).text === 'foo',
-      'A string route was not registered in its default canonical form.',
+      'A string route was not registered in its default canonical form.'
     );
     assert(
       (await request(canonicalApp, '/foo//bar')).response.status === 404,
-      'Internal duplicate slashes were silently collapsed before routing.',
+      'Internal duplicate slashes were silently collapsed before routing.'
     );
     const duplicateSlashRedirect = await request(canonicalApp, '/foo//bar/');
     assert(
       duplicateSlashRedirect.response.status === 308 &&
-        duplicateSlashRedirect.response.headers.get('location') ===
-          '/foo//bar',
-      'Trailing-slash removal also collapsed internal duplicate slashes.',
+        duplicateSlashRedirect.response.headers.get('location') === '/foo//bar',
+      'Trailing-slash removal also collapsed internal duplicate slashes.'
     );
     assert(
       (await request(canonicalApp, '/faithful?value=a%2Fb')).text === 'true',
-      'ctx.url did not remain faithful to the request URL.',
+      'ctx.url did not remain faithful to the request URL.'
     );
 
     const alwaysApp = new App<TestState, TestPlatform>({
@@ -517,15 +474,14 @@ describe('imperative routing', () => {
     const alwaysRedirect = await request(alwaysApp, '/api/users?page=2');
     assert(
       alwaysRedirect.response.status === 308 &&
-        alwaysRedirect.response.headers.get('location') ===
-          '/api/users/?page=2',
-      'The always policy did not append a slash while preserving its query.',
+        alwaysRedirect.response.headers.get('location') === '/api/users/?page=2',
+      'The always policy did not append a slash while preserving its query.'
     );
     assert(
       alwaysApp.config.trailingSlash === 'always' &&
         (await request(alwaysApp, '/api/')).text === 'base root' &&
         (await request(alwaysApp, '/api/users/')).text === 'users',
-      'Always-policy string registration did not align with basePath routes.',
+      'Always-policy string registration did not align with basePath routes.'
     );
   });
 });

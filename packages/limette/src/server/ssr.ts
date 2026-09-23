@@ -9,18 +9,11 @@ import { DOMParser } from 'linkedom';
 import type { Context, DefaultState, RenderContext } from './context.ts';
 import type { RuntimeRouteDefinition } from './route.ts';
 import { LimetteElementRenderer } from './rendering/limette-element-renderer.ts';
-import type {
-  AppAssets,
-  AppRouteInfo,
-  HeadRenderResult,
-} from './components.ts';
+import type { AppAssets, AppRouteInfo, HeadRenderResult } from './components.ts';
 
 import type { LayoutComponent, LayoutModule } from './layouts.ts';
 
-export interface AppWrapperComponentClass<
-  State = DefaultState,
-  Platform = unknown,
-> {
+export interface AppWrapperComponentClass<State = DefaultState, Platform = unknown> {
   new (): AppWrapperComponent<State, Platform>;
 }
 
@@ -31,10 +24,7 @@ export interface AppWrapperComponent<State = DefaultState, Platform = unknown> {
   render(): unknown;
 }
 
-function registerRouteComponent(
-  ComponentClass: CustomElementConstructor,
-  tagName: string,
-) {
+function registerRouteComponent(ComponentClass: CustomElementConstructor, tagName: string) {
   if (!customElements.get(`lmt-route-${tagName}`)) {
     customElements.define(`lmt-route-${tagName}`, ComponentClass);
   } else {
@@ -65,19 +55,16 @@ function headEntryIdentity(element: Element) {
   }
 
   if (tagName === 'link') {
-    const rel = normalizedAttribute(element, 'rel').toLowerCase()
-      .split(/\s+/).filter(Boolean).sort().join(' ');
+    const rel = normalizedAttribute(element, 'rel')
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean)
+      .sort()
+      .join(' ');
     if (rel === 'canonical') return 'link:canonical';
     const href = normalizedAttribute(element, 'href');
     if (!rel || !href) return;
-    const qualifiers = [
-      'as',
-      'type',
-      'media',
-      'hreflang',
-      'sizes',
-      'imagesrcset',
-    ]
+    const qualifiers = ['as', 'type', 'media', 'hreflang', 'sizes', 'imagesrcset']
       .map((attribute) => normalizedAttribute(element, attribute).toLowerCase())
       .join('|');
     return `link:${rel}:${href}:${qualifiers}`;
@@ -90,28 +77,18 @@ function headEntryIdentity(element: Element) {
 }
 
 async function renderHeadContributions(
-  contributions: readonly (
-    | HeadRenderResult
-    | Promise<HeadRenderResult>
-    | undefined
-  )[],
+  contributions: readonly (HeadRenderResult | Promise<HeadRenderResult> | undefined)[]
 ) {
   const resolved = (await Promise.all(contributions)).filter(
-    (contribution) => contribution !== undefined && contribution !== null,
+    (contribution) => contribution !== undefined && contribution !== null
   );
   if (resolved.length === 0) return '';
   return await collectResult(render(html`${resolved}`));
 }
 
-function processShadowRootsAndHead(
-  htmlString: string,
-  applicationHeadHtml: string,
-) {
+function processShadowRootsAndHead(htmlString: string, applicationHeadHtml: string) {
   const parser = new DOMParser();
-  const doc = parser.parseFromString(
-    htmlString,
-    'text/html',
-  ) as unknown as Document;
+  const doc = parser.parseFromString(htmlString, 'text/html') as unknown as Document;
 
   function processLmtShadowRoots(node: Document | DocumentFragment) {
     // Select all <template> elements in the current node
@@ -136,7 +113,7 @@ function processShadowRootsAndHead(
 
   const contributionDoc = parser.parseFromString(
     `<html><head>${applicationHeadHtml}</head><body></body></html>`,
-    'text/html',
+    'text/html'
   ) as unknown as Document;
   const entries: Array<{ element: Element; framework: boolean }> = [];
   const entryIndexes = new Map<string, number>();
@@ -171,34 +148,24 @@ function processShadowRootsAndHead(
 
   for (const element of Array.from(doc.head.children)) element.remove();
   for (const { element } of entries) doc.head.appendChild(element);
-  for (
-    const element of Array.from(
-      doc.querySelectorAll('[data-limette-head-asset]'),
-    )
-  ) {
+  for (const element of Array.from(doc.querySelectorAll('[data-limette-head-asset]'))) {
     element.removeAttribute('data-limette-head-asset');
   }
 
   return doc.documentElement.outerHTML;
 }
 
-export async function bootstrapContent<
-  State = DefaultState,
-  Platform = unknown,
->(
+export async function bootstrapContent<State = DefaultState, Platform = unknown>(
   AppWrapper: AppWrapperComponentClass<State, Platform>,
   route: RuntimeRouteDefinition<State, Platform>,
-  ctx: Context<State, Platform>,
+  ctx: Context<State, Platform>
 ) {
   const routeModule = route.routeModule;
   const routeConfig = routeModule?.config;
 
   const ComponentClass = routeModule?.default;
   let component: unknown = unsafeHTML(
-    registerRouteComponent(
-      ComponentClass as unknown as CustomElementConstructor,
-      route.tagName,
-    ),
+    registerRouteComponent(ComponentClass as unknown as CustomElementConstructor, route.tagName)
   );
 
   /**
@@ -210,14 +177,14 @@ export async function bootstrapContent<
   if (route.layouts.length > 0 && routeConfig?.skipInheritedLayouts !== true) {
     // Check if the inherited layouts should be skipped, in which case we only
     // render the last layout in the chain
-    const skipInheritedLayouts = route.layouts.at(-1)?.config
-      ?.skipInheritedLayouts;
+    const skipInheritedLayouts = route.layouts.at(-1)?.config?.skipInheritedLayouts;
 
     const renderedLayouts = await renderLayout({
       component: component,
-      layouts: (!skipInheritedLayouts
-        ? route.layouts
-        : [route.layouts.at(-1)]) as LayoutModule<State, Platform>[],
+      layouts: (!skipInheritedLayouts ? route.layouts : [route.layouts.at(-1)]) as LayoutModule<
+        State,
+        Platform
+      >[],
       ctx: ctx,
     });
     component = renderedLayouts.component;
@@ -229,16 +196,10 @@ export async function bootstrapContent<
     ...(route.assets.tailwindStyle ? [route.assets.tailwindStyle] : []),
   ];
   const styles = documentStylePaths.map((path) =>
-    unsafeHTML(
-      `<link data-limette-head-asset rel="stylesheet" href="${path}" />`,
-    )
+    unsafeHTML(`<link data-limette-head-asset rel="stylesheet" href="${path}" />`)
   );
   const scripts = route.assets.scripts.length
-    ? route.assets.scripts.map((path) =>
-      html`
-        <script type="module" src="${path}"></script>
-      `
-    )
+    ? route.assets.scripts.map((path) => html` <script type="module" src="${path}"></script> `)
     : [];
   const assets = { styles, scripts };
   const routeInfo = {
@@ -248,21 +209,22 @@ export async function bootstrapContent<
   };
 
   const appWrapper = new AppWrapper();
-  (appWrapper as AppWrapperComponent<State, Platform> & {
-    ctx: RenderContext<State, Platform>;
-  }).ctx = ctx;
+  (
+    appWrapper as AppWrapperComponent<State, Platform> & {
+      ctx: RenderContext<State, Platform>;
+    }
+  ).ctx = ctx;
   appWrapper.assets = assets;
   appWrapper.route = routeInfo;
-  (appWrapper as AppWrapperComponent<State, Platform> & { outlet: unknown })
-    .outlet = component;
+  (appWrapper as AppWrapperComponent<State, Platform> & { outlet: unknown }).outlet = component;
 
   const content = await appWrapper.render();
-  const appHead: HeadRenderResult | Promise<HeadRenderResult> | undefined =
-    appWrapper.head?.();
+  const appHead: HeadRenderResult | Promise<HeadRenderResult> | undefined = appWrapper.head?.();
 
-  const headContributions: Array<
-    HeadRenderResult | Promise<HeadRenderResult> | undefined
-  > = [appHead, ...layouts.map((layout) => layout.head?.())];
+  const headContributions: Array<HeadRenderResult | Promise<HeadRenderResult> | undefined> = [
+    appHead,
+    ...layouts.map((layout) => layout.head?.()),
+  ];
 
   return {
     content,
@@ -282,19 +244,18 @@ async function renderLayout<State = DefaultState, Platform = unknown>({
   if (layouts.length === 0) return { component, layouts: [] };
 
   let result: unknown = component;
-  const instances: LayoutComponent<State, Platform>[] = new Array(
-    layouts.length,
-  );
+  const instances: LayoutComponent<State, Platform>[] = new Array(layouts.length);
   for (let index = layouts.length - 1; index >= 0; index--) {
     const LayoutModule = layouts[index];
     const LayoutComponent = LayoutModule.default;
     const layout = new LayoutComponent();
-    (layout as LayoutComponent<State, Platform> & {
-      ctx: RenderContext<State, Platform>;
-      outlet: unknown;
-    }).ctx = ctx;
-    (layout as LayoutComponent<State, Platform> & { outlet: unknown }).outlet =
-      result;
+    (
+      layout as LayoutComponent<State, Platform> & {
+        ctx: RenderContext<State, Platform>;
+        outlet: unknown;
+      }
+    ).ctx = ctx;
+    (layout as LayoutComponent<State, Platform> & { outlet: unknown }).outlet = result;
     instances[index] = layout;
     result = await layout.render();
   }
@@ -305,29 +266,13 @@ async function renderLayout<State = DefaultState, Platform = unknown>({
 export async function renderContent<State = DefaultState, Platform = unknown>(
   AppWrapper: AppWrapperComponentClass<State, Platform>,
   route: RuntimeRouteDefinition<State, Platform>,
-  ctx: Context<State, Platform>,
+  ctx: Context<State, Platform>
 ) {
-  const bootstrap = await bootstrapContent(
-    AppWrapper,
-    route,
-    ctx,
-  );
-  let routeHead:
-    | HeadRenderResult
-    | Promise<HeadRenderResult>
-    | undefined;
-  const result = render(
-    bootstrap.content,
-    {
-      elementRenderers: [
-        LimetteElementRenderer(
-          route,
-          ctx,
-          (head) => routeHead = head,
-        ),
-      ],
-    },
-  );
+  const bootstrap = await bootstrapContent(AppWrapper, route, ctx);
+  let routeHead: HeadRenderResult | Promise<HeadRenderResult> | undefined;
+  const result = render(bootstrap.content, {
+    elementRenderers: [LimetteElementRenderer(route, ctx, (head) => (routeHead = head))],
+  });
 
   // Collect the output from the generator
   const rawContent = await collectResult(result);
