@@ -1,6 +1,6 @@
 import { join } from 'node:path';
-import { staticDirectoryHandler as denoStaticDirectoryHandler } from '../../src/adapters/deno-static-files.ts';
-import { staticDirectoryHandler as nodeStaticDirectoryHandler } from '../../src/adapters/node-static-files.ts';
+import { staticDirectoryHandler as denoStaticDirectoryHandler } from '../../packages/limette/src/adapters/deno-static-files.ts';
+import { staticDirectoryHandler as nodeStaticDirectoryHandler } from '../../packages/limette/src/adapters/node-static-files.ts';
 
 type StaticHandler = ReturnType<typeof nodeStaticDirectoryHandler>;
 

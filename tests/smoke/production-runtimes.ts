@@ -295,7 +295,7 @@ try {
   }
 
   const coreEntrySource = await Deno.readTextFile(
-    join(repositoryRoot, 'dist/index.mjs'),
+    join(repositoryRoot, 'packages/limette/dist/index.mjs'),
   );
   assert(
     !coreEntrySource.includes('runtime-serve') &&

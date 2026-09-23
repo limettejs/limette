@@ -87,7 +87,9 @@ jobs:
           node --input-type=module <<'EOF'
           import { readFile } from 'node:fs/promises';
 
-          const packageJson = JSON.parse(await readFile('package.json', 'utf8'));
+          const packageJson = JSON.parse(
+            await readFile('packages/limette/package.json', 'utf8'),
+          );
           const expectedTag = `${packageJson.version}`;
 
           if (packageJson.name !== 'limette') {

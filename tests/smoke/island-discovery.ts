@@ -1,7 +1,7 @@
 import { dirname, join } from 'node:path';
 import { createServer } from 'vite';
-import { discoverRoutes } from '../../src/vite/manifest.ts';
-import { discoverStyleImportsForFiles } from '../../src/vite/islands.ts';
+import { discoverRoutes } from '../../packages/limette/src/vite/manifest.ts';
+import { discoverStyleImportsForFiles } from '../../packages/limette/src/vite/islands.ts';
 
 const root = await Deno.makeTempDir({ prefix: 'limette-islands-' });
 

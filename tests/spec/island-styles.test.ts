@@ -1,8 +1,8 @@
 import { css, html, LitElement } from 'lit';
-import { AppComponent, PageComponent } from '../../src/server/components.ts';
-import { ContextImpl } from '../../src/server/context.ts';
-import type { RuntimeRouteDefinition } from '../../src/server/route.ts';
-import { renderContent } from '../../src/server/ssr.ts';
+import { AppComponent, PageComponent } from '../../packages/limette/src/server/components.ts';
+import { ContextImpl } from '../../packages/limette/src/server/context.ts';
+import type { RuntimeRouteDefinition } from '../../packages/limette/src/server/route.ts';
+import { renderContent } from '../../packages/limette/src/server/ssr.ts';
 import { describe, expect, it } from 'vitest';
 
 function assert(condition: unknown, message: string): asserts condition {

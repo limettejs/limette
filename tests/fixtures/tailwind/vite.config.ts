@@ -1,6 +1,6 @@
 import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath } from 'node:url';
-import { limette } from '../../../src/vite/plugin.ts';
+import { limette } from '../../../packages/limette/src/vite/plugin.ts';
 
 export default {
   root: fileURLToPath(new URL('.', import.meta.url)),

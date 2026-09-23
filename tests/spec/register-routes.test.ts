@@ -4,13 +4,13 @@ import {
   AppComponent,
   LayoutComponent,
   PageComponent,
-} from '../../src/mod.ts';
-import { registerRouteDefinitions } from '../../src/server/register-routes.ts';
-import type { RuntimeRouteDefinition } from '../../src/server/route.ts';
-import type { RouteModule } from '../../src/server/router.ts';
-import type { Context } from '../../src/server/context.ts';
-import type { MiddlewareModule } from '../../src/server/middlewares.ts';
-import type { IslandsDefinition } from '../../src/mod.ts';
+} from '../../packages/limette/src/mod.ts';
+import { registerRouteDefinitions } from '../../packages/limette/src/server/register-routes.ts';
+import type { RuntimeRouteDefinition } from '../../packages/limette/src/server/route.ts';
+import type { RouteModule } from '../../packages/limette/src/server/router.ts';
+import type { Context } from '../../packages/limette/src/server/context.ts';
+import type { MiddlewareModule } from '../../packages/limette/src/server/middlewares.ts';
+import type { IslandsDefinition } from '../../packages/limette/src/mod.ts';
 import { describe, expect, it } from 'vitest';
 
 function assert(condition: unknown, message: string): asserts condition {

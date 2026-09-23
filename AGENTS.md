@@ -24,9 +24,9 @@ Do not convert islands to React/Preact. Islands are Lit/Web Components.
 
 ## Important directories
 
-- `/src/plugins` - built-in plugins
-- `/src/runtime` - client-side framework runtime
-- `/src/server` - server-side logic
+- `/packages/limette/src/plugins` - built-in plugins
+- `/packages/limette/src/runtime` - client-side framework runtime
+- `/packages/limette/src/server` - server-side logic
 
 ## Coding conventions
 

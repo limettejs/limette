@@ -1,3 +1,15 @@
+import { spawn, type ChildProcess } from "node:child_process";
+import { once } from "node:events";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
+import { createServer } from "node:net";
+import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { repositoryRoot } from "./_paths.ts";
 
@@ -13,19 +25,25 @@ function assert(condition: unknown, message: string): asserts condition {
 
 async function exists(path: string) {
   try {
-    await Deno.stat(path);
+    await stat(path);
     return true;
   } catch (error) {
-    if (error instanceof Deno.errors.NotFound) return false;
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      return false;
+    }
     throw error;
   }
 }
 
-function outputText(output: Deno.CommandOutput) {
-  return {
-    stdout: new TextDecoder().decode(output.stdout),
-    stderr: new TextDecoder().decode(output.stderr),
-  };
+function streamText(stream: NodeJS.ReadableStream | null) {
+  if (!stream) return Promise.resolve("");
+  return new Promise<string>((resolve, reject) => {
+    let output = "";
+    stream.setEncoding("utf8");
+    stream.on("data", (chunk) => (output += chunk));
+    stream.on("end", () => resolve(output));
+    stream.on("error", reject);
+  });
 }
 
 async function command(
@@ -34,28 +52,41 @@ async function command(
   cwd: string,
   env: Record<string, string> = {},
 ) {
-  const output = await new Deno.Command(executable, {
-    args,
+  const child = spawn(executable, args, {
     cwd,
-    env,
-    stdout: "piped",
-    stderr: "piped",
-  }).output();
-  const text = outputText(output);
-  if (!output.success) {
+    env: { ...process.env, ...env },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const stdout = streamText(child.stdout);
+  const stderr = streamText(child.stderr);
+  const [status, output, errors] = await Promise.all([
+    new Promise<number | null>((resolve, reject) => {
+      child.on("error", reject);
+      child.on("close", resolve);
+    }),
+    stdout,
+    stderr,
+  ]);
+  if (status !== 0) {
     throw new Error(
-      `${executable} ${args.join(
-        " ",
-      )} failed in ${cwd}:\n${text.stderr}\n${text.stdout}`,
+      `${executable} ${args.join(" ")} failed in ${cwd}:\n${errors}\n${output}`,
     );
   }
-  return text.stdout.trim();
+  return output.trim();
 }
 
 async function availablePort() {
-  const listener = Deno.listen({ hostname: "127.0.0.1", port: 0 });
-  const port = (listener.addr as Deno.NetAddr).port;
-  listener.close();
+  const server = createServer();
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address();
+  assert(address && typeof address === "object", "Failed to allocate a port.");
+  const port = address.port;
+  await new Promise<void>((resolve, reject) =>
+    server.close((error) => (error ? reject(error) : resolve())),
+  );
   return port;
 }
 
@@ -88,10 +119,13 @@ function hasDeclaration(css: string, property: string, value: string) {
   return new RegExp(`${property}:\\s*${value}`).test(css);
 }
 
-const npmExecutable = Deno.build.os === "windows" ? "npm.cmd" : "npm";
-const temporaryRoot = await Deno.makeTempDir({ prefix: "limette-init-" });
+const npmExecutable = process.platform === "win32" ? "npm.cmd" : "npm";
+const denoExecutable = process.platform === "win32" ? "deno.exe" : "deno";
+const temporaryRoot = await mkdtemp(join(tmpdir(), "limette-init-"));
 const packageDirectory = join(temporaryRoot, "package");
+const initializerPackageDirectory = join(temporaryRoot, "initializer-package");
 const packedConsumer = join(temporaryRoot, "packed-consumer");
+const initializerConsumer = join(temporaryRoot, "initializer-consumer");
 const npmCache = join(temporaryRoot, "npm-cache");
 const denoCache = join(temporaryRoot, "deno-cache");
 const combinations: Combination[] = [
@@ -100,55 +134,45 @@ const combinations: Combination[] = [
   { runtime: "node", tailwind: true },
   { runtime: "node", tailwind: false },
 ];
-const children = new Set<Deno.ChildProcess>();
+const children = new Set<ChildProcess>();
 
-async function stop(child: Deno.ChildProcess) {
+async function stop(child: ChildProcess) {
   children.delete(child);
-  try {
-    child.kill("SIGTERM");
-  } catch {
-    // The process may already have exited after a startup failure.
-  }
-  await child.status;
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  const closed = once(child, "close");
+  child.kill("SIGTERM");
+  await closed;
 }
 
 async function runCombination(
   combination: Combination,
   archive: string,
   localCore: string,
+  initializerExecutable: string,
 ) {
   const { runtime, tailwind } = combination;
   const suffix = tailwind ? "tailwind" : "plain";
   const projectName = `${runtime}-${suffix}`;
   const projectRoot = join(temporaryRoot, projectName);
-  const initializer = await new Deno.Command(Deno.execPath(), {
-    args: [
-      "run",
-      "-A",
-      join(repositoryRoot, "init/src/mod.ts"),
+  const initializerOutput = await command(
+    initializerExecutable,
+    [
       projectName,
       `--runtime=${runtime}`,
       `--tailwind=${tailwind ? "yes" : "no"}`,
     ],
-    cwd: temporaryRoot,
-    env: { LIMETTE_INIT_SKIP_INSTALL: "1" },
-    stdout: "piped",
-    stderr: "piped",
-  }).output();
-  const initializerText = outputText(initializer);
-  assert(
-    initializer.success,
-    `Initializer failed for ${projectName}:\n${initializerText.stderr}`,
+    temporaryRoot,
+    { LIMETTE_INIT_SKIP_INSTALL: "1" },
   );
   assert(
-    initializerText.stdout.includes(
+    initializerOutput.includes(
       runtime === "deno" ? "deno task dev" : "npm run dev",
     ),
     `Initializer printed the wrong instructions for ${projectName}.`,
   );
 
   const packagePath = join(projectRoot, "package.json");
-  const manifest = JSON.parse(await Deno.readTextFile(packagePath));
+  const manifest = JSON.parse(await readFile(packagePath, "utf8"));
   assert(
     manifest.name === projectName &&
       manifest.private === true &&
@@ -163,7 +187,7 @@ async function runCombination(
     `${projectName} has invalid scripts.`,
   );
   assert(
-    manifest.dependencies.limette &&
+    manifest.dependencies.limette === "^0.3.0" &&
       manifest.dependencies.lit &&
       manifest.devDependencies.vite,
     `${projectName} is missing core application dependencies.`,
@@ -192,17 +216,20 @@ async function runCombination(
     `${projectName} is missing its public directory.`,
   );
 
-  const viteConfig = await Deno.readTextFile(
+  const viteConfig = await readFile(
     join(projectRoot, "vite.config.ts"),
+    "utf8",
   );
-  const island = await Deno.readTextFile(
+  const island = await readFile(
     join(projectRoot, "islands/counter.ts"),
+    "utf8",
   );
-  const route = await Deno.readTextFile(join(projectRoot, "routes/index.ts"));
-  const appWrapper = await Deno.readTextFile(
+  const route = await readFile(join(projectRoot, "routes/index.ts"), "utf8");
+  const appWrapper = await readFile(
     join(projectRoot, "routes/_app.ts"),
+    "utf8",
   );
-  const fooRoute = await Deno.readTextFile(join(projectRoot, "routes/foo.ts"));
+  const fooRoute = await readFile(join(projectRoot, "routes/foo.ts"), "utf8");
   assert(
     viteConfig.includes("limette({") && viteConfig.includes('app: "./app.ts"'),
     `${projectName} is missing the Limette Vite configuration.`,
@@ -241,19 +268,16 @@ async function runCombination(
   );
 
   if (runtime === "deno") {
-    await Deno.writeTextFile(
+    await writeFile(
       join(projectRoot, "deno.json"),
       `${JSON.stringify({ links: [localCore] }, null, 2)}\n`,
     );
-    await command(Deno.execPath(), ["install"], projectRoot, {
+    await command(denoExecutable, ["install"], projectRoot, {
       DENO_DIR: denoCache,
     });
   } else {
     manifest.dependencies.limette = `file:${archive}`;
-    await Deno.writeTextFile(
-      packagePath,
-      `${JSON.stringify(manifest, null, 2)}\n`,
-    );
+    await writeFile(packagePath, `${JSON.stringify(manifest, null, 2)}\n`);
     await command(
       npmExecutable,
       ["install", "--ignore-scripts", "--no-audit", "--no-fund"],
@@ -271,14 +295,15 @@ async function runCombination(
     "islands/counter.ts",
   ];
   if (runtime === "deno") checkFiles.push("main.ts");
-  await command(Deno.execPath(), ["check", ...checkFiles], projectRoot, {
+  await command(denoExecutable, ["check", ...checkFiles], projectRoot, {
     DENO_DIR: denoCache,
   });
 
   const devPort = await availablePort();
   const vitePath = join(projectRoot, "node_modules/vite/bin/vite.js");
-  const devServer = new Deno.Command("node", {
-    args: [
+  const devServer = spawn(
+    process.execPath,
+    [
       vitePath,
       "--host",
       "127.0.0.1",
@@ -288,15 +313,16 @@ async function runCombination(
       "--logLevel",
       "error",
     ],
-    cwd: projectRoot,
-    stdout: "piped",
-    stderr: "piped",
-  }).spawn();
+    {
+      cwd: projectRoot,
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
   children.add(devServer);
-  const devStdout = new Response(devServer.stdout).text();
-  const devStderr = new Response(devServer.stderr).text();
+  const devStdout = streamText(devServer.stdout);
+  const devStderr = streamText(devServer.stderr);
   const routePath = join(projectRoot, "routes/index.ts");
-  const originalRoute = await Deno.readTextFile(routePath);
+  const originalRoute = await readFile(routePath, "utf8");
   const updatedRoute = originalRoute.replace(
     "This is SSR content.",
     "This is updated SSR content.",
@@ -305,7 +331,7 @@ async function runCombination(
     `http://127.0.0.1:${devPort}/`,
     (response, body) => response.ok && body.includes("This is SSR content."),
   );
-  await Deno.writeTextFile(routePath, updatedRoute);
+  await writeFile(routePath, updatedRoute);
   const updatedDev = await waitForResponse(
     `http://127.0.0.1:${devPort}/`,
     (response, body) =>
@@ -315,7 +341,7 @@ async function runCombination(
     updatedDev.body.includes("island-counter"),
     `${projectName} lost its island after a dev route reload.`,
   );
-  await Deno.writeTextFile(routePath, originalRoute);
+  await writeFile(routePath, originalRoute);
   await stop(devServer);
   const devDiagnostics = `${await devStdout}\n${await devStderr}`;
   for (const forbidden of [
@@ -330,7 +356,7 @@ async function runCombination(
   }
 
   if (runtime === "deno") {
-    await command(Deno.execPath(), ["task", "build"], projectRoot, {
+    await command(denoExecutable, ["task", "build"], projectRoot, {
       DENO_DIR: denoCache,
     });
   } else {
@@ -345,26 +371,22 @@ async function runCombination(
   );
 
   const port = await availablePort();
-  const launcher =
-    runtime === "deno"
-      ? new Deno.Command(Deno.execPath(), {
-          args: ["run", "-A", "main.ts"],
-          cwd: projectRoot,
-          env: { PORT: String(port), DENO_DIR: denoCache },
-          stdout: "piped",
-          stderr: "piped",
-        })
-      : new Deno.Command("node", {
-          args: ["main.js"],
-          cwd: projectRoot,
-          env: { PORT: String(port) },
-          stdout: "piped",
-          stderr: "piped",
-        });
-  const server = launcher.spawn();
+  const server = spawn(
+    runtime === "deno" ? denoExecutable : process.execPath,
+    runtime === "deno" ? ["run", "-A", "main.ts"] : ["main.js"],
+    {
+      cwd: projectRoot,
+      env: {
+        ...process.env,
+        PORT: String(port),
+        ...(runtime === "deno" ? { DENO_DIR: denoCache } : {}),
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
   children.add(server);
-  const serverStdout = new Response(server.stdout).text();
-  const serverStderr = new Response(server.stderr).text();
+  const serverStdout = streamText(server.stdout);
+  const serverStderr = streamText(server.stderr);
   const production = await waitForResponse(
     `http://127.0.0.1:${port}/`,
     (response, body) => response.ok && body.includes("This is SSR content."),
@@ -433,10 +455,17 @@ async function runCombination(
 }
 
 try {
-  await Deno.mkdir(packageDirectory, { recursive: true });
+  await mkdir(packageDirectory, { recursive: true });
+  await mkdir(initializerPackageDirectory, { recursive: true });
   const packOutput = await command(
     npmExecutable,
-    ["pack", "--ignore-scripts", "--pack-destination", packageDirectory],
+    [
+      "pack",
+      "--workspace=limette",
+      "--ignore-scripts",
+      "--pack-destination",
+      packageDirectory,
+    ],
     repositoryRoot,
     { npm_config_cache: npmCache },
   );
@@ -444,8 +473,24 @@ try {
     packageDirectory,
     basename(packOutput.split("\n").at(-1)!),
   );
-  await Deno.mkdir(packedConsumer, { recursive: true });
-  await Deno.writeTextFile(
+  const initializerPackOutput = await command(
+    npmExecutable,
+    [
+      "pack",
+      "--workspace=create-limette",
+      "--ignore-scripts",
+      "--pack-destination",
+      initializerPackageDirectory,
+    ],
+    repositoryRoot,
+    { npm_config_cache: npmCache },
+  );
+  const initializerArchive = join(
+    initializerPackageDirectory,
+    basename(initializerPackOutput.split("\n").at(-1)!),
+  );
+  await mkdir(packedConsumer, { recursive: true });
+  await writeFile(
     join(packedConsumer, "package.json"),
     `${JSON.stringify({ private: true }, null, 2)}\n`,
   );
@@ -509,17 +554,59 @@ try {
     "The packed initializer has an invalid executable contract.",
   );
 
+  await mkdir(initializerConsumer, { recursive: true });
+  await writeFile(
+    join(initializerConsumer, "package.json"),
+    `${JSON.stringify({ private: true }, null, 2)}\n`,
+  );
+  await command(
+    npmExecutable,
+    [
+      "install",
+      "--ignore-scripts",
+      "--no-package-lock",
+      "--no-audit",
+      "--no-fund",
+      "--no-save",
+      initializerArchive,
+    ],
+    initializerConsumer,
+    { npm_config_cache: npmCache },
+  );
+
   for (const combination of combinations) {
-    await runCombination(combination, archive, localCore);
+    await runCombination(
+      combination,
+      archive,
+      localCore,
+      initializerExecutable,
+    );
   }
+
+  const occupiedProject = join(temporaryRoot, "occupied-project");
+  await mkdir(occupiedProject);
+  await writeFile(join(occupiedProject, "keep.txt"), "keep\n");
+  let rejectedOccupiedDirectory = false;
+  try {
+    await command(
+      initializerExecutable,
+      ["occupied-project", "--runtime=node", "--tailwind=no"],
+      temporaryRoot,
+      { LIMETTE_INIT_SKIP_INSTALL: "1" },
+    );
+  } catch (error) {
+    rejectedOccupiedDirectory = String(error).includes(
+      "already exists and is not empty",
+    );
+  }
+  assert(
+    rejectedOccupiedDirectory &&
+      (await readFile(join(occupiedProject, "keep.txt"), "utf8")) === "keep\n",
+    "The initializer did not protect a non-empty target directory.",
+  );
 } finally {
   for (const child of children) {
-    try {
-      child.kill("SIGTERM");
-    } catch {
-      // The process may already have exited.
-    }
-    await child.status;
+    await stop(child);
   }
-  await Deno.remove(temporaryRoot, { recursive: true });
+  await rm(temporaryRoot, { recursive: true, force: true });
 }

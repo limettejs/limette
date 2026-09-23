@@ -4,10 +4,10 @@ import {
   SERVER_ENTRY_MODULE_ID,
   type ServerEntryAssets,
   type ServerEntryRouteAssets,
-} from '../../src/vite/server-entry.ts';
-import type { LimetteRouteManifest } from '../../src/vite/manifest.ts';
-import { limette } from '../../src/vite/plugin.ts';
-import type { PluginContextLike } from '../../src/vite/types.ts';
+} from '../../packages/limette/src/vite/server-entry.ts';
+import type { LimetteRouteManifest } from '../../packages/limette/src/vite/manifest.ts';
+import { limette } from '../../packages/limette/src/vite/plugin.ts';
+import type { PluginContextLike } from '../../packages/limette/src/vite/types.ts';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);

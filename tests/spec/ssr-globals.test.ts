@@ -5,7 +5,7 @@ it('installs SSR DOM primitives without replacing native web APIs', async () => 
   const nativeBtoa = globalThis.btoa;
   const nativeAtob = globalThis.atob;
 
-  await import('../../src/server/ssr.ts?ssr-globals-test');
+  await import('../../packages/limette/src/server/ssr.ts?ssr-globals-test');
 
   expect(globalThis.fetch).toBe(nativeFetch);
   expect(globalThis.btoa).toBe(nativeBtoa);
