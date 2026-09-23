@@ -7,7 +7,7 @@ import { createInterface } from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
 
 // This value is changed in the release pipeline
-const LIMETTE_VERSION = '0.3.1';
+const LIMETTE_VERSION = '0.3.0';
 
 const LIT_VERSION = '3.2.1';
 const VITE_VERSION = '8.0.0';
