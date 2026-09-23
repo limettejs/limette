@@ -171,6 +171,4 @@ jobs:
         run: npm run test:release
 
       - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.CREATE_LIMETTE_NPM_TOKEN }}
         run: npm publish --workspace=create-limette --provenance --access public
