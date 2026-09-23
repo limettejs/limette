@@ -317,6 +317,8 @@ Next steps:
   git commit -m "chore: prepare ${result.packageName} ${result.nextVersion}"
 
   # after the commit is merged / on the commit you want to release:
+  git checkout main                                          
+  git pull
   git tag '${result.tag}'
   git push origin '${result.tag}'
 
