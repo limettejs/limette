@@ -10,7 +10,7 @@
   ],
   "type": "module",
   "bin": {
-    "create-limette": "./dist/index.mjs"
+    "create-limette": "dist/index.mjs"
   },
   "files": [
     "dist",
