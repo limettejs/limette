@@ -12,5 +12,10 @@ To explicitly use the latest initializer:
 npm create limette@latest
 ```
 
-The initializer creates a Node or Deno application, with optional Tailwind
-CSS support.
+For Deno:
+
+```sh
+deno run -A npm:create-limette
+```
+
+The initializer creates a Node or Deno application, with optional Tailwind CSS support.
