@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { clientEntryName, islandEntryName } from './client-entry.ts';
-import { tailwindEntryName } from './tailwind.ts';
+import { tailwindEntryName, tailwindRouteIdFromSourceId } from './tailwind.ts';
 import type { LimetteRouteManifest } from './manifest.ts';
 import type { ServerEntryAssets } from './server-entry.ts';
 
@@ -74,10 +74,12 @@ function matchingEntry(
   viteManifest: ViteManifest,
   entryName: string,
   manifestPath: string,
-  description: string
+  description: string,
+  entryIdentity: (key: string, chunk: ViteManifestChunk) => string | undefined = (_, chunk) =>
+    chunk.name
 ) {
   const matchingEntries = Object.entries(viteManifest).filter(
-    ([, chunk]) => chunk.isEntry && chunk.name === entryName
+    ([key, chunk]) => chunk.isEntry && entryIdentity(key, chunk) === entryName
   );
 
   if (matchingEntries.length > 1) {
@@ -87,6 +89,12 @@ function matchingEntry(
   }
 
   return matchingEntries[0];
+}
+
+function tailwindEntryIdentity(key: string, chunk: ViteManifestChunk) {
+  // Vite can deduplicate both name and src. The manifest key retains each input's identity.
+  const routeId = tailwindRouteIdFromSourceId(key) ?? tailwindRouteIdFromSourceId(chunk.src ?? '');
+  return routeId === undefined ? chunk.name : tailwindEntryName(routeId);
 }
 
 export async function readViteManifest(options: ReadViteManifestOptions) {
@@ -148,14 +156,15 @@ function resolveRouteClientAssets(options: ResolveRouteClientAssetsOptions): Rou
   const expectedTailwindEntries = new Set(
     tailwind ? routeManifest.routes.map((route) => tailwindEntryName(route.id)) : []
   );
-  for (const chunk of Object.values(viteManifest)) {
-    if (!chunk.isEntry || !chunk.name?.startsWith('limette-tailwind-')) {
-      continue;
-    }
-    if (!expectedTailwindEntries.has(chunk.name)) {
-      throw new Error(
-        `Unknown or stale Limette Tailwind entry "${chunk.name}" in Vite manifest "${manifestPath}".`
-      );
+  for (const [key, chunk] of Object.entries(viteManifest)) {
+    if (!chunk.isEntry) continue;
+    for (const identity of [tailwindEntryIdentity(key, chunk), chunk.name]) {
+      if (!identity?.startsWith('limette-tailwind-')) continue;
+      if (!expectedTailwindEntries.has(identity)) {
+        throw new Error(
+          `Unknown or stale Limette Tailwind entry "${identity}" in Vite manifest "${manifestPath}".`
+        );
+      }
     }
   }
 
@@ -238,7 +247,8 @@ function resolveRouteClientAssets(options: ResolveRouteClientAssetsOptions): Rou
           viteManifest,
           tailwindEntryName(route.id),
           manifestPath,
-          `Tailwind stylesheet for Limette route "${route.path}" (${route.id})`
+          `Tailwind stylesheet for Limette route "${route.path}" (${route.id})`,
+          tailwindEntryIdentity
         )?.[1]
       : undefined;
     if (tailwind && !tailwindEntry) {

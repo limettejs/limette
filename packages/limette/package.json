@@ -1,6 +1,6 @@
 {
   "name": "limette",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "A full-stack framework for Lit Web Components.",
   "keywords": [
     "islands",
