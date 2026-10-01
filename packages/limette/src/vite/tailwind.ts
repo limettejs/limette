@@ -73,6 +73,12 @@ export function tailwindRouteIdFromResolvedId(id: string, tailwindFile: string) 
   if (queryIndex === -1 || id.slice(0, queryIndex) !== tailwindFile) {
     return undefined;
   }
+  return tailwindRouteIdFromSourceId(id);
+}
+
+export function tailwindRouteIdFromSourceId(id: string) {
+  const queryIndex = id.indexOf('?');
+  if (queryIndex === -1) return undefined;
   return new URLSearchParams(id.slice(queryIndex + 1)).get(TAILWIND_ROUTE_QUERY) ?? undefined;
 }
 

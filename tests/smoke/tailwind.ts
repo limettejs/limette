@@ -4,7 +4,10 @@ import { createServer } from 'node:net';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { discoverRoutes } from '../../packages/limette/src/vite/manifest.ts';
-import { tailwindEntryName } from '../../packages/limette/src/vite/tailwind.ts';
+import {
+  readViteManifest,
+  resolveServerEntryAssets,
+} from '../../packages/limette/src/vite/assets.ts';
 import { repositoryRoot } from './_paths.ts';
 
 const fixtureRoot = fileURLToPath(new URL('../fixtures/tailwind/', import.meta.url));
@@ -149,20 +152,23 @@ try {
   const routes = await discoverRoutes({ root: fixtureRoot });
   const routeA = routes.routes.find((route) => route.path === '/a');
   const routeB = routes.routes.find((route) => route.path === '/b');
-  assert(routeA && routeB, 'Tailwind fixture routes were not discovered.');
-  const manifest = JSON.parse(
-    await readFile(join(buildDir, 'client/.vite/manifest.json'), 'utf8')
-  ) as Record<string, { file: string; name?: string; isEntry?: boolean }>;
-  const entryFor = (routeId: string) =>
-    Object.values(manifest).find(
-      (entry) => entry.isEntry && entry.name === tailwindEntryName(routeId)
-    );
-  const entryA = entryFor(routeA.id);
-  const entryB = entryFor(routeB.id);
+  const routeC = routes.routes.find((route) => route.path === '/c');
+  assert(routeA && routeB && routeC, 'Tailwind fixture routes were not discovered.');
+  const manifestPath = join(buildDir, 'client/.vite/manifest.json');
+  const assets = resolveServerEntryAssets({
+    manifest: await readViteManifest({ manifestPath }),
+    routes,
+    manifestPath,
+    tailwind: true,
+  });
+  const entryA = assets.get(routeA.id)?.tailwindStyle;
+  const entryB = assets.get(routeB.id)?.tailwindStyle;
+  const entryC = assets.get(routeC.id)?.tailwindStyle;
   assert(entryA && entryB, 'Route-specific Tailwind entries were not emitted.');
-  assert(entryA.file !== entryB.file, 'Routes shared one Tailwind CSS asset.');
-  const cssA = await readFile(join(buildDir, 'client', entryA.file), 'utf8');
-  const cssB = await readFile(join(buildDir, 'client', entryB.file), 'utf8');
+  assert(entryA !== entryB, 'Routes with different classes shared one Tailwind CSS asset.');
+  assert(entryC === entryB, 'Identical route CSS did not resolve to the same emitted asset.');
+  const cssA = await readFile(join(buildDir, 'client', entryA), 'utf8');
+  const cssB = await readFile(join(buildDir, 'client', entryB), 'utf8');
   assert(
     hasDeclaration(cssA, 'padding', '13px') &&
       hasDeclaration(cssA, 'border-width', '3px') &&
@@ -193,13 +199,22 @@ try {
   };
   const response = await serverModule.default(new Request('http://localhost/a'));
   const html = await response.text();
-  const tailwindUrl = `/${entryA.file}`;
+  const tailwindUrl = entryA;
   assert(
     response.ok &&
       html.includes(`<link rel="stylesheet" href="${tailwindUrl}">`) &&
       html.includes(`@import url("${tailwindUrl}")`),
     'SSR did not distribute one Tailwind URL to the document and shadow root.'
   );
+
+  for (const path of ['/b', '/c']) {
+    const response = await serverModule.default(new Request(`http://localhost${path}`));
+    const html = await response.text();
+    assert(
+      response.ok && html.includes(`<link rel="stylesheet" href="${entryB}">`),
+      `SSR did not link the deduplicated Tailwind asset on ${path}.`
+    );
+  }
 
   const port = await availablePort();
   const origin = `http://127.0.0.1:${port}`;

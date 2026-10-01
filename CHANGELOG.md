@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-10-01
+
+### Fixed
+
+- Resolve route-specific Tailwind styles when Vite deduplicates identical CSS assets (#51).
+
 ## [0.3.1] - 2026-09-23
 
 ### Fixed
